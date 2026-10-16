@@ -1,0 +1,190 @@
+/* 字体与颜色、动效变量：浅色「山水」、深色「夜庭」，山色随季节、天色随时辰。 */
+
+/* ---------- Fonts ---------- */
+/* Zen Kaku Gothic New 只含数字与冒号的子集（OFL 授权），随扩展打包，不请求网络。 */
+@font-face {
+  font-family: 'Niwa Clock';
+  src: url('/fonts/clock-zenkaku.woff2') format('woff2');
+  font-weight: 300;
+  font-display: block;
+}
+
+/* ---------- Tokens ---------- */
+/* 浅色「山水」：远山与薄雾。深色「夜庭」：月夜，石灯笼是唯一的暖光。 */
+:root {
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    'SF Pro Text',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+
+  --bg: #eef0ee;
+  --sky-top: #d9e3ea;
+  --ink: #26313b;
+  --muted: #5d6974;
+  --faint: #97a1aa;
+  --term: #4f6b80;
+  --surface: rgb(255 255 255 / 0.62);
+  --surface-hover: rgb(255 255 255 / 0.85);
+  --elevated: #fbfcfc;
+  --border: rgb(38 49 59 / 0.1);
+  --glass-edge: rgb(255 255 255 / 0.9);
+  --shadow: 0 12px 34px -18px rgb(40 60 80 / 0.3);
+  --focus: rgb(38 49 59 / 0.35);
+  --danger: #b5432f;
+
+  /* 动效：弹簧曲线由 utils/spring.ts 的同一组参数采样而来（30 帧/秒） */
+  --spring-button: linear(0, 0.233, 0.625, 0.918, 1.059, 1.087, 1.063, 1.029, 1.005, 0.994, 0.992, 0.995, 0.998, 1);
+  --spring-button-duration: 467ms;
+  --spring-card: linear(0, 0.13, 0.376, 0.613, 0.793, 0.91, 0.977, 1.008, 1.018, 1.018, 1.014, 1.009, 1.005, 1.003, 1);
+  --spring-card-duration: 500ms;
+  --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* 景 */
+  --orb: #fbf3e4;
+  --orb-glow: rgb(251 243 228 / 0.7);
+  --orb-x: 30%;
+  --orb-y: 26%;
+  --hill-far: #c3ced7;
+  --hill-mid: #a3b4c2;
+  --hill-near: #7d92a3;
+  --mist: #e8edf0;
+
+  /* 箱庭 */
+  --tray-top: #e4e8ec;
+  --tray-left: #9fb0bd;
+  --tray-right: #c0ccd5;
+  --sand: #ece9e2;
+  --rake: #d3cec2;
+  --lip: rgb(0 0 0 / 0.07);
+  --stone: #46525c;
+  --stone-light: #a9aeb3;
+  --trunk: #6b5546;
+  --lantern: #9aa4ad;
+  --window: #55595e;
+  --moss: #7f9a62;
+  --snow: #fff;
+}
+
+/* 山色随季节 */
+:root[data-season='spring'] {
+  --hill-far: #c8d5d1;
+  --hill-mid: #a5b9b4;
+  --hill-near: #7e9792;
+}
+:root[data-season='summer'] {
+  --hill-far: #c0d1d6;
+  --hill-mid: #9cb3bb;
+  --hill-near: #738e99;
+}
+:root[data-season='autumn'] {
+  --hill-far: #cfd3d8;
+  --hill-mid: #b3b5b8;
+  --hill-near: #8a8d93;
+}
+:root[data-season='winter'] {
+  --hill-far: #d7dee5;
+  --hill-mid: #b8c5d0;
+  --hill-near: #91a2b2;
+}
+
+/* 天色随时辰 */
+:root[data-phase='dawn'] {
+  --sky-top: #efd9cf;
+  --orb: #fde6cf;
+  --orb-glow: rgb(253 214 180 / 0.7);
+  --orb-x: 14%;
+  --orb-y: 40%;
+  --mist: #f1e9e6;
+}
+:root[data-phase='dusk'] {
+  --sky-top: #e9d0c8;
+  --orb: #f8d2b8;
+  --orb-glow: rgb(244 180 150 / 0.6);
+  --orb-x: 72%;
+  --orb-y: 42%;
+  --mist: #eee4e3;
+}
+:root[data-phase='night'] {
+  --sky-top: #c7d0dc;
+  --orb: #f7f4e8;
+  --orb-glow: rgb(247 244 232 / 0.5);
+  --orb-x: 64%;
+  --orb-y: 18%;
+  --mist: #e2e7ec;
+}
+
+/* 深色「夜庭」：<html data-theme="dark"> 时生效（见 utils/theme.ts）。
+   :where() 不增加优先级，和浅色同名的季节、时辰规则之间的覆盖关系保持不变。 */
+:root:where([data-theme='dark']) {
+  color-scheme: dark;
+  --lantern-glow: rgb(255 200 120 / 0.09);
+  --bg: #1a272e;
+  --sky-top: #2b3e48;
+  --ink: #eef1ec;
+  --muted: #a3adb0;
+  --faint: #66737a;
+  --term: #e8c98a;
+  --surface: rgb(255 255 255 / 0.07);
+  --surface-hover: rgb(255 255 255 / 0.11);
+  --elevated: #202d34;
+  --border: rgb(255 255 255 / 0.1);
+  --glass-edge: rgb(255 255 255 / 0.12);
+  --shadow: 0 14px 40px -18px rgb(0 0 0 / 0.6);
+  --focus: rgb(238 241 236 / 0.35);
+  --danger: #ec8a75;
+
+  --orb: #e9ecdf;
+  --orb-glow: rgb(233 236 223 / 0.22);
+  --orb-x: 64%;
+  --orb-y: 18%;
+
+  --tray-top: #3c4a50;
+  --tray-left: #1f2a2f;
+  --tray-right: #2b373c;
+  --sand: #545650;
+  --rake: #6a6b63;
+  --lip: rgb(0 0 0 / 0.3);
+  --stone: #20262a;
+  --stone-light: #56606a;
+  --trunk: #5a4a40;
+  --lantern: #6f7a80;
+  --window: #2a2c2f;
+  --moss: #5d7548;
+  --snow: #e6e9ee;
+}
+:root[data-phase='dawn']:where([data-theme='dark']) {
+  --sky-top: #3a3a45;
+  --bg: #1c2229;
+  --orb-x: 14%;
+  --orb-y: 40%;
+}
+:root[data-phase='day']:where([data-theme='dark']) {
+  --sky-top: #2b3e48;
+  --bg: #1a272e;
+}
+:root[data-phase='dusk']:where([data-theme='dark']) {
+  --sky-top: #3a2f3a;
+  --bg: #1a1f27;
+  --orb-x: 72%;
+  --orb-y: 42%;
+}
+:root[data-phase='night']:where([data-theme='dark']) {
+  --sky-top: #0f1c22;
+  --bg: #080e11;
+  --lantern-glow: rgb(255 196 110 / 0.18);
+}
+
+/* ---------- Theme switch ---------- */
+/* 点按钮切换浅色 / 深色时，utils/theme.ts 的 switchTheme 用 View Transition 把新旧两张画面交叉淡入淡出，
+   .is-theming 只在这期间加在 <html> 上，用来限定下面的时长。 */
+:root.is-theming::view-transition-old(root),
+:root.is-theming::view-transition-new(root) {
+  animation-duration: 0.6s;
+  animation-timing-function: ease;
+}

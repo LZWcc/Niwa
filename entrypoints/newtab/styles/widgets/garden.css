@@ -1,0 +1,117 @@
+/* 庭（箱庭）小组件。 */
+
+/* ---------- 箱庭 ---------- */
+.niwa {
+  display: block;
+  overflow: visible;
+}
+
+.niwa-tray-top {
+  fill: var(--tray-top);
+}
+.niwa-tray-left {
+  fill: var(--tray-left);
+}
+.niwa-tray-right {
+  fill: var(--tray-right);
+}
+.niwa-sand {
+  fill: var(--sand);
+}
+.niwa-lip {
+  fill: none;
+  stroke: var(--lip);
+  stroke-width: 2;
+}
+.niwa-rake {
+  fill: none;
+  stroke: var(--rake);
+  stroke-width: 0.8;
+}
+.niwa-shadow {
+  fill: rgb(0 0 0 / 0.12);
+}
+.niwa-stone {
+  fill: var(--stone);
+}
+.niwa-stone-light {
+  fill: var(--stone-light);
+  opacity: 0.35;
+}
+.niwa-trunk {
+  fill: none;
+  stroke: var(--trunk);
+  stroke-linecap: round;
+}
+.niwa-lantern {
+  fill: var(--lantern);
+}
+.niwa-window {
+  fill: var(--window);
+}
+.niwa-window.is-lit {
+  fill: #ffd98a;
+}
+.niwa-moss {
+  fill: var(--moss);
+  opacity: 0.85;
+}
+.niwa-grass {
+  fill: none;
+  stroke: var(--moss);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+}
+.niwa-snow {
+  fill: var(--snow);
+}
+
+.garden-widget {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.garden-text {
+  min-width: 0;
+}
+.garden-day {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.garden-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--faint);
+}
+.garden-s .niwa {
+  width: 124px;
+  height: 99px;
+}
+.garden-s .garden-day {
+  font-size: 11px;
+}
+.garden-m {
+  flex-direction: row;
+  gap: 12px;
+  text-align: left;
+}
+.garden-m {
+  gap: 16px;
+}
+.garden-m .niwa {
+  width: 170px;
+  height: 136px;
+  flex-shrink: 0;
+}
+.garden-m .garden-day {
+  margin-top: 6px;
+}
+.garden-l .niwa {
+  width: 290px;
+  height: 232px;
+}

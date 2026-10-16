@@ -1,0 +1,160 @@
+/* 便签小组件。 */
+
+/* ---------- 便签 ---------- */
+.notes {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.notes-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.notes-head span {
+  font-size: 12px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes-input {
+  field-sizing: content;
+  flex-shrink: 0;
+  min-height: 36px;
+  max-height: 96px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: 0;
+  background: color-mix(in srgb, var(--surface-hover) 70%, transparent);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  transition: border-color 0.15s;
+}
+.notes-input::placeholder {
+  color: var(--faint);
+}
+.notes-input:focus {
+  border-color: var(--focus);
+}
+
+.notes-empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+.notes-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0 -6px;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.note {
+  position: relative;
+}
+/* 新存的便签从上方轻轻落进来 */
+.note.is-fresh {
+  animation: note-in var(--spring-card-duration) var(--spring-card);
+}
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+.note-copy {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 30px 7px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.note-copy:hover,
+.note-copy:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.note-text {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.notes-s .note-copy {
+  padding-block: 4px;
+}
+.notes-s .note-text {
+  -webkit-line-clamp: 1;
+  font-size: 12px;
+}
+.note-state {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 19.5px;
+  color: var(--faint);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.note-copy:hover .note-state,
+.note-copy:focus-visible .note-state {
+  opacity: 1;
+}
+.note-state.is-copied {
+  opacity: 1;
+  color: var(--term);
+}
+.note-remove {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+}
+.note:hover .note-remove,
+.note-remove:focus-visible {
+  opacity: 1;
+}
+.note-remove:hover {
+  color: var(--danger);
+}
+/* 有删除按钮时，“复制”提示让出位置 */
+.note:hover .note-state:not(.is-copied) {
+  opacity: 0;
+}
+.notes-s .note-state {
+  display: none;
+}
+.notes-s .note-state.is-copied {
+  display: block;
+}

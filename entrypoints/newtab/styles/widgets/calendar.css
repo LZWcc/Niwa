@@ -1,0 +1,346 @@
+/* 日程小组件与日程详情。 */
+
+/* ---------- 日程 ---------- */
+.cal {
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cal-date {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+.cal-date:hover .cal-weekday {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cal-weekday {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--term);
+}
+.cal-day {
+  margin-top: 4px;
+  font-family: 'Niwa Clock', system-ui, sans-serif;
+  font-size: 40px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+.cal-s .cal-day {
+  font-size: 34px;
+}
+.cal-count {
+  font-size: 11px;
+  color: var(--faint);
+}
+.cal-none {
+  margin: 0;
+  font-size: 12px;
+  color: var(--faint);
+}
+.cal-status {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cal-status.is-error {
+  color: var(--danger);
+}
+
+.cal-m {
+  flex-direction: row;
+  gap: 14px;
+}
+.cal-side {
+  width: 78px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cal-list {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.cal-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+}
+/* 放不下的日程不滚动，底部只有“月历 ›”，点开看全部 */
+.cal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
+}
+.cal-more {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--term);
+  cursor: pointer;
+}
+.cal-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-right: 30px;
+}
+.cal-date.is-inline {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+.cal-date.is-inline .cal-day {
+  margin: 0;
+  font-size: 28px;
+}
+.cal-groups {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.cal-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cal-group h3 {
+  margin: 0 0 1px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.event {
+  min-width: 0;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+.event-bar {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--muted);
+}
+.event-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.event-title {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.event-time {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.event-time.is-now {
+  color: var(--term);
+  font-weight: 500;
+}
+.event {
+  width: calc(100% + 12px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.event:hover,
+.event.is-open,
+.event:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.event-body {
+  flex: 1;
+}
+
+/* 日程详情 */
+.detail-popover {
+  width: 320px;
+  max-height: min(520px, calc(100svh - 16px));
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.detail-cal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.detail-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.detail-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.detail-live {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--term) 16%, transparent);
+  font-size: 11px;
+  color: var(--term);
+}
+.detail-join {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.detail-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.detail-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail-desc {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.detail a:not(.btn) {
+  color: var(--term);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.detail-open {
+  align-self: flex-start;
+  font-size: 12px;
+}
+/* 中尺寸：一行一项，时间在前 */
+.event.is-compact {
+  align-items: center;
+  gap: 7px;
+  padding-block: 3px;
+}
+.event.is-compact .event-bar {
+  align-self: auto;
+  height: 14px;
+}
+.event.is-compact .event-time {
+  flex-shrink: 0;
+  width: 64px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.event.is-compact .event-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.event-meta {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+}
+.event-meta .event-time {
+  flex-shrink: 0;
+}
+.event-place {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.event-meta .event-place::before {
+  content: '· ';
+}
+.event.is-compact .event-place {
+  flex: 1 1 0;
+}
+
+.cal-empty p {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.cal-empty .btn {
+  align-self: flex-start;
+}

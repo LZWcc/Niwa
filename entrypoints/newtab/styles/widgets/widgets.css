@@ -1,0 +1,203 @@
+/* 小组件外框、弹出层与菜单（尺寸滑块、「添加」菜单）。 */
+
+/* ---------- Widgets ---------- */
+/* 和快捷方式在同一个网格里：小 2×2、中 4×2、大 4×4（单位 80px，间距 20px） */
+.widget {
+  position: relative;
+  min-width: 0;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+.widget.size-s {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.widget.size-m {
+  grid-column: span 4;
+  grid-row: span 2;
+}
+.widget.size-l {
+  grid-column: span 4;
+  grid-row: span 4;
+}
+.widget {
+  cursor: grab;
+  transition:
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+.widget-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.widget-more {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--muted);
+  fill: currentColor;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.widget:hover .widget-more,
+.widget-more:focus-visible,
+.widget-more[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.popover {
+  position: fixed;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--elevated);
+  box-shadow: 0 16px 48px -16px rgb(0 0 0 / 0.3);
+  animation: pop var(--spring-card-duration) var(--spring-card);
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+/* 弹出层挂在 body 上、按视口定位，不会被小组件列裁切 */
+.popover {
+  z-index: 50;
+  outline: 0;
+}
+.widget-menu {
+  width: 172px;
+}
+.segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 4px;
+  border-radius: 9px;
+  background: var(--border);
+}
+/* 选中的底块是一个滑块，切换尺寸时滑过去 */
+.segmented::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 10px) / 3);
+  border-radius: 7px;
+  background: var(--elevated);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  transform: translateX(calc(var(--i, 0) * (100% + 2px)));
+  transition: transform 0.15s var(--ease-snap);
+}
+.segmented button {
+  position: relative;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.segmented [aria-checked='true'] {
+  color: var(--ink);
+}
+.menu-item {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.menu-item.is-danger {
+  color: var(--danger);
+}
+
+.add-menu {
+  width: 240px;
+}
+.add-heading {
+  margin: 6px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--faint);
+}
+.add-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.add-option:hover:not(:disabled),
+.add-option:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.add-option:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.picker-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.picker-desc {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* 小组件出错时顶替它的卡片 */
+.widget-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  padding: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.widget-error p {
+  margin: 0;
+}

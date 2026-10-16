@@ -53,9 +53,18 @@ f.onload = async () => {
   d.body.dispatchEvent(new w.ClipboardEvent('paste', { clipboardData: cd, bubbles: true })); await sleep(100);
   log(JSON.stringify(notesOf('n1')) === '["粘贴的","旧便签"]' && JSON.stringify(notesOf(id2)) === '["第二组"]', `paste goes to the first: ${notesOf('n1')} / ${notesOf(id2)}`);
 
-  // 移除一个便签小组件：它的便签跟着没了，另一个不受影响
+  // 移除有内容的便签要点两次：第一次只是问一句，关掉菜单就算了
+  const removeItem = () => d.querySelector('.widget-menu .menu-item.is-danger');
   second.querySelector('.widget-more').click(); await sleep(50);
-  [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '移除小组件').click(); await sleep(150);
+  removeItem().click(); await sleep(50);
+  log(grid().some((i) => i.id === id2) && removeItem()?.textContent === '再点一次，连同 1 条便签一起删掉', `asks before removing notes: ${removeItem()?.textContent}`);
+  second.querySelector('.widget-more').click(); await sleep(50);
+  second.querySelector('.widget-more').click(); await sleep(50);
+  log(removeItem()?.textContent === '移除小组件', 'closing the menu cancels');
+
+  // 再点一次才移除：它的便签跟着没了，另一个不受影响
+  removeItem().click(); await sleep(50);
+  removeItem().click(); await sleep(150);
   log(!grid().some((i) => i.id === id2) && JSON.stringify(notesOf('n1')) === '["粘贴的","旧便签"]', 'removing a notes widget drops its notes');
 };
 </script>

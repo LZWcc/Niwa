@@ -187,6 +187,13 @@
 .menu-item.is-danger {
   color: var(--danger);
 }
+/* 要再点一次才移除：整行变红，提醒这次会删掉东西 */
+.menu-item.is-confirming {
+  height: auto;
+  padding-block: 8px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  line-height: 1.4;
+}
 /* 开关型的菜单项：打开时右边一个勾 */
 .menu-item[role='menuitemcheckbox'] {
   display: flex;

@@ -57,7 +57,7 @@ export default function NotesWidget({ widget, frame, settings, onSettings, first
   const shown = size === 's' ? notes.slice(0, 3) : notes;
 
   return (
-    <WidgetFrame widget={widget} frame={frame}>
+    <WidgetFrame widget={widget} frame={frame} losing={notes.length ? ` ${notes.length} 条便签` : undefined}>
       <div className={`notes notes-${size}`}>
         <WidgetHeader title="便签" meta={notes.length > 0 && `${notes.length} 条`} />
 

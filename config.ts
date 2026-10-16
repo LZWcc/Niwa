@@ -14,8 +14,8 @@ export const WEATHER = {
   console: 'https://console.qweather.com',
   /** 接口路径（拼在 API Host 后面）：城市搜索、实况、逐小时、逐天 */
   api: { lookup: '/geo/v2/city/lookup', now: '/v7/weather/now', hourly: '/v7/weather/24h', daily: '/v7/weather/7d' },
-  /** 多久在后台刷新一次（毫秒） */
-  refreshEvery: 30 * 60_000,
+  /** 多久刷新一次（毫秒）：每次要请求三个接口（实况、逐小时、逐天），和风的免费额度有限，天气也变得没那么快 */
+  refreshEvery: 60 * 60_000,
   /** 更新失败后多久重试（毫秒） */
   retryAfter: 5 * 60_000,
   /** 一次请求最多等多久（毫秒） */

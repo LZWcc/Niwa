@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- 页面测试：天气省额度——缓存还新鲜时，打开新标签页不请求和风天气。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+const place = { id: '101210101', name: '杭州', region: '浙江省', lat: 30.25, lon: 120.21 };
+localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'w', kind: 'widget', type: 'weather', size: 's', x: 0, y: 0, settings: { place } }]));
+localStorage.setItem('niwa:weather-account', JSON.stringify({ host: 'test.re.qweatherapi.com', key: 'k' }));
+// 半小时前取的：还没到一小时，不该再请求
+const forecast = { offset: 28800000, current: { temp: 21, feels: 21, humidity: 60, wind: 5, code: 101, text: '多云', day: true }, hours: [], days: [] };
+localStorage.setItem('niwa:weather-forecast', JSON.stringify({ [`101210101|test.re.qweatherapi.com|k`]: { fetchedAt: Date.now() - 1800000, forecast, error: null } }));
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(1500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const requests = w.performance.getEntriesByType('resource').filter((e) => e.name.includes('qweatherapi'));
+  log(d.querySelector('[data-type="weather"] .weather-temp')?.textContent === '21°', 'shows cached weather');
+  log(requests.length === 0, `no request while cache is fresh: ${requests.length}`);
+};
+</script>

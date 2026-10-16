@@ -21,7 +21,8 @@ const readCache = (): Cache =>
   );
 
 /**
- * 一个城市的天气：先用本地缓存立即显示，过期（30 分钟，失败后 5 分钟）再在后台刷新。没填 KEY 或没选城市时不联网。
+ * 一个城市的天气：先用本地缓存立即显示，过期（一小时，失败后 5 分钟）再刷新。没填 KEY 或没选城市时不联网。
+ * 省额度：只有正在看的标签页去请求（后台的不请求）；请求前再读一遍缓存，别的标签页、别的天气小组件刚更新过就直接用。
  * 城市由各个天气小组件自己选（settings.place），和风的 KEY 共用。
  * now 每分钟和页面重新可见时都会变，借此检查是否需要刷新，不另设定时器。
  */
@@ -60,11 +61,14 @@ export function useWeather(now: Date, place: Place | null) {
   };
 
   useEffect(() => {
-    if (!key) return;
-    const current = cache[key];
+    if (!key || document.hidden) return;
+    // 先看存着的最新结果：可能别的标签页刚取过
+    const latest = readCache();
+    const current = latest[key];
+    if (current !== cache[key]) setCache(latest);
     const age = current ? Date.now() - current.fetchedAt : Infinity;
     if (age > (current?.error ? WEATHER.retryAfter : WEATHER.refreshEvery)) void refresh();
-    // 每分钟（now 变）和换了城市、KEY（key 变）时检查一次是否该刷新；其余都是这次渲染里的值。
+    // 每分钟（now 变，回到这个标签页时也变）和换了城市、KEY（key 变）时检查一次是否该刷新；其余都是这次渲染里的值。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, key]);
 

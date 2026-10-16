@@ -30,6 +30,7 @@ const suites = [
   { file: 'timer.test.html', flags: ['--force-prefers-reduced-motion'], done: 'stopwatch counting' },
   { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no moon phase on the sun in light theme' },
   { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
+  { file: 'weather-cache.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no request while cache is fresh' },
 ];
 
 const types = {

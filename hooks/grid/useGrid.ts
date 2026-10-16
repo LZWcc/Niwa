@@ -3,6 +3,7 @@ import { isGridItem, type GridItem, type LinkItem, type WidgetItem, type WidgetS
 import type { Layout } from '@/utils/grid/layout';
 import { isIconStore, type IconSpec, type IconStore, type LinkIcon } from '@/utils/icons/model';
 import { KEYS, readJson } from '@/utils/storage';
+import { clearTimerAlarm } from '@/utils/timer';
 import { WIDGETS, type WidgetSize, type WidgetType } from '@/utils/widgets';
 import { useStored, useStoredList } from '../useStored';
 
@@ -54,6 +55,8 @@ export function useGrid() {
     resize: (id: string, size: WidgetSize) => patch(id, { size }),
     remove: (id: string) => {
       if (icons[id]) storeIcon(id, null);
+      // 计时器移除了，后台的闹钟也不要再响
+      if (items.some((item) => item.id === id && item.kind === 'widget' && item.type === 'timer')) void clearTimerAlarm(id);
       setItems((list) => list.filter((item) => item.id !== id));
     },
     /** 按摆放结果写回每一项的 x、y（拖动、取消拖动、补上缺的位置）。 */

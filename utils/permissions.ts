@@ -6,6 +6,7 @@ type Request = { origins?: string[]; permissions?: string[] };
 type Permissions = {
   contains: (p: Request) => Promise<boolean>;
   request: (p: Request) => Promise<boolean>;
+  remove: (p: Request) => Promise<boolean>;
 };
 const permissions = (globalThis as { chrome?: { permissions?: Permissions } }).chrome?.permissions;
 
@@ -22,3 +23,6 @@ export const hasPermissions = (list: string[]) => has({ permissions: list });
 
 /** 申请这些权限（例如 bookmarks、history）。浏览器只允许在点击事件里直接调用。 */
 export const requestPermissions = (list: string[]) => request({ permissions: list });
+
+/** 不要这些权限了（例如关掉计时器的通知） */
+export const removePermissions = (list: string[]) => permissions?.remove({ permissions: list }) ?? Promise.resolve(true);

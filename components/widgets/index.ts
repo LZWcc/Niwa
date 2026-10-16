@@ -5,6 +5,7 @@ import CalendarWidget from './calendar/CalendarWidget';
 import GardenWidget from './garden/GardenWidget';
 import HistoryWidget from './history/HistoryWidget';
 import NotesWidget from './notes/NotesWidget';
+import TimerWidget from './timer/TimerWidget';
 import WeatherWidget from './weather/WeatherWidget';
 import WorldClockWidget from './worldclock/WorldClockWidget';
 import type { WidgetProps } from './types';
@@ -19,6 +20,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<WidgetProps>> =
   history: HistoryWidget,
   weather: WeatherWidget,
   worldclock: WorldClockWidget,
+  timer: TimerWidget,
 };
 
 export type { FrameProps, WidgetProps } from './types';

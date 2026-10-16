@@ -28,6 +28,7 @@ pnpm test    # 布局算法单元测试 + 页面测试
 
 ```
 config.ts                  可以按需调整的配置：搜索引擎、默认快捷方式、图标服务、日程与天气参数、配色
+entrypoints/background.ts  后台：计时器的闹钟到点时发系统通知（只做这一件事）
 entrypoints/newtab/        新标签页入口
   App.tsx                  页面骨架：景、时间、搜索、网格
   main.tsx                 挂载；首帧前写好季节与时辰
@@ -46,7 +47,7 @@ components/
     WidgetHeader.tsx       共用标题栏：标题、元信息、右侧工具（见「小组件的卡片」）
     WidgetError.tsx        小组件出错时顶替它的卡片
     LinkRow.tsx、LinksSearch.tsx、AccessPrompt.tsx   收藏夹、历史共用：一行网站链接、搜索、申请权限的提示
-    notes/  calendar/  garden/  bookmarks/  history/  weather/  worldclock/
+    notes/  calendar/  garden/  bookmarks/  history/  weather/  worldclock/  timer/
 hooks/
   grid/
     useGrid.ts             网格数据：增删改，存 niwa:grid；快捷方式的图标图片存 niwa:icons
@@ -84,6 +85,7 @@ utils/                     不依赖 React 的纯函数和数据
   weather.ts               天气：搜城市、取实况与预报（和风天气）、图标代码对应的图标与背景
   worldclock.ts            世界时钟：当地时间、时差、太阳直射点和某处是白天还是夜里
   worldmap.ts              世界时钟的点阵地图（由 Natural Earth 陆地数据栅格化）
+  timer.ts                 计时器：状态与显示、到点提醒的闹钟
   errors.ts                错误处理：AppError、toUserMessage、reportError（见「错误处理」）
   widgets.ts               小组件目录：种类、名称、默认尺寸、尺寸占几格
   date.ts                  日期基础：DAY、星期、补零、当天 0 点、日期键
@@ -146,6 +148,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - **天气**（`widgets/weather/`）：数据来自和风天气：国内的地名到区县、实况来自气象站观测（换掉了 Open-Meteo：它的中文地名缺漏、排序错，长沙、厦门都搜不对，国内预报也不稳）。用户在「天气设置」里填自己的免费 API KEY 和账号专属的 API Host（存在 `niwa:weather-account`，是私密信息，见「备份与恢复」），保存前先试搜一次确认填对；再按名称搜城市（区县写上市和省），选定的存在这个小组件的 `settings.place`（放几个天气就能看几个城市，KEY 共用；缓存按城市分开存）。和风允许跨域，不用申请访问网站的权限；KEY 放在请求头 `X-QW-Api-Key` 里，接口路径在 `config.ts` 的 `WEATHER.api`（v7：按 LocationID 查实况、24 小时、7 天）。和风从 2027 年起会限制用 API KEY 认证的每日请求量，到时如果不够用，改成 JWT 认证。先显示本地缓存，超过 30 分钟（失败后 5 分钟）在后台刷新；失败时保留上一次的数据，标题栏显示「更新失败」，悬停看原因。小尺寸是现在的温度与天气，中尺寸加接下来 5 小时，大尺寸再加体感、湿度、风和接下来 5 天。钟点和星期按城市当地时间写。图标是自己画的 SVG（`WeatherIcon`），颜色是 `--w-*` 变量。
   - **背景跟随天气**（可选，菜单里的开关，存在 `niwa:scene-weather`，默认关）：阴、雾、雨、雪时背景跟着变——阴天天色压暗、日月躲到云后，雾里远山被吞掉，雨丝和雪点在整窗的一层里落下。天气小组件在绘制前把当前天气写到 `<html data-weather>`（`applySceneWeather`），样式只看这个属性（`page/scene.css`）；晴、少云不写，小组件移除、开关关掉、数据旧过 3 小时（`WEATHER.sceneMaxAge`）时也不写。雨雪只用 `transform` 循环下落，减少动态效果时停住。不进备份（和收藏夹看到哪个文件夹一样，是小组件自己的显示偏好）。
 - **世界时钟**（`widgets/worldclock/`）：几个城市的当地时间、和本地差几小时（跨日写「明天 / 昨天」）、那边是白天还是夜里；中、大尺寸加一张点阵世界地图，白天的地方亮、夜里暗，城市标成小圆圈。城市表（中英文名、IANA 时区、经纬度）在 `config.ts` 的 `WORLD_CLOCK`，选的城市存在 `settings.cities`，默认伦敦、纽约、东京，最多 8 个。时间和时差用浏览器的 `Intl`（夏令时自动算），太阳直射点用常用的近似公式（误差在一度以内）。地图是 Natural Earth 1:1.1 亿陆地数据（公有领域）栅格化成的 90 × 36 点阵（4° 一格，裁掉南极），存在 `utils/worldmap.ts`。不联网。
+- **计时器**（`widgets/timer/`）：倒计时（5、10、25、60 分钟，大尺寸可以自定义分钟数）和正计时。状态在 `settings.timer`，只记开始的时刻和之前走过的时间，不每秒写存储：刷新页面、开着几个标签页、关掉再打开都接着走。倒计时开始时用 `alarms` 定一个闹钟（没有安装提示），到点由后台脚本发系统通知，新标签页关了也能收到；通知权限是可选的，在菜单「时间到时发通知」打开时申请。页面上到点显示「时间到」（轻轻闪，减少动态效果时不闪）。暂停、重置、换时长、移除小组件时取消闹钟。
 
 ### 小组件的卡片
 
@@ -250,6 +253,7 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `backup.test.html`：导出的内容、私密信息默认不导出、坏文件整个拒绝、旧版本的迁移、导入后整体替换。
   - `widgets.test.html`：同一种小组件放多个（便签各管各的、粘贴存进最靠左上的、移除时它的便签跟着没了），旧版本单独存的数据在启动时搬进网格。
   - `worldclock.test.html`：世界时钟的默认城市、当地时间与时差、昼夜地图、选城市，放两个时各选各的。
+  - `timer.test.html`：计时器的时长、开始暂停继续重置、正计时、关掉页面期间到点（打开就是时间到），放两个时各走各的。系统通知要在真实浏览器里试。
   - `almanac.test.html`：日期下面这一候的解释（摘录出自完整原文、注明出处），月相写到页面上、夜里显示月亮。
   - `weather.test.html`：天气。和风天气的请求在测试页里转到假数据：填 KEY（填错时的提示）、搜城市、各尺寸显示的内容、缓存、更新失败时保留数据、背景跟随天气的开关。
   - `browsing.test.html`：收藏夹与历史，以及搜索框的联想（排序、去重、键盘选择、排除网站、开关）。测试页不在扩展里，把 `chrome.bookmarks` 等接口换成假的：文件夹进出与记忆、只列网页、长标题不溢出、新收藏出现、搜索、最近 / 常去 / 最近关闭与恢复。

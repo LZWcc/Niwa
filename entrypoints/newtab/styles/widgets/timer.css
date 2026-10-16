@@ -1,0 +1,144 @@
+/* 计时器小组件。 */
+
+/* ---------- 计时器 ---------- */
+.timer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.timer-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.timer-m .timer-body {
+  flex-direction: row;
+  gap: 14px;
+}
+/* 面板里是时间和一条进度：中尺寸在左边，小、大尺寸在上面 */
+.timer-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.timer-m .timer-panel {
+  flex: 0 0 168px;
+}
+.timer-time {
+  font-family: 'Niwa Clock', system-ui, sans-serif;
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+  white-space: nowrap;
+}
+.timer-l .timer-time {
+  font-size: 64px;
+}
+.timer-colon {
+  opacity: 0.45;
+}
+.timer-bar {
+  width: 80%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--border);
+}
+.timer-bar span {
+  display: block;
+  height: 100%;
+  background: var(--term);
+  transition: width 0.25s linear;
+}
+/* 时间到：面板轻轻亮一下，提醒但不吵 */
+.timer-panel.is-done {
+  animation: timer-done 1.6s ease-in-out infinite;
+}
+.timer-panel.is-done .timer-time {
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--term);
+}
+@keyframes timer-done {
+  50% {
+    background-color: color-mix(in srgb, var(--term) 14%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-panel.is-done {
+    animation: none;
+    background-color: color-mix(in srgb, var(--term) 10%, transparent);
+  }
+}
+
+.timer-controls {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.timer-m .timer-controls {
+  flex: 1;
+  min-width: 0;
+}
+.timer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.timer-preset {
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.timer-preset:hover {
+  color: var(--ink);
+}
+.timer-preset[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--border);
+  color: var(--ink);
+}
+.timer-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.timer-custom input {
+  width: 64px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: 0;
+  background: color-mix(in srgb, var(--surface-hover) 70%, transparent);
+  font: inherit;
+  font-size: 12px;
+}
+.timer-custom input:focus {
+  border-color: var(--focus);
+}
+.timer-buttons {
+  display: flex;
+  gap: 6px;
+}
+.timer-s .timer-buttons .btn {
+  flex: 1;
+}

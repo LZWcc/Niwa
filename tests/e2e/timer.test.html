@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- 页面测试：计时器——倒计时的时长、开始暂停继续重置、正计时、到点显示时间到，以及放两个时各走各的。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+// 一个早就到点的倒计时：一分钟长，61 秒前开始（模拟关掉页面期间到了点）
+localStorage.setItem('niwa:grid', JSON.stringify([
+  { id: 't0', kind: 'widget', type: 'timer', size: 'm', x: 0, y: 2, settings: { timer: { mode: 'countdown', duration: 60000, elapsed: 0, startedAt: Date.now() - 61000 } } },
+]));
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const time = (el) => el.querySelector('.timer-time').textContent;
+  const btn = (el, text) => [...el.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
+  const state = (id) => JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.id === id)?.settings?.timer;
+
+  // 关掉页面期间到了点：打开就是时间到，点「知道了」回到开始前
+  const t0 = d.querySelector('[data-key="t0"]');
+  log(time(t0) === '时间到' && !!btn(t0, '知道了'), `done while away: ${time(t0)}`);
+  btn(t0, '知道了').click(); await sleep(50);
+  log(time(t0) === '01:00' && state('t0').startedAt === null, `acknowledged: ${time(t0)}`);
+
+  // 新加一个：默认 25 分钟的倒计时；选 5 分钟
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('计时器')).click(); await sleep(150);
+  const tw = [...d.querySelectorAll('[data-type="timer"]')].find((x) => x.dataset.key !== 't0');
+  const id = tw.dataset.key;
+  log(time(tw) === '25:00', `default 25 minutes: ${time(tw)}`);
+  [...tw.querySelectorAll('.timer-preset')].find((b) => b.textContent === '5 分').click(); await sleep(50);
+  log(time(tw) === '05:00' && state(id).duration === 300000, 'picked 5 minutes');
+
+  // 开始、走、暂停（停住不动）、继续、重置
+  btn(tw, '开始').click(); await sleep(2100);
+  log(/^04:5[78]$/.test(time(tw)) && typeof state(id).startedAt === 'number' && !tw.querySelector('.timer-preset'), `counting down: ${time(tw)}`);
+  btn(tw, '暂停').click(); await sleep(50);
+  const paused = time(tw);
+  await sleep(1500);
+  log(time(tw) === paused && state(id).startedAt === null && state(id).elapsed >= 2000, `paused stays: ${paused}`);
+  log(!!btn(tw, '继续') && !!btn(tw, '重置'), 'resume and reset offered');
+  btn(tw, '重置').click(); await sleep(50);
+  log(time(tw) === '05:00' && state(id).elapsed === 0, 'reset');
+  log(time(t0) === '01:00', 'other timer untouched');
+
+  // 正计时
+  [...tw.querySelectorAll('.links-tab')].find((b) => b.textContent === '正计时').click(); await sleep(50);
+  log(time(tw) === '00:00' && state(id).mode === 'stopwatch' && !tw.querySelector('.timer-bar'), 'stopwatch starts at zero');
+  btn(tw, '开始').click(); await sleep(1100);
+  log(time(tw) === '00:01', `stopwatch counting: ${time(tw)}`);
+};
+</script>

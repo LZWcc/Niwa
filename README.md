@@ -44,7 +44,8 @@ components/
     types.ts               小组件的参数约定（WidgetProps、FrameProps）
     WidgetFrame.tsx        共用外框：卡片、“…”菜单（尺寸、额外项、移除）
     WidgetError.tsx        小组件出错时顶替它的卡片
-    notes/  calendar/  garden/
+    LinkRow.tsx、LinksSearch.tsx、AccessPrompt.tsx   收藏夹、历史共用：一行网站链接、搜索、申请权限的提示
+    notes/  calendar/  garden/  bookmarks/  history/
 hooks/
   grid/
     useGrid.ts             网格数据：增删改，存 niwa:grid；快捷方式的图标图片存 niwa:icons
@@ -52,6 +53,9 @@ hooks/
     useGridDrag.ts         拖动交互：指针、吸附、占位框、自动滚动、Esc 取消
     useFlip.ts             布局动画：改数据前后各格从旧位置弹到新位置
   useCalendar.ts           日程数据与缓存
+  useBookmarks.ts          收藏夹树，浏览器里改了收藏时重新读
+  useBrowsingHistory.ts    历史：最近、常去、最近关闭
+  usePermissions.ts        可选权限（收藏夹、历史）是否已有、点击申请
   useStored.ts             存在 localStorage 里的数据（useStored、useStoredList），多个标签页之间同步
   useSiteIcons.ts          输入网址后自动获取网站图标
   useTheme.ts              浅色 / 深色：跟随系统或固定一种，写到 <html data-theme>
@@ -71,7 +75,8 @@ utils/                     不依赖 React 的纯函数和数据
     format.ts              日程的时间、日期、地点怎么显示
   storage.ts               所有 localStorage 键、JSON 读写与校验
   backup.ts                备份与恢复：导出、校验、整体替换（见「备份与恢复」）
-  permissions.ts           按需申请访问网站的权限（日历、获取图标）
+  permissions.ts           按需申请的权限：访问网站（日历、获取图标）、读取浏览器数据（收藏夹、历史）
+  browsing.ts              收藏夹与历史：只显示网页、时间写法、收藏夹的路径与搜索
   errors.ts                错误处理：AppError、toUserMessage、reportError（见「错误处理」）
   widgets.ts               小组件目录：种类、名称、默认尺寸、尺寸占几格
   date.ts                  日期基础：DAY、星期、补零、当天 0 点、日期键
@@ -109,6 +114,10 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - **便签**（`widgets/notes/`）：回车保存，点一条复制；焦点不在输入框时在页面任意处粘贴会直接存成一条（`niwa:notes`）。
 - **日程**（`widgets/calendar/`）：粘贴 Google 日历的「iCal 格式的私密地址」（或任意 .ics 订阅地址），只读、无需登录，可以连接多个日历。`CalendarWidget` 负责数据、菜单和两个对话框；`CalendarAgenda` 列出接下来 7 天，按实际高度放得下几条显示几条，不出滚动条；`CalendarMonth` 是月历；`EventDetail` 是详情；`CalendarDialog` 管理日历。数据先显示本地缓存，超过 15 分钟（失败后 2 分钟）在后台刷新；ical.js 按需加载；访问日历网站的权限在添加时按需申请（`optional_host_permissions`）。
 - **庭**（`widgets/garden/`）：一只等距视角的箱庭，按累计打开天数生长（`MILESTONES`）：第 1 天一块石，第 3 天第二块，第 5 天起有四季落物，第 7 天长苔，第 14 天一棵随季节换装的树，第 21 天一块小石，第 30 天一盏夜里会亮的石灯笼。天数只计累计不计连续（`niwa:garden`）。
+
+- **收藏夹**（`widgets/bookmarks/`）：在卡片里按文件夹浏览浏览器的收藏，从收藏夹栏开始，记住上次看到的文件夹（`niwa:bookmark-folder`）；中、大尺寸点标题栏的放大镜可以搜索全部收藏。浏览器里增删改收藏时立即更新。
+- **历史**（`widgets/history/`）：「最近」是浏览记录（每个网址一条），「常去」和浏览器自带新标签页的常去网站是同一份数据（`topSites`），大尺寸多一组「最近关闭」，点了恢复那个标签页或窗口。每分钟和回到这个标签页时重新读，记住选的是哪一组（`niwa:history-tab`）。中、大尺寸点放大镜可以搜索全部浏览记录。
+- 收藏夹和历史都只显示 http(s) 网页（`chrome://`、`javascript:` 从新标签页点不开），没有标题的显示域名；是普通链接，⌘ / Ctrl 点击在新标签页打开；网站图标用浏览器本地缓存的 `_favicon`，不联网。权限在 manifest 的 `optional_permissions` 里，安装时不提示，添加小组件后点一下才申请（最近关闭的网址和标题要 `tabs` 权限）。
 
 ### 新增一种小组件
 
@@ -204,5 +213,6 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `calendars.test.html`：多个日历的添加、去重、命名与合并显示，日历失败时显示的原因。
   - `icons.test.html`：自动获取网站图标（`run.mjs` 提供一个声明了图标的假网站；第三方图标服务的请求在测试页里转到假响应，不依赖外网）、找不到时用文字图标、上传图片、图片的保存与删除。
   - `backup.test.html`：导出的内容、日历默认不导出、坏文件整个拒绝、导入后整体替换。
+  - `browsing.test.html`：收藏夹与历史。测试页不在扩展里，把 `chrome.bookmarks` 等接口换成假的：文件夹进出与记忆、只列网页、长标题不溢出、新收藏出现、搜索、最近 / 常去 / 最近关闭与恢复。
   - 无头模式用的是虚拟时间：页面空闲时会直接快进，不等读文件、解码图片这类真实的异步操作。要等它们时用测试页里的 `waitFor`（等待期间一直请求 `run.mjs` 的 `/__tick`，请求挂起时虚拟时间会暂停）。
 - 拖拽的手感、深色模式、真实网站的图标、访问网站的授权弹窗这些测不到，改动后在浏览器里手动过一遍。

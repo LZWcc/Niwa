@@ -19,6 +19,10 @@ export const KEYS = {
   engine: 'niwa:engine',
   /** 浅色 / 深色：light、dark，没有或 system 表示跟随系统 */
   theme: 'niwa:theme',
+  /** 收藏夹小组件上次看的文件夹 id（只对这个浏览器有效，不进备份） */
+  bookmarkFolder: 'niwa:bookmark-folder',
+  /** 历史小组件上次看的一组：recent、top、closed */
+  historyTab: 'niwa:history-tab',
 } as const;
 
 export type StorageKey = (typeof KEYS)[keyof typeof KEYS];

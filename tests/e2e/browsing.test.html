@@ -1,0 +1,123 @@
+<!doctype html>
+<!-- 页面测试：收藏夹、历史小组件。浏览器的扩展接口在测试页里换成假的。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  const openAdd = async (name) => { d.querySelector('.grid-add .shortcut-add').click(); await sleep(50); [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name)).click(); await sleep(100); };
+  const resize = async (el, size) => {
+    el.querySelector('.widget-more').click(); await sleep(50);
+    [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === size).click(); await sleep(80);
+    el.querySelector('.widget-more').click(); await sleep(100);
+  };
+  const titles = (el) => [...el.querySelectorAll('.link-title')].map((t) => t.textContent);
+  const row = (el, title) => [...el.querySelectorAll('.link-row')].find((r) => r.querySelector('.link-title').textContent === title);
+
+  // 页面测试不在扩展里，扩展接口换成假的（新标签页里用到的 browser 就是 window.chrome）。
+  const event = () => { const fs = new Set(); return { addListener: (fn) => fs.add(fn), removeListener: (fn) => fs.delete(fn), fire: () => fs.forEach((fn) => fn()) }; };
+  const LONG_BOOKMARK = 'GitHub · Build and ship software on a single, collaborative platform, from planning to deployment', LONG_PAGE = 'React – The library for web and native user interfaces, learn reference community blog';
+  const bar = { id: '1', title: '收藏夹栏', children: [
+    { id: '10', title: '工作', children: [{ id: '11', title: 'Linear', url: 'https://linear.app/' }] },
+    { id: '12', title: LONG_BOOKMARK, url: 'https://github.com/' },
+    { id: '13', title: '小工具', url: 'javascript:void(0)' },
+    { id: '15', title: '实验功能', url: 'chrome://flags/' },
+  ] };
+  const tree = { id: '0', title: '', children: [bar, { id: '2', title: '其他收藏夹', children: [] }] };
+  const onCreated = event();
+  const DAY = 86400000;
+  let closed = [
+    { lastModified: Math.floor(Date.now() / 1000) - 60, tab: { sessionId: 's1', url: 'https://example.com/a', title: '关掉的页面' } },
+    { lastModified: Math.floor(Date.now() / 1000) - 120, window: { sessionId: 's2', tabs: [{ url: 'https://example.com/b', title: '窗口里的页面' }, { url: 'https://example.com/c', title: 'C' }] } },
+    { lastModified: Math.floor(Date.now() / 1000) - 180, tab: { sessionId: 's3', url: 'chrome://settings/', title: '设置' } },
+  ];
+  const restored = [];
+  Object.assign(w.chrome, {
+    // 和真实接口一样，每次给一份新的树。
+    bookmarks: { getTree: async () => [structuredClone(tree)], onCreated, onRemoved: event(), onChanged: event(), onMoved: event(), onChildrenReordered: event() },
+    history: { search: async ({ text }) => [
+      { id: 'h1', url: 'https://react.dev/', title: LONG_PAGE, lastVisitTime: Date.now() - 60000 },
+      { id: 'h2', url: 'chrome://extensions/', title: '扩展', lastVisitTime: Date.now() - 120000 },
+      { id: 'h3', url: 'https://www.wxt.dev/', title: '', lastVisitTime: Date.now() - DAY },
+    ].filter((h) => (h.title + h.url).includes(text)) },
+    topSites: { get: async () => [{ url: 'https://www.github.com/', title: 'GitHub' }, { url: 'edge://settings/', title: '设置' }] },
+    sessions: {
+      getRecentlyClosed: async () => closed,
+      restore: async (id) => { restored.push(id); closed = closed.filter((s) => (s.tab ?? s.window).sessionId !== id); },
+    },
+  });
+
+  // 收藏夹：从收藏夹栏开始，只列文件夹和网页
+  await openAdd('收藏夹');
+  const bw = d.querySelector('[data-type="bookmarks"]');
+  log(bw?.querySelector('.links-name')?.textContent === '收藏夹栏', `starts at bookmarks bar: ${bw?.querySelector('.links-name')?.textContent}`);
+  log(JSON.stringify(titles(bw)) === '["工作","'+LONG_BOOKMARK+'"]', `bar lists folder and web pages only: ${titles(bw)}`);
+  log(row(bw, LONG_BOOKMARK)?.getAttribute('href') === 'https://github.com/', 'bookmark is a plain link');
+  // 标题很长时截断，不撑出横向滚动条
+  const fits = (el) => el.querySelector('.links-list').scrollWidth <= el.querySelector('.links-list').clientWidth;
+  log(fits(bw), 'long bookmark title truncated, no horizontal scroll');
+
+  // 进出文件夹，记住看到哪里
+  row(bw, '工作').click(); await sleep(50);
+  log(JSON.stringify(titles(bw)) === '["Linear"]' && bw.querySelector('.links-path')?.textContent === '收藏夹栏 / ', `open folder shows path: ${bw.querySelector('.links-path')?.textContent}`);
+  log(w.localStorage.getItem('niwa:bookmark-folder') === '10', 'folder remembered');
+  bw.querySelector('.links-back').click(); await sleep(50);
+  bw.querySelector('.links-back').click(); await sleep(50);
+  log(bw.querySelector('.links-name').textContent === '收藏夹' && !bw.querySelector('.links-back') && JSON.stringify(titles(bw)) === '["收藏夹栏","其他收藏夹"]', `root lists top folders: ${titles(bw)}`);
+  row(bw, '收藏夹栏').click(); await sleep(50);
+
+  // 在浏览器里加了收藏，立即出现
+  bar.children.push({ id: '14', title: '', url: 'https://vercel.com/' });
+  onCreated.fire(); await sleep(50);
+  log(titles(bw).includes('vercel.com'), 'new bookmark appears, untitled shows host');
+
+  // 点放大镜搜索全部收藏，Esc 收起回到原来的文件夹
+  bw.querySelector('.links-icon-button').click(); await sleep(50);
+  setVal(bw.querySelector('.links-search'), 'lin'); await sleep(50);
+  log(JSON.stringify(titles(bw)) === '["Linear"]', `search finds nested bookmark: ${titles(bw)}`);
+  bw.querySelector('.links-search').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(50);
+  log(!bw.querySelector('.links-search') && bw.querySelector('.links-name')?.textContent === '收藏夹栏', 'escape closes search');
+  await resize(bw, '大');
+
+  // 历史：最近，去掉浏览器内部页面；时间写成时刻或“昨天”
+  await openAdd('历史');
+  const hw = d.querySelector('[data-type="history"]');
+  const tabs = () => [...hw.querySelectorAll('.links-tab')].map((t) => t.textContent);
+  log(JSON.stringify(tabs()) === '["最近","常去"]', `medium has two tabs: ${tabs()}`);
+  log(JSON.stringify(titles(hw)) === '["'+LONG_PAGE+'","wxt.dev"]', `recent skips internal pages, untitled shows host: ${titles(hw)}`);
+  log(fits(hw), 'long page title truncated, no horizontal scroll');
+  const metas = [...hw.querySelectorAll('.link-meta')].map((m) => m.textContent);
+  log(/^\d\d:\d\d$/.test(metas[0]) && metas[1] === '昨天', `visit times: ${metas}`);
+
+  // 搜索全部浏览记录，收起后回到原来那一组
+  hw.querySelector('.links-icon-button').click(); await sleep(50);
+  setVal(hw.querySelector('.links-search'), 'wxt'); await sleep(50);
+  log(JSON.stringify(titles(hw)) === '["wxt.dev"]' && !hw.querySelector('.links-tab'), `history search: ${titles(hw)}`);
+  setVal(hw.querySelector('.links-search'), 'nothing'); await sleep(50);
+  log(hw.querySelector('.links-empty')?.textContent === '没有找到', 'history search empty');
+  hw.querySelector('.links-icon-button[aria-label="关闭搜索"]').click(); await sleep(50);
+  log(hw.querySelectorAll('.links-tab').length === 2 && titles(hw).length === 2, 'closing search restores list');
+
+  // 常去：右侧是域名，记住选的是哪一组
+  [...hw.querySelectorAll('.links-tab')].find((t) => t.textContent === '常去').click(); await sleep(50);
+  log(JSON.stringify(titles(hw)) === '["GitHub"]' && hw.querySelector('.link-meta')?.textContent === 'github.com', `top sites with host: ${titles(hw)}`);
+  log(w.localStorage.getItem('niwa:history-tab') === 'top', 'tab remembered');
+
+  // 大尺寸有最近关闭：窗口算一条，点了恢复并从列表里消失
+  await resize(hw, '大');
+  [...hw.querySelectorAll('.links-tab')].find((t) => t.textContent === '最近关闭').click(); await sleep(50);
+  log(JSON.stringify(titles(hw)) === '["关掉的页面","2 个标签页 · 窗口里的页面"]', `recently closed: ${titles(hw)}`);
+  row(hw, '关掉的页面').click(); await sleep(50);
+  log(restored.join() === 's1' && JSON.stringify(titles(hw)) === '["2 个标签页 · 窗口里的页面"]', `restore closed tab: ${restored}`);
+};
+</script>

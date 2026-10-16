@@ -1,7 +1,9 @@
 import type { ComponentType } from 'react';
 import type { WidgetType } from '@/utils/widgets';
+import BookmarksWidget from './bookmarks/BookmarksWidget';
 import CalendarWidget from './calendar/CalendarWidget';
 import GardenWidget from './garden/GardenWidget';
+import HistoryWidget from './history/HistoryWidget';
 import NotesWidget from './notes/NotesWidget';
 import type { WidgetProps } from './types';
 
@@ -11,6 +13,8 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<WidgetProps>> =
   notes: NotesWidget,
   calendar: CalendarWidget,
   garden: GardenWidget,
+  bookmarks: BookmarksWidget,
+  history: HistoryWidget,
 };
 
 export type { FrameProps, WidgetProps } from './types';

@@ -24,6 +24,9 @@ export const isIconStore = (v: unknown): v is IconStore =>
   !Array.isArray(v) &&
   Object.values(v).every((src) => typeof src === 'string' && src.startsWith('data:image/'));
 
+/** 浏览器本地缓存的网站图标（Chromium 的 _favicon 接口，要 favicon 权限），不联网。 */
+export const faviconUrl = (pageUrl: string, size: number) => `/_favicon/?${new URLSearchParams({ pageUrl, size: String(size) })}`;
+
 /** 默认的文字图标：名称的第一个字；颜色按网站算，同一个网站总是同一种颜色。 */
 export function defaultTextIcon(name: string, href: string | null): TextIcon {
   let hash = 0;

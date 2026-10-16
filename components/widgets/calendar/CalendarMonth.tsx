@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import Dialog from '@/components/common/Dialog';
 import { solarTermOn } from '@/utils/almanac';
-import { fullDate, hm, placeLabel } from '@/utils/calendar/format';
+import { fullDate, placeLabel } from '@/utils/calendar/format';
 import { byStart, loadCalendar, type CalendarEvent, type CalendarSource } from '@/utils/calendar/ical';
-import { DAY, startOfDay } from '@/utils/date';
+import { DAY, hm, startOfDay } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
 import EventDetail from './EventDetail';
 

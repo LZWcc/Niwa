@@ -1,9 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import Popover from '@/components/common/Popover';
 import type { CalendarState } from '@/hooks/useCalendar';
-import { dayLabel, hm, placeLabel, shortTime, timeLabel } from '@/utils/calendar/format';
+import { dayLabel, placeLabel, shortTime, timeLabel } from '@/utils/calendar/format';
 import type { CalendarEvent, CalendarSource } from '@/utils/calendar/ical';
-import { DAY, WEEKDAYS, startOfDay } from '@/utils/date';
+import { DAY, WEEKDAYS, hm, startOfDay } from '@/utils/date';
 import type { WidgetSize } from '@/utils/widgets';
 import EventDetail from './EventDetail';
 

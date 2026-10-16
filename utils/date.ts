@@ -5,6 +5,12 @@ export const WEEKDAYS = '日一二三四五六';
 
 export const pad2 = (n: number) => String(n).padStart(2, '0');
 
+/** 时刻，例如 09:05 */
+export const hm = (t: number) => {
+  const d = new Date(t);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+
 /** 当天 0 点的时间戳 */
 export const startOfDay = (t: number) => new Date(t).setHours(0, 0, 0, 0);
 

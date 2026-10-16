@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { IconSpec } from '@/utils/icons/model';
+import { faviconUrl, type IconSpec } from '@/utils/icons/model';
 
 type Props = { name: string; url: string | null; icon?: IconSpec };
 
@@ -26,14 +26,7 @@ export default function ShortcutIcon({ name, url, icon }: Props) {
   return (
     <span className="shortcut-icon" aria-hidden="true">
       {url && failedUrl !== url ? (
-        <img
-          src={`/_favicon/?${new URLSearchParams({ pageUrl: url, size: '64' })}`}
-          alt=""
-          width="22"
-          height="22"
-          draggable={false}
-          onError={() => setFailedUrl(url)}
-        />
+        <img src={faviconUrl(url, 64)} alt="" width="22" height="22" draggable={false} onError={() => setFailedUrl(url)} />
       ) : (
         name.trim().slice(0, 1).toUpperCase()
       )}

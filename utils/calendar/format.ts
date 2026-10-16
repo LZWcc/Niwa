@@ -1,12 +1,7 @@
 // 日程的时间、日期、地点怎么显示：小组件、月历、详情共用。
 import { CALENDAR } from '../../config';
-import { DAY, WEEKDAYS, pad2, startOfDay } from '../date';
+import { DAY, WEEKDAYS, hm, startOfDay } from '../date';
 import type { CalendarEvent, CalendarSource } from './ical';
-
-export const hm = (t: number) => {
-  const d = new Date(t);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-};
 
 export const fullDate = (t: number) => {
   const d = new Date(t);

@@ -1,5 +1,6 @@
-// 开发时在地址后加参数预览不同状态，例如 ?days=30&season=winter&phase=night。正式构建里都是 null。
+// 开发时在地址后加参数预览不同状态，例如 ?days=30&season=winter&phase=night&weather=rain。正式构建里都是 null。
 import type { Phase, Season } from './almanac';
+import type { SceneWeather } from './weather';
 
 const params = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 
@@ -8,4 +9,6 @@ export const preview = {
   days: Number(params?.get('days')) || null,
   season: (params?.get('season') as Season | null) ?? null,
   phase: (params?.get('phase') as Phase | null) ?? null,
+  /** 背景的天气：cloudy、fog、drizzle、rain、snow */
+  weather: (params?.get('weather') as SceneWeather | null) ?? null,
 };

@@ -23,9 +23,9 @@ const suites = [
   { file: 'main.test.html', flags: ['--force-prefers-reduced-motion'], done: 'positions persist after reload' },
   { file: 'calendars.test.html', flags: [], done: 'month shows failure reasons' },
   { file: 'icons.test.html', flags: ['--force-prefers-reduced-motion'], done: 'deleting shortcut removes its image' },
-  { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'calendars kept when backup has none' },
+  { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'secrets kept when backup has none' },
   { file: 'browsing.test.html', flags: ['--force-prefers-reduced-motion'], done: 'restore closed tab' },
-  { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'recovered after refresh' },
+  { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
 ];
 
 const types = {

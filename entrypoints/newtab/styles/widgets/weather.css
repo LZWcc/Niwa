@@ -176,7 +176,20 @@
   stroke: var(--w-rain);
 }
 
-/* 选择城市 */
+/* 天气设置：已连接的和风账号、搜城市 */
+.weather-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.weather-host {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
 .places {
   display: flex;
   flex-direction: column;

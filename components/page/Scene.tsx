@@ -1,5 +1,6 @@
 // 背景里的景：浅色是远山与薄雾（山色随季节变），深色是月夜。
 // 颜色全部来自 CSS 变量，切换深浅色和季节不需要重绘。
+// 最上面是天气这一层：平时是空的，<html data-weather> 有值时画阴天、雾、雨、雪（见 scene.css）。
 export default function Scene() {
   return (
     <div className="scene" aria-hidden="true">
@@ -27,6 +28,7 @@ export default function Scene() {
           <path fill="var(--hill-near)" d="M0 360C180 330 300 338 460 352C620 366 760 326 900 334C1060 344 1240 362 1440 344V420H0Z" />
         </svg>
       </div>
+      <div className="scene-weather" />
     </div>
   );
 }

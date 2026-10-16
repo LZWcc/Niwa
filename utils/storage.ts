@@ -9,7 +9,7 @@ export const KEYS = {
   /** 「添加」格子的位置 */
   addTile: 'niwa:add',
   notes: 'niwa:notes',
-  /** 已连接的日历（订阅地址相当于密码） */
+  /** 已连接的日历（订阅地址相当于密码，私密数据见 backup.ts 的 SECRETS） */
   calendars: 'niwa:calendars',
   /** 日程的上一次结果，打开页面时先显示它 */
   calendarCache: 'niwa:calendar-cache',
@@ -23,10 +23,14 @@ export const KEYS = {
   bookmarkFolder: 'niwa:bookmark-folder',
   /** 历史小组件上次看的一组：recent、top、closed */
   historyTab: 'niwa:history-tab',
-  /** 天气小组件选的城市 */
-  weather: 'niwa:weather',
+  /** 天气小组件选的城市（和风的 LocationID） */
+  weather: 'niwa:weather-city',
+  /** 和风天气的 API Host 和 KEY（相当于密码，私密数据见 backup.ts 的 SECRETS） */
+  weatherAccount: 'niwa:weather-account',
   /** 天气的上一次结果，打开页面时先显示它 */
-  weatherCache: 'niwa:weather-cache',
+  weatherCache: 'niwa:weather-forecast',
+  /** 背景是否跟随天气：on 表示跟随（天气小组件菜单里的开关，默认不跟随） */
+  sceneWeather: 'niwa:scene-weather',
 } as const;
 
 export type StorageKey = (typeof KEYS)[keyof typeof KEYS];

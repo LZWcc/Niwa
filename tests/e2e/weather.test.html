@@ -1,5 +1,6 @@
 <!doctype html>
-<!-- 页面测试：天气小组件——选择城市、各尺寸显示的内容、缓存、更新失败。天气服务的请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
+<!-- 页面测试：天气小组件——填和风天气的 KEY、搜城市、各尺寸显示的内容、缓存、更新失败、背景跟随天气。
+     和风天气的请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
 <script>
@@ -10,28 +11,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
 
-// 假的天气数据：从今天 0 点起 48 小时、7 天，按测试机的时区。
-const H = 3600, today = new Date(); today.setHours(0, 0, 0, 0);
-const t0 = today.getTime() / 1000;
-const forecast = {
-  utc_offset_seconds: -today.getTimezoneOffset() * 60,
-  current: { temperature_2m: 23.5, apparent_temperature: 25.7, relative_humidity_2m: 75, weather_code: 2, is_day: 1, wind_speed_10m: 7.9 },
-  hourly: {
-    time: Array.from({ length: 48 }, (_, i) => t0 + i * H),
-    temperature_2m: Array.from({ length: 48 }, (_, i) => 15 + (i % 24) / 3),
-    weather_code: Array.from({ length: 48 }, (_, i) => (i % 2 ? 61 : 3)),
-    is_day: Array.from({ length: 48 }, (_, i) => (i % 24 >= 6 && i % 24 < 18 ? 1 : 0)),
-  },
-  daily: {
-    time: Array.from({ length: 7 }, (_, i) => t0 + i * 24 * H),
-    weather_code: [2, 61, 0, 71, 95, 45, 3],
-    temperature_2m_max: [26.4, 22, 24, 12, 20, 18, 19],
-    temperature_2m_min: [16.2, 15, 14, 3, 12, 11, 13],
-  },
-};
-const places = { results: [
-  { id: 1808926, name: '杭州', latitude: 30.29, longitude: 120.16, admin1: '浙江', country: '中国' },
-  { id: 6976333, name: '杭州', latitude: 30.07, longitude: 102.2, admin1: '四川', country: '中国' },
+// 假的和风数据，时间按测试机的时区写（和风返回的时间带时区，例如 2026-10-16T20:00+08:00）。
+const pad = (n) => String(n).padStart(2, '0');
+const tz = (() => { const m = -new Date().getTimezoneOffset(); return `${m < 0 ? '-' : '+'}${pad(Math.floor(Math.abs(m) / 60))}:${pad(Math.abs(m) % 60)}`; })();
+const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const iso = (d) => `${day(d)}T${pad(d.getHours())}:00${tz}`;
+const next = new Date(); next.setMinutes(0, 0, 0); next.setHours(next.getHours() + 1);
+const now = { temp: '23', feelsLike: '25', humidity: '75', windSpeed: '10', icon: '501', text: '雾' };
+const hourly = Array.from({ length: 24 }, (_, i) => ({ fxTime: iso(new Date(next.getTime() + i * 3600e3)), temp: String(20 + (i % 5)), icon: i % 2 ? '305' : '151' }));
+const daily = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return { fxDate: day(d), tempMax: String([25, 30, 24, 12, 20, 18, 19][i]), tempMin: String([20, 22, 14, 3, 12, 11, 13][i]), iconDay: ['305', '101', '100', '400', '302', '501', '104'][i] }; });
+const places = { code: '200', location: [
+  { id: '101210101', name: '杭州', lat: '30.24603', lon: '120.21079', adm2: '杭州', adm1: '浙江省', country: '中国' },
+  { id: '101210113', name: '西湖', lat: '30.27293', lon: '120.14738', adm2: '杭州', adm1: '浙江省', country: '中国' },
+  { id: '101010300', name: '朝阳', lat: '39.92149', lon: '116.48641', adm2: '北京', adm1: '北京市', country: '中国' },
 ] };
 
 const f = document.getElementById('f');
@@ -50,53 +42,66 @@ f.onload = async () => {
     [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === text).click(); await sleep(100);
   };
 
-  // 天气服务换成假数据；down 时模拟连不上。记下请求过的地址。
+  // 和风天气换成假数据：只认 test.re.qweatherapi.com 和 KEY “k”；down 时模拟连不上。记下请求过的地址。
   let down = false;
   const requests = [];
   const realFetch = w.fetch.bind(w);
+  const json = (body, status = 200) => Promise.resolve(new w.Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
   w.fetch = (input, init) => {
-    const url = String(input);
-    if (!url.includes('open-meteo.com')) return realFetch(input, init);
-    requests.push(url);
+    const url = new URL(String(input));
+    if (!url.host.endsWith('qweatherapi.com')) return realFetch(input, init);
+    requests.push(url.href);
     if (down) return Promise.reject(new TypeError('Failed to fetch'));
-    const body = url.includes('geocoding') ? (url.includes('name=xyz') ? {} : places) : forecast;
-    return Promise.resolve(new w.Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } }));
+    if (url.host !== 'test.re.qweatherapi.com' || init?.headers?.['X-QW-Api-Key'] !== 'k') return json({ error: { status: 401, title: 'Unauthorized' } }, 401);
+    if (url.pathname === '/geo/v2/city/lookup') return json(url.searchParams.get('location') === 'xyz' ? { code: '404' } : places);
+    if (url.pathname === '/v7/weather/now') return json({ code: '200', now });
+    if (url.pathname === '/v7/weather/24h') return json({ code: '200', hourly });
+    if (url.pathname === '/v7/weather/7d') return json({ code: '200', daily });
+    return json({}, 404);
   };
 
-  // 没选城市：不联网，提示选择城市
+  // 还没填 KEY：不联网，提示设置
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
   [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('天气')).click(); await sleep(200);
   const ww = d.querySelector('[data-type="weather"]');
   log(!!ww?.querySelector('.weather-empty') && requests.length === 0, 'empty state, no requests');
 
-  // 搜城市：同名的按省份区分；搜不到给出提示
-  [...ww.querySelectorAll('button')].find((b) => b.textContent === '选择城市').click(); await sleep(100);
-  const dlg = d.querySelector('dialog[aria-labelledby="place-dialog-title"]');
-  log(dlg?.open, 'place dialog opens');
-  setVal(dlg.querySelector('input'), 'xyz'); dlg.querySelector('form').requestSubmit(); await sleep(100);
+  // 填 KEY：保存前先试一次，填错了给出原因；地址带上 https:// 也认
+  [...ww.querySelectorAll('button')].find((b) => b.textContent === '设置天气').click(); await sleep(100);
+  const dlg = d.querySelector('dialog[aria-labelledby="weather-dialog-title"]');
+  const inputs = () => dlg.querySelectorAll('input');
+  const submit = async () => { dlg.querySelector('form').requestSubmit(); await sleep(100); };
+  log(dlg?.open && inputs().length === 2, 'dialog asks for host and key');
+  setVal(inputs()[0], 'https://test.re.qweatherapi.com/'); setVal(inputs()[1], 'bad'); await submit();
+  log(dlg.querySelector('.field-error')?.textContent.includes('认证失败') && JSON.parse(w.localStorage.getItem('niwa:weather-account')) === null, `wrong key rejected: ${dlg.querySelector('.field-error')?.textContent}`);
+  setVal(inputs()[1], 'k'); await submit();
+  log(JSON.parse(w.localStorage.getItem('niwa:weather-account'))?.host === 'test.re.qweatherapi.com' && dlg.querySelector('.weather-host')?.textContent === 'test.re.qweatherapi.com', 'account saved, host normalized');
+
+  // 搜城市：区县写上市和省，直辖市的区只写一次；搜不到给出提示
+  setVal(inputs()[0], 'xyz'); await submit();
   log(dlg.querySelector('.places-empty')?.textContent.includes('没有找到'), 'no place found');
-  setVal(dlg.querySelector('input'), '杭州'); dlg.querySelector('form').requestSubmit(); await sleep(100);
+  setVal(inputs()[0], '杭州'); await submit();
   const regions = [...dlg.querySelectorAll('.place-region')].map((r) => r.textContent);
-  log(JSON.stringify(regions) === '["浙江，中国","四川，中国"]', `same-name places by region: ${regions}`);
+  log(JSON.stringify(regions) === '["浙江省","杭州，浙江省","北京"]', `regions: ${regions}`);
   dlg.querySelector('.place').click(); await sleep(200);
 
-  // 选定后取预报：温度、天气、今天的最高最低
-  log(!dlg.open && JSON.parse(w.localStorage.getItem('niwa:weather'))?.region === '浙江，中国', 'place saved');
-  log(requests.some((u) => u.includes('api.open-meteo.com/v1/forecast') && u.includes('latitude=30.29')), 'forecast requested for place');
+  // 选定后取实况和预报：温度、天气、今天的最高最低
+  log(!dlg.open && JSON.parse(w.localStorage.getItem('niwa:weather-city'))?.id === '101210101', 'place saved');
+  log(['/v7/weather/now', '/v7/weather/24h', '/v7/weather/7d'].every((p) => requests.some((u) => u.includes(p) && u.includes('location=101210101'))), 'forecast requested for place');
   log(ww.querySelector('.widget-meta')?.textContent === '杭州', `meta is city: ${ww.querySelector('.widget-meta')?.textContent}`);
-  log(ww.querySelector('.weather-temp')?.textContent === '24°', `current temp rounded: ${ww.querySelector('.weather-temp')?.textContent}`);
-  log(ww.querySelector('.weather-desc')?.textContent === '多云 · 26° / 16°', `description: ${ww.querySelector('.weather-desc')?.textContent}`);
+  log(ww.querySelector('.weather-temp')?.textContent === '23°', `current temp: ${ww.querySelector('.weather-temp')?.textContent}`);
+  log(ww.querySelector('.weather-desc')?.textContent === '雾 · 25° / 20°', `description: ${ww.querySelector('.weather-desc')?.textContent}`);
   log(!ww.querySelector('.weather-hours'), 'small has no hourly');
-  log(JSON.parse(w.localStorage.getItem('niwa:weather-cache'))?.forecast?.current?.temp === 23.5, 'forecast cached');
+  log(JSON.parse(w.localStorage.getItem('niwa:weather-forecast'))?.forecast?.current?.temp === 23, 'forecast cached');
 
-  // 中：接下来 5 小时，第一格是“现在”
+  // 中：现在加接下来 4 小时
   await resize(ww, '中');
   const hours = [...ww.querySelectorAll('.weather-hour')].map((h) => h.textContent);
-  log(hours.length === 5 && hours[0] === '现在' && /^\d+时$/.test(hours[1]), `hourly: ${hours}`);
+  log(hours.length === 5 && hours[0] === '现在' && hours[1] === `${next.getHours()}时`, `hourly: ${hours}`);
 
   // 大：体感、湿度、风，和接下来 5 天
   await resize(ww, '大');
-  log(ww.querySelector('.weather-extra')?.textContent === '体感 26° · 湿度 75% · 风 8 km/h', `extra: ${ww.querySelector('.weather-extra')?.textContent}`);
+  log(ww.querySelector('.weather-extra')?.textContent === '体感 25° · 湿度 75% · 风 10 km/h', `extra: ${ww.querySelector('.weather-extra')?.textContent}`);
   const days = [...ww.querySelectorAll('.weather-day')].map((x) => x.textContent);
   log(days.length === 5 && days[0] === '今天' && days[1] === '明天' && /^周[日一二三四五六]$/.test(days[2]), `daily: ${days}`);
   log(ww.querySelectorAll('.weather-hour').length === 6, 'large has six hours');
@@ -105,9 +110,31 @@ f.onload = async () => {
   down = true;
   await menu(ww, '立即刷新');
   const meta = ww.querySelector('.weather-place');
-  log(meta?.textContent === '杭州 · 更新失败' && meta.title.includes('连不上天气服务') && ww.querySelector('.weather-temp')?.textContent === '24°', `failure keeps data: ${meta?.textContent} / ${meta?.title}`);
+  log(meta?.textContent === '杭州 · 更新失败' && meta.title.includes('连不上和风天气') && ww.querySelector('.weather-temp')?.textContent === '23°', `failure keeps data: ${meta?.textContent} / ${meta?.title}`);
   down = false;
   await menu(ww, '立即刷新');
   log(ww.querySelector('.weather-place')?.textContent === '杭州', 'recovered after refresh');
+
+  // 背景跟随天气：默认不跟随；打开后下雨时写上 data-weather，少云不变；关掉、移除小组件后恢复
+  const html = d.documentElement;
+  now.icon = '305'; now.text = '小雨';
+  await menu(ww, '立即刷新');
+  log(html.dataset.weather === undefined, 'scene not following by default');
+  await menu(ww, '背景跟随天气');
+  log(html.dataset.weather === 'rain' && w.localStorage.getItem('niwa:scene-weather') === 'on', `scene follows rain: ${html.dataset.weather}`);
+  now.icon = '101'; now.text = '多云';
+  await menu(ww, '立即刷新');
+  log(html.dataset.weather === undefined, 'partly cloudy leaves scene alone');
+  now.icon = '501'; now.text = '雾';
+  await menu(ww, '立即刷新');
+  log(html.dataset.weather === 'fog', `scene follows fog: ${html.dataset.weather}`);
+  ww.querySelector('.widget-more').click(); await sleep(50);
+  log(d.querySelector('.widget-menu [role=menuitemcheckbox]')?.getAttribute('aria-checked') === 'true', 'menu shows switch on');
+  ww.querySelector('.widget-more').click(); await sleep(50);
+  await menu(ww, '背景跟随天气');
+  log(html.dataset.weather === undefined && w.localStorage.getItem('niwa:scene-weather') === null, 'switch off restores scene');
+  await menu(ww, '背景跟随天气');
+  await menu(ww, '移除小组件');
+  log(!d.querySelector('[data-type="weather"]') && html.dataset.weather === undefined, 'scene restored when widget removed');
 };
 </script>

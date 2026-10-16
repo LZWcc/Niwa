@@ -5,17 +5,23 @@ import type { GridItem } from './utils/grid/items';
 
 // ---------- 天气 ----------
 
-/** 天气：Open-Meteo，免费、不需要 key，允许跨域请求（不用申请访问网站的权限）。只在选了城市后请求。 */
+/**
+ * 天气：和风天气（国内的地名和预报都准）。用户在控制台申请免费的 API KEY，连同账号专属的 API Host 填进小组件。
+ * 和风允许跨域请求，不用申请访问网站的权限。只在选了城市后请求。
+ */
 export const WEATHER = {
-  /** 按名称搜城市 */
-  geocode: 'https://geocoding-api.open-meteo.com/v1/search',
-  forecast: 'https://api.open-meteo.com/v1/forecast',
+  /** 和风天气控制台：注册、建项目拿 KEY、在设置里看 API Host */
+  console: 'https://console.qweather.com',
+  /** 接口路径（拼在 API Host 后面）：城市搜索、实况、逐小时、逐天 */
+  api: { lookup: '/geo/v2/city/lookup', now: '/v7/weather/now', hourly: '/v7/weather/24h', daily: '/v7/weather/7d' },
   /** 多久在后台刷新一次（毫秒） */
   refreshEvery: 30 * 60_000,
   /** 更新失败后多久重试（毫秒） */
   retryAfter: 5 * 60_000,
   /** 一次请求最多等多久（毫秒） */
   timeout: 15_000,
+  /** 背景跟随天气：数据旧过这么久（比如电脑睡了一晚）就先不跟随，等刷新（毫秒） */
+  sceneMaxAge: 3 * 3_600_000,
 };
 
 // ---------- 搜索 ----------

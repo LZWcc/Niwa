@@ -1,4 +1,4 @@
-/* 背景的景：日月和三层远山。 */
+/* 背景的景：日月、三层远山，和跟随天气的一层。 */
 
 /* ---------- Scene ---------- */
 .scene {
@@ -12,7 +12,8 @@
    （比如只有日月或远山那么大），它的边在 macOS 上会在背景里隐约显出一个方框或一条线。
    各自先固定成整窗大小的一层，边就都落在窗口边上。 */
 .scene-sky,
-.scene-land {
+.scene-land,
+.scene-weather {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -102,4 +103,93 @@
   height: 64px;
   margin: -32px 0 0 -32px;
   --orb-opacity: 0.85;
+}
+
+/* ---------- 天气 ---------- */
+/* 背景跟随天气（天气小组件写 <html data-weather>）：阴天压暗天色、雾里远山被吞掉、雨雪落下。
+   和天空、远山一样是整窗大小的一层（理由见上）。雨雪是它的两个伪元素：近处的大而快，远处的小而慢；
+   形状是 SVG 遮罩，颜色来自变量；只用 transform 循环下落一格，在合成器里动，不重绘。
+   横向不漂移：遮罩的图案横向也是循环的，一个循环里横向挪动会在接缝处跳一下。 */
+.scene-weather {
+  --weather-tint: rgb(112 126 140 / 0.3);
+  --weather-fog: color-mix(in srgb, var(--mist) 88%, transparent);
+  --weather-rain: rgb(80 100 122 / 0.24);
+  --weather-snow: rgb(255 255 255 / 0.95);
+}
+:where([data-theme='dark']) .scene-weather {
+  --weather-tint: rgb(4 10 16 / 0.34);
+  --weather-fog: rgb(150 166 178 / 0.16);
+  --weather-rain: rgb(200 216 230 / 0.14);
+  --weather-snow: rgb(230 238 243 / 0.75);
+}
+[data-weather='cloudy'] .scene-weather,
+[data-weather='drizzle'] .scene-weather,
+[data-weather='snow'] .scene-weather {
+  background: linear-gradient(to bottom, var(--weather-tint), transparent 80%);
+}
+[data-weather='rain'] .scene-weather {
+  background: linear-gradient(to bottom, var(--weather-tint), color-mix(in srgb, var(--weather-tint) 40%, transparent));
+}
+[data-weather='fog'] .scene-weather {
+  background: linear-gradient(to top, var(--weather-fog) 15%, color-mix(in srgb, var(--weather-fog) 50%, transparent) 60%, transparent);
+}
+/* 日月：阴、雨、雪时躲在云后，雾里朦胧 */
+[data-weather] .scene-orb {
+  --orb-opacity: 0.15;
+}
+[data-weather='fog'] .scene-orb {
+  --orb-opacity: 0.45;
+}
+
+.scene-weather::before,
+.scene-weather::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--tile)) 0 0;
+  display: none;
+  mask-size: var(--tile) var(--tile);
+  animation: weather-fall var(--speed) linear infinite;
+}
+@keyframes weather-fall {
+  to {
+    transform: translateY(var(--tile));
+  }
+}
+[data-weather='rain'] .scene-weather::before {
+  --tile: 240px;
+  --speed: 0.75s;
+  display: block;
+  background: var(--weather-rain);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cpath d='M42 101l-1.7 17M22 210l-1.2 12M28 93l-2.0 20M236 129l-1.2 12M13 22l-1.5 15M111 17l-1.8 18M27 141l-1.5 15M19 211l-1.8 18M61 161l-1.3 13M151 149l-1.2 12M16 56l-1.8 18' stroke='black' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+[data-weather='rain'] .scene-weather::after,
+[data-weather='drizzle'] .scene-weather::after {
+  --tile: 150px;
+  --speed: 1.1s;
+  display: block;
+  background: var(--weather-rain);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cpath d='M146 34l-0.7 7M111 36l-0.9 9M34 78l-1.1 11M50 26l-1.1 11M52 95l-1.1 11M144 16l-0.7 7M19 52l-1.1 11M140 109l-1.0 10M123 116l-0.9 9M80 63l-0.9 9' stroke='black' stroke-width='0.9' stroke-linecap='round'/%3E%3C/svg%3E");
+  opacity: 0.6;
+}
+[data-weather='snow'] .scene-weather::before {
+  --tile: 220px;
+  --speed: 9s;
+  display: block;
+  background: var(--weather-snow);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Ccircle cx='30' cy='20' r='2.6'/%3E%3Ccircle cx='120' cy='50' r='2.2'/%3E%3Ccircle cx='190' cy='15' r='3'/%3E%3Ccircle cx='70' cy='110' r='2.8'/%3E%3Ccircle cx='160' cy='130' r='2.4'/%3E%3Ccircle cx='20' cy='170' r='2.2'/%3E%3Ccircle cx='110' cy='200' r='3'/%3E%3Ccircle cx='200' cy='185' r='2.4'/%3E%3C/svg%3E");
+}
+[data-weather='snow'] .scene-weather::after {
+  --tile: 130px;
+  --speed: 14s;
+  display: block;
+  background: var(--weather-snow);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Ccircle cx='15' cy='12' r='1.5'/%3E%3Ccircle cx='70' cy='30' r='1.2'/%3E%3Ccircle cx='115' cy='8' r='1.6'/%3E%3Ccircle cx='40' cy='70' r='1.4'/%3E%3Ccircle cx='95' cy='85' r='1.2'/%3E%3Ccircle cx='10' cy='110' r='1.3'/%3E%3Ccircle cx='75' cy='120' r='1.6'/%3E%3C/svg%3E");
+  opacity: 0.7;
+}
+/* 减少动态效果时雨雪停在半空 */
+@media (prefers-reduced-motion: reduce) {
+  .scene-weather::before,
+  .scene-weather::after {
+    animation: none;
+  }
 }

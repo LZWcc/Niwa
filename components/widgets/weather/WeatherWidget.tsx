@@ -1,20 +1,33 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
+import { WEATHER } from '@/config';
 import { useWeather } from '@/hooks/useWeather';
-import { daysFrom, deg, describe, hourLabel, weekdayLabel } from '@/utils/weather';
+import { preview } from '@/utils/preview';
+import { KEYS } from '@/utils/storage';
+import { applySceneWeather, daysFrom, deg, hourLabel, kindOf, sceneOf, weekdayLabel } from '@/utils/weather';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
-import PlaceDialog from './PlaceDialog';
+import WeatherDialog from './WeatherDialog';
 import WeatherIcon from './WeatherIcon';
 
 // 天气：点阵面板里是现在的温度和天气；中尺寸加接下来几小时，大尺寸再加体感、湿度、风和接下来几天。
-// 数据钩子只在这个小组件存在时挂载，没选城市时不联网。
+// 数据来自和风天气，用户自己填 API Host 和 KEY。数据钩子只在这个小组件存在时挂载，没填 KEY、没选城市时不联网。
+// 菜单里可以打开「背景跟随天气」：阴、雾、雨、雪时背景跟着变（只有这个小组件在时才跟随）。
 
 export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
   const { size } = widget;
   const weather = useWeather(now);
-  const { place, forecast, error, loading } = weather;
+  const { account, place, forecast, error, loading } = weather;
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sceneOn, setSceneOn] = useState(() => localStorage.getItem(KEYS.sceneWeather) === 'on');
+
+  // 在绘制前写好，打开页面时背景不会先晴后雨；小组件移除时背景恢复。
+  const fresh = forecast && now.getTime() - weather.fetchedAt < WEATHER.sceneMaxAge;
+  const scene = preview.weather ?? (sceneOn && fresh ? sceneOf(kindOf(forecast.current.code)) : null);
+  useLayoutEffect(() => {
+    applySceneWeather(scene);
+    return () => applySceneWeather(null);
+  }, [scene]);
 
   const menu = (
     <>
@@ -24,18 +37,33 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
         </button>
       )}
       <button type="button" role="menuitem" className="menu-item" onClick={() => setDialogOpen(true)}>
-        {place ? '更换城市…' : '选择城市…'}
+        天气设置…
       </button>
+      {place && (
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={sceneOn}
+          className="menu-item"
+          onClick={() => {
+            if (sceneOn) localStorage.removeItem(KEYS.sceneWeather);
+            else localStorage.setItem(KEYS.sceneWeather, 'on');
+            setSceneOn(!sceneOn);
+          }}
+        >
+          背景跟随天气
+        </button>
+      )}
     </>
   );
 
   let body;
-  if (!place) {
+  if (!account || !place) {
     body = (
       <div className="weather-empty">
-        <p>选一个城市，看那里的天气。</p>
+        <p>{account ? '选一个城市，看那里的天气。' : '天气来自和风天气，先填写你的免费 KEY，再选城市。'}</p>
         <button type="button" className="btn btn-primary" onClick={() => setDialogOpen(true)}>
-          选择城市
+          {account ? '选择城市' : '设置天气'}
         </button>
       </div>
     );
@@ -43,10 +71,13 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
     body = <p className="weather-note">{error ?? '读取中…'}</p>;
   } else {
     const { current, offset } = forecast;
-    const desc = describe(current.code);
     const days = daysFrom(forecast, now);
     const today = days[0];
-    const hours = forecast.hours.filter((h) => h.time > now.getTime() - 3_600_000).slice(0, size === 'l' ? 6 : 5);
+    // 第一格是现在（实况），后面接逐小时预报
+    const hours = [
+      { time: now.getTime(), temp: current.temp, code: current.code, day: current.day },
+      ...forecast.hours.filter((h) => h.time > now.getTime()),
+    ].slice(0, size === 'l' ? 6 : 5);
     // 每日的温度条按这几天里的最低、最高温度对齐
     const shownDays = days.slice(0, 5);
     const lo = Math.min(...shownDays.map((d) => d.min));
@@ -55,10 +86,10 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
     body = (
       <div className="weather-body">
         <div className="weather-panel widget-panel is-dotted">
-          <WeatherIcon kind={desc.kind} day={current.day} size={size === 'l' ? 56 : 44} className="weather-now-icon" />
+          <WeatherIcon kind={kindOf(current.code)} day={current.day} size={size === 'l' ? 56 : 44} className="weather-now-icon" />
           <span className="weather-temp">{deg(current.temp)}</span>
           <span className="weather-desc">
-            {desc.label}
+            {current.text}
             {today && ` · ${deg(today.max)} / ${deg(today.min)}`}
           </span>
           {size === 'l' && (
@@ -70,10 +101,10 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
 
         {size !== 's' && (
           <ol className="weather-hours">
-            {hours.map((h) => (
+            {hours.map((h, i) => (
               <li key={h.time}>
-                <span className="weather-hour">{hourLabel(h.time, now, offset)}</span>
-                <WeatherIcon kind={describe(h.code).kind} day={h.day} size={24} />
+                <span className="weather-hour">{i === 0 ? '现在' : hourLabel(h.time, offset)}</span>
+                <WeatherIcon kind={kindOf(h.code)} day={h.day} size={24} />
                 <span>{deg(h.temp)}</span>
               </li>
             ))}
@@ -85,7 +116,7 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
             {shownDays.map((d) => (
               <li key={d.time}>
                 <span className="weather-day">{weekdayLabel(d.time, now, offset)}</span>
-                <WeatherIcon kind={describe(d.code).kind} day size={20} />
+                <WeatherIcon kind={kindOf(d.code)} day size={20} />
                 <span className="weather-min">{deg(d.min)}</span>
                 <span className="weather-range" aria-hidden="true">
                   <span style={{ left: `${((d.min - lo) / span) * 100}%`, right: `${((lo + span - d.max) / span) * 100}%` }} />
@@ -108,7 +139,7 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
             title="天气"
             meta={
               place && (
-                <span className="weather-place" title={error ?? undefined}>
+                <span className="weather-place" title={error ?? '天气数据来自和风天气'}>
                   {place.name}
                   {status && ` · ${status}`}
                 </span>
@@ -118,14 +149,7 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
           {body}
         </div>
       </WidgetFrame>
-      <PlaceDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onPick={(p) => {
-          weather.setPlace(p);
-          setDialogOpen(false);
-        }}
-      />
+      <WeatherDialog open={dialogOpen} weather={weather} onClose={() => setDialogOpen(false)} />
     </>
   );
 }

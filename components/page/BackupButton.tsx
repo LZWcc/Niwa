@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Dialog from '@/components/common/Dialog';
-import { createBackup, parseBackup, restoreBackup, type Backup } from '@/utils/backup';
+import { SECRET_LABELS, createBackup, parseBackup, restoreBackup, secretsIn, type Backup } from '@/utils/backup';
 import { dayKey } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
 
@@ -8,19 +8,25 @@ import { toUserMessage } from '@/utils/errors';
 function summary({ data, exportedAt }: Backup) {
   const links = data.grid.filter((item) => item.kind === 'link').length;
   const parts = [`${links} 个快捷方式`, `${data.grid.length - links} 个小组件`, `${data.notes.length} 条便签`];
-  if (data.calendars) parts.push(`${data.calendars.length} 个日历`);
   return `${parts.join('、')}，导出于 ${new Date(exportedAt).toLocaleString()}`;
+}
+
+/** 导入会替换什么：私密数据只替换备份里带了的，其余保持不变 */
+function replaced({ data }: Backup) {
+  const included = secretsIn(data);
+  const kept = SECRET_LABELS.filter((label) => !included.includes(label));
+  return `当前的布局、图标、便签和设置会被替换${included.length ? `，${included.join('、')}也会被替换` : ''}${kept.length ? `；${kept.join('、')}保持不变` : ''}。`;
 }
 
 // 右上角：备份与恢复。导出成一个 JSON 文件；在另一个浏览器里导入，整体替换那边的数据。
 export default function BackupButton() {
   const [open, setOpen] = useState(false);
-  const [withCalendars, setWithCalendars] = useState(false);
+  const [withSecrets, setWithSecrets] = useState(false);
   const [pending, setPending] = useState<Backup | null>(null);
   const [error, setError] = useState('');
 
   const exportFile = () => {
-    const blob = new Blob([JSON.stringify(createBackup(withCalendars), null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(createBackup(withSecrets), null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `niwa-backup-${dayKey(new Date())}.json`;
@@ -78,8 +84,8 @@ export default function BackupButton() {
             <h3>导出</h3>
             <p>布局、图标、便签、庭的天数和偏好设置，存成一个文件。</p>
             <label className="backup-check">
-              <input type="checkbox" checked={withCalendars} onChange={(e) => setWithCalendars(e.target.checked)} />
-              包含日历订阅地址（相当于密码，文件要妥善保管）
+              <input type="checkbox" checked={withSecrets} onChange={(e) => setWithSecrets(e.target.checked)} />
+              包含私密信息：{SECRET_LABELS.join('、')}（相当于密码，文件要妥善保管）
             </label>
             <button type="button" className="btn btn-primary" onClick={exportFile}>
               导出备份
@@ -96,7 +102,7 @@ export default function BackupButton() {
             {pending && (
               <div className="backup-pending">
                 <p>{summary(pending)}</p>
-                <p>当前的布局、图标、便签和设置会被替换{pending.data.calendars ? '，日历也会被替换' : '，日历保持不变'}。</p>
+                <p>{replaced(pending)}</p>
                 <button type="button" className="btn btn-danger" onClick={restore}>
                   替换当前数据
                 </button>

@@ -24,3 +24,8 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+# 密钥一律不进仓库：开发测试用的放在仓库外的 ~/.config/niwa/secrets.env，这里只是兜底
+.env*
+*.local
+secrets.env

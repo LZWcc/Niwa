@@ -5,6 +5,7 @@ import { applyAtmosphere } from '@/utils/almanac';
 import { reportError } from '@/utils/errors';
 import { preview } from '@/utils/preview';
 import { applyTheme, readThemeChoice, systemTheme } from '@/utils/theme';
+import { applySceneWeather } from '@/utils/weather';
 import App from './App';
 import './styles/index.css';
 
@@ -16,6 +17,8 @@ addEventListener('unhandledrejection', (e) => reportError(e.reason, '未处理�
 const choice = readThemeChoice();
 applyTheme(choice === 'system' ? systemTheme() : choice);
 applyAtmosphere(new Date(), preview);
+// 平时背景的天气由天气小组件写（它有数据）；这里只管开发时的预览参数。
+applySceneWeather(preview.weather);
 
 const pageError = (
   <main className="page-error" role="alert">

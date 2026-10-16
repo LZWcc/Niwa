@@ -1,19 +1,42 @@
 // 备份与恢复：把布局、图标、便签、庭的天数和偏好打包成一个 JSON 文件，在另一个浏览器里导入。
 // 导入是整体替换，不和现有数据合并；文件校验不过就整个拒绝，不只导入一部分。
-// 日历订阅地址相当于密码，只有用户勾选时才导出；备份里没有日历时，导入后保留原来的日历。
+// 私密信息（日历订阅地址、天气 KEY，见 SECRETS）相当于密码，只有用户勾选时才导出；备份里没有的那几项，导入后保留这边原来的。
 import { DEFAULT_ITEMS } from '../config';
-import { isCalendarSource, type CalendarSource } from './calendar/ical';
+import { isCalendarSource } from './calendar/ical';
 import { AppError } from './errors';
 import { isGridItem, isPoint, type GridItem, type Point } from './grid/items';
 import { isIconStore, type IconStore } from './icons/model';
 import { isNote, type Note } from './notes';
-import { KEYS, readJson, readList, writeJson } from './storage';
+import { KEYS, readJson, readList, writeJson, type StorageKey } from './storage';
 import { isThemeChoice, readThemeChoice, type ThemeChoice } from './theme';
 import { isVisits, type Visits } from './visits';
-import { isPlace, type Place } from './weather';
+import { isPlace, isWeatherAccount, type Place } from './weather';
 
 /** 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。 */
-const VERSION = 2;
+const VERSION = 3;
+
+type Secret = { key: StorageKey; label: string; isValid: (v: unknown) => boolean; cache: StorageKey };
+
+/**
+ * 私密的数据：相当于密码，所有私密数据都在这里登记，备份时统一处理——只有用户勾选时才导出，
+ * 导入时备份里有哪项就替换哪项（并清掉它的缓存 cache），没有的保留这边原来的。
+ */
+const SECRETS: Record<'calendars' | 'weatherAccount', Secret> = {
+  calendars: {
+    key: KEYS.calendars,
+    label: '日历订阅地址',
+    isValid: (v) => Array.isArray(v) && v.length > 0 && v.every(isCalendarSource),
+    cache: KEYS.calendarCache,
+  },
+  weatherAccount: { key: KEYS.weatherAccount, label: '天气 KEY', isValid: isWeatherAccount, cache: KEYS.weatherCache },
+};
+type SecretName = keyof typeof SECRETS;
+
+/** 所有私密数据的名称，导出时的勾选项用 */
+export const SECRET_LABELS = Object.values(SECRETS).map((s) => s.label);
+
+/** 备份里带了哪几项私密数据 */
+export const secretsIn = (data: BackupData) => Object.keys(data.secrets ?? {}).map((name) => SECRETS[name as SecretName].label);
 
 export type BackupData = {
   grid: GridItem[];
@@ -26,12 +49,13 @@ export type BackupData = {
   theme: ThemeChoice;
   /** 天气小组件选的城市（第 2 版起） */
   weather: Place | null;
-  calendars?: CalendarSource[];
+  /** 勾选时才有的私密数据，按 SECRETS 的名称存（第 3 版起；之前的版本只有日历，放在 data.calendars） */
+  secrets?: Partial<Record<SecretName, unknown>>;
 };
 
 export type Backup = { app: 'niwa'; version: number; exportedAt: string; data: BackupData };
 
-export function createBackup(includeCalendars: boolean): Backup {
+export function createBackup(includeSecrets: boolean): Backup {
   const data: BackupData = {
     grid: readList(KEYS.grid, isGridItem, DEFAULT_ITEMS),
     addTile: readJson(KEYS.addTile, isPoint),
@@ -42,7 +66,11 @@ export function createBackup(includeCalendars: boolean): Backup {
     theme: readThemeChoice(),
     weather: readJson(KEYS.weather, isPlace),
   };
-  if (includeCalendars) data.calendars = readList(KEYS.calendars, isCalendarSource, []);
+  if (includeSecrets) {
+    // 这边没有的（没连日历、没填天气 KEY）不带，导入时就保留那边原来的。
+    const entries = Object.entries(SECRETS).map(([name, s]) => [name, readJson(s.key, (v): v is unknown => s.isValid(v))]);
+    data.secrets = Object.fromEntries(entries.filter(([, value]) => value !== null));
+  }
   return { app: 'niwa', version: VERSION, exportedAt: new Date().toISOString(), data };
 }
 
@@ -61,7 +89,13 @@ function findProblem(d: BackupData): string | null {
   if (d.engine !== null && typeof d.engine !== 'string') return '搜索引擎的设置不对';
   if (!isThemeChoice(d.theme)) return '浅色 / 深色的设置不对';
   if (d.weather !== null && !isPlace(d.weather)) return '天气的城市不对';
-  if (d.calendars !== undefined && !(Array.isArray(d.calendars) && d.calendars.every(isCalendarSource))) return '日历的数据不对';
+  if (d.secrets !== undefined) {
+    if (typeof d.secrets !== 'object' || d.secrets === null) return '私密信息的数据不对';
+    for (const [name, value] of Object.entries(d.secrets)) {
+      const secret = SECRETS[name as SecretName] as Secret | undefined;
+      if (!secret?.isValid(value)) return `${secret?.label ?? '私密信息'}的数据不对`;
+    }
+  }
   return null;
 }
 
@@ -77,8 +111,13 @@ export function parseBackup(text: string): Backup {
     throw new AppError('这不是 Niwa 的备份文件');
   }
   if (backup.version > VERSION) throw new AppError('这个备份来自更新版本的 Niwa，请先更新再导入');
-  // 第 1 版还没有天气。
+  // 第 1 版还没有天气；第 3 版之前私密数据只有日历，放在 data.calendars。
   if (backup.version < 2) backup.data.weather = null;
+  if (backup.version < 3) {
+    const old = backup.data as BackupData & { calendars?: unknown };
+    if (old.calendars !== undefined) old.secrets = { calendars: old.calendars };
+    delete old.calendars;
+  }
   const problem = findProblem(backup.data);
   if (problem) throw new AppError(`备份文件有问题：${problem}。没有导入任何数据`);
   return backup;
@@ -100,8 +139,9 @@ export function restoreBackup({ data }: Backup) {
   if (data.weather) writeJson(KEYS.weather, data.weather);
   else localStorage.removeItem(KEYS.weather);
   localStorage.removeItem(KEYS.weatherCache);
-  if (data.calendars) {
-    writeJson(KEYS.calendars, data.calendars);
-    localStorage.removeItem(KEYS.calendarCache);
+  for (const [name, value] of Object.entries(data.secrets ?? {})) {
+    const secret = SECRETS[name as SecretName];
+    writeJson(secret.key, value);
+    localStorage.removeItem(secret.cache);
   }
 }

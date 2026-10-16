@@ -5,7 +5,9 @@ export default function Scene() {
   return (
     <div className="scene" aria-hidden="true">
       <div className="scene-sky">
-        <div className="scene-orb" />
+        <div className="scene-orb">
+          <div className="scene-moon" />
+        </div>
       </div>
       <div className="scene-land">
         <svg className="scene-hills" viewBox="0 0 1440 420" preserveAspectRatio="none">

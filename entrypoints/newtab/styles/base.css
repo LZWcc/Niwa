@@ -34,7 +34,8 @@ a {
   position: fixed;
   top: 32px;
   left: 48px;
-  z-index: 1;
+  /* 在搜索框之上：展开的候的解释会盖住它的左边 */
+  z-index: 3;
   display: flex;
   align-items: baseline;
   gap: 20px;
@@ -48,6 +49,11 @@ a {
   line-height: 1;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+}
+.clock-digit {
+  display: inline-block;
+  width: 0.5em; /* 最宽的数字 8 */
+  text-align: center;
 }
 .clock-colon {
   opacity: 0.45;
@@ -67,6 +73,90 @@ a {
 .date-term {
   color: var(--term);
   font-weight: 500;
+}
+/* 这一候的解释：日期下面一行小字，比日期更淡；悬停或聚焦时展开完整原文 */
+.pentad {
+  position: relative;
+}
+.pentad-note {
+  display: block;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+  text-align: left;
+  cursor: default;
+  transition: color 0.15s;
+}
+.pentad-note:hover,
+.pentad-note:focus-visible {
+  color: var(--muted);
+  outline: 0;
+}
+.pentad-card {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: -16px;
+  width: 360px;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 18px;
+  background: var(--elevated);
+  box-shadow: 0 16px 48px -16px rgb(0 0 0 / 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  /* 收起前也稍等：鼠标斜着移过去、擦出边缘时不马上消失 */
+  transition:
+    opacity 0.15s 0.1s,
+    transform 0.15s 0.1s,
+    visibility 0.15s 0.1s;
+}
+/* 卡片和小字之间隔着 12px：用一条透明的边把它补上，鼠标经过这段空隙仍算悬停在卡片上 */
+.pentad-card::before {
+  content: '';
+  position: absolute;
+  inset: -13px 0 100%;
+}
+/* 悬停稍等一下再出现，鼠标路过时不闪；鼠标移进卡片里也不收起，可以慢慢读。键盘聚焦到小字时也展开 */
+.pentad:hover .pentad-card,
+.pentad:has(.pentad-note:focus-visible) .pentad-card {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0.2s;
+}
+.pentad-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.pentad-card-title span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--term);
+}
+.pentad-card-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-align: justify;
+}
+.pentad-card-source {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--faint);
+  text-align: right;
 }
 
 /* 右上角的按钮（备份、浅色 / 深色）：平时淡一些，不和时间抢注意力 */

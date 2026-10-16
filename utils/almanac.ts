@@ -1,10 +1,11 @@
 import { DAY, WEEKDAYS } from './date';
+import { PENTAD_NOTES, type Pentad } from './pentads';
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 export type Phase = 'dawn' | 'day' | 'dusk' | 'night';
 
 // 二十四节气与七十二候。起始日期为公历近似值（误差约 ±1 天），足够用于展示。
-const TERMS: ReadonlyArray<readonly [string, number, number, readonly [string, string, string]]> = [
+const TERMS: ReadonlyArray<readonly [string, number, number, readonly [Pentad, Pentad, Pentad]]> = [
   ['小寒', 1, 5, ['雁北乡', '鹊始巢', '雉始雊']],
   ['大寒', 1, 20, ['鸡始乳', '征鸟厉疾', '水泽腹坚']],
   ['立春', 2, 4, ['东风解冻', '蛰虫始振', '鱼陟负冰']],
@@ -45,9 +46,12 @@ export function almanac(now: Date) {
   const season: Season =
     index >= 2 && index < 8 ? 'spring' : index >= 8 && index < 14 ? 'summer' : index >= 14 && index < 20 ? 'autumn' : 'winter';
 
+  const pentad = pentads[Math.min(2, Math.floor(days / 5))]!;
   return {
     term,
-    pentad: pentads[Math.min(2, Math.floor(days / 5))],
+    pentad,
+    /** 这一候在《月令七十二候集解》里的解释 */
+    note: PENTAD_NOTES[pentad],
     season,
     date: `${now.getMonth() + 1}月${now.getDate()}日 星期${WEEKDAYS[now.getDay()]}`,
   };
@@ -66,9 +70,36 @@ export function phaseOf(now: Date): Phase {
   return 'night';
 }
 
-/** 季节与时辰写在 <html> 上，由 CSS 决定主色和天色。override 用于开发时预览。 */
-export function applyAtmosphere(now: Date, override: { season?: Season | null; phase?: Phase | null } = {}) {
+// 月相按平均朔望月推算：和实际的朔望时刻差不到半天，画月亮够用。
+const SYNODIC_MONTH = 29.530588853 * DAY;
+const NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
+
+/** 月相：0 新月，0.25 上弦，0.5 满月，0.75 下弦 */
+export const moonPhase = (t: number) => ((((t - NEW_MOON) / SYNODIC_MONTH) % 1) + 1) % 1;
+
+/**
+ * 月亮亮着的那部分（100×100 的 SVG 路径）：一边是月面的半圆，一边是明暗交界的半个椭圆。
+ * 上半月右边亮（北半球），下半月左边亮；娥眉时交界线弯向亮的一边，凸月时弯向暗的一边。
+ */
+export function moonPath(phase: number) {
+  const waxing = phase < 0.5;
+  const crescent = phase < 0.25 || phase > 0.75;
+  const rx = Math.abs(Math.cos(2 * Math.PI * phase)) * 50;
+  const limb = waxing ? 1 : 0;
+  const edge = waxing === crescent ? 0 : 1;
+  return `M50 0A50 50 0 0 ${limb} 50 100A${rx.toFixed(2)} 50 0 0 ${edge} 50 0Z`;
+}
+
+/**
+ * 季节与时辰写在 <html> 上，由 CSS 决定主色和天色；月相写成两个变量（亮面的遮罩、亮着的比例），
+ * 夜里的月亮按它画。override 用于开发时预览。
+ */
+export function applyAtmosphere(now: Date, override: { season?: Season | null; phase?: Phase | null; moon?: number | null } = {}) {
   const root = document.documentElement;
   root.dataset.season = override.season ?? almanac(now).season;
   root.dataset.phase = override.phase ?? phaseOf(now);
+  const moon = override.moon ?? moonPhase(now.getTime());
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='${moonPath(moon)}'/></svg>`;
+  root.style.setProperty('--moon-mask', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+  root.style.setProperty('--moon-lit', ((1 - Math.cos(2 * Math.PI * moon)) / 2).toFixed(3));
 }

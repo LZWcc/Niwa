@@ -80,6 +80,29 @@
   height: min(36vh, 340px);
 }
 
+/* 月相：日月是月亮的时候（夜庭，或浅色的夜里），整个圆淡成暗面，亮的部分按 --moon-mask（applyAtmosphere 按当天的月相写）
+   画在 .scene-moon 上；光晕按亮着的比例变弱，新月前后几乎没有。 */
+.scene-moon {
+  position: absolute;
+  inset: 0;
+  display: none;
+  border-radius: 50%;
+  background: var(--orb);
+  mask: var(--moon-mask) center / 100% 100% no-repeat;
+}
+:where([data-theme='dark']) .scene-moon,
+[data-phase='night'] .scene-moon {
+  display: block;
+}
+:where([data-theme='dark']) .scene-orb::after,
+[data-phase='night'] .scene-orb::after {
+  opacity: 0.06;
+}
+:where([data-theme='dark']) .scene-orb::before,
+[data-phase='night'] .scene-orb::before {
+  opacity: calc(0.25 + 0.75 * var(--moon-lit, 1));
+}
+
 /* 石灯笼那一角的暖光，只在夜庭里有，画在天空这一层的背景上，颜色来自 --lantern-glow，夜里更亮。 */
 :where([data-theme='dark']) .scene-sky {
   background: radial-gradient(12vw 9vh at 88vw 91vh, var(--lantern-glow), transparent);

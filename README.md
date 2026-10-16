@@ -84,7 +84,8 @@ utils/                     不依赖 React 的纯函数和数据
   errors.ts                错误处理：AppError、toUserMessage、reportError（见「错误处理」）
   widgets.ts               小组件目录：种类、名称、默认尺寸、尺寸占几格
   date.ts                  日期基础：DAY、星期、补零、当天 0 点、日期键
-  almanac.ts               节气、七十二候、季节与时辰
+  almanac.ts               节气、七十二候、季节与时辰、月相
+  pentads.ts               七十二候的解释（《月令七十二候集解》）
   theme.ts                 浅色 / 深色的选择，以及切换时的日落月升（switchTheme）
   spring.ts                弹簧动画曲线
   notes.ts、visits.ts、preview.ts
@@ -93,6 +94,12 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 ```
 
 各层的分工：`utils/` 只放纯函数和数据，不碰 React；`hooks/` 管状态和副作用；`components/` 只负责画出来，尽量不含规则。新代码按这个分工放。
+
+## 节气与月相
+
+左上角日期后面是节气和候（`utils/almanac.ts`，起始日期取公历近似值，误差约 ±1 天）。下面一行小字是这一候在元代吴澄《月令七十二候集解》里的解释（`utils/pentads.ts`）：每候从原文里摘一段连续的原文（不改字），悬停看这一候的完整原文。原文取自维基文库，繁体转简体后人工修正了几处：「閒」作「间」，「坏（pī）」作「坯」，扩展区的「𫛪」写回「鴽」，清代避讳的「元鸟」复原为「玄鸟」，几个异体字。72 个候名是类型 `Pentad`，节气表里的每一候都必须有解释，少了 tsc 会报错。
+
+夜里（夜庭，或浅色的夜间）的月亮按当天的真实月相画：`moonPhase` 按平均朔望月推算（和实际朔望时刻差不到半天），`moonPath` 画出亮着的那部分（一侧月面半圆加明暗交界的半个椭圆），`applyAtmosphere` 每分钟把它写成 `--moon-mask`、亮着的比例写成 `--moon-lit`；暗面留一点很淡的轮廓，光晕随亮面变弱。开发时可以用 `?moon=0.25`（0 新月、0.5 满月）预览。
 
 ## 搜索
 
@@ -165,7 +172,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - 深色样式写在 `:where([data-theme='dark'])` 下，不用 `prefers-color-scheme`（是否深色由 `utils/theme.ts` 决定）。
 - `useEffect` 的依赖确实需要省略时，用 `eslint-disable-next-line` 并在上一行写明原因。
 
-开发模式下可以在新标签页地址后加 `?days=30&season=winter&phase=night&weather=rain` 预览庭和季节、时辰、背景的天气（cloudy、fog、drizzle、rain、snow）（`utils/preview.ts`）；正式构建会忽略这些参数。
+开发模式下可以在新标签页地址后加 `?days=30&season=winter&phase=night&weather=rain&moon=0.25` 预览庭和季节、时辰、背景的天气（cloudy、fog、drizzle、rain、snow）、月相（`utils/preview.ts`）；正式构建会忽略这些参数。
 
 ## 快捷方式的图标
 
@@ -235,6 +242,7 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `calendars.test.html`：多个日历的添加、去重、命名与合并显示，日历失败时显示的原因。
   - `icons.test.html`：自动获取网站图标（`run.mjs` 提供一个声明了图标的假网站；第三方图标服务的请求在测试页里转到假响应，不依赖外网）、找不到时用文字图标、上传图片、图片的保存与删除。
   - `backup.test.html`：导出的内容、私密信息默认不导出、坏文件整个拒绝、旧版本的迁移、导入后整体替换。
+  - `almanac.test.html`：日期下面这一候的解释（摘录出自完整原文、注明出处），月相写到页面上、夜里显示月亮。
   - `weather.test.html`：天气。和风天气的请求在测试页里转到假数据：填 KEY（填错时的提示）、搜城市、各尺寸显示的内容、缓存、更新失败时保留数据、背景跟随天气的开关。
   - `browsing.test.html`：收藏夹与历史，以及搜索框的联想（排序、去重、键盘选择、排除网站、开关）。测试页不在扩展里，把 `chrome.bookmarks` 等接口换成假的：文件夹进出与记忆、只列网页、长标题不溢出、新收藏出现、搜索、最近 / 常去 / 最近关闭与恢复。
   - 无头模式用的是虚拟时间：页面空闲时会直接快进，不等读文件、解码图片这类真实的异步操作。要等它们时用测试页里的 `waitFor`（等待期间一直请求 `run.mjs` 的 `/__tick`，请求挂起时虚拟时间会暂停）。

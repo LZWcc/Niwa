@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- 页面测试：日期下面这一候的解释（《月令七十二候集解》），和夜里按月相画的月亮。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+localStorage.setItem('niwa:theme', 'dark');
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+
+  // 这一候的解释：摘录是完整原文里的一段；卡片里是完整原文和出处，聚焦时展开
+  const note = d.querySelector('.pentad-note');
+  const card = d.getElementById(note.getAttribute('aria-describedby'));
+  const pentad = d.querySelectorAll('.date span')[2]?.textContent;
+  log(!!note.textContent && card.querySelector('.pentad-card-title').textContent.startsWith(pentad) && card.querySelector('.pentad-card-text').textContent.includes(note.textContent) && card.textContent.includes('《月令七十二候集解》'), `pentad note: ${pentad} / ${note.textContent}`);
+  log(w.getComputedStyle(card).visibility === 'hidden', 'card hidden by default');
+  note.focus({ focusVisible: true }); await sleep(600);
+  log(w.getComputedStyle(card).visibility === 'visible', 'card shown on focus');
+
+  // 时钟每个数字一样宽：不管几点，右边的日期都不挪
+  const widths = new Set([...d.querySelectorAll('.clock-digit')].map((x) => x.getBoundingClientRect().width.toFixed(2)));
+  log(d.querySelectorAll('.clock-digit').length === 4 && widths.size === 1, `clock digits same width: ${[...widths]}`);
+
+  // 月相：遮罩是一条 SVG 路径，亮着的比例在 0 到 1 之间；夜庭里显示月亮那一层
+  const style = d.documentElement.style;
+  const lit = Number(style.getPropertyValue('--moon-lit'));
+  log(style.getPropertyValue('--moon-mask').startsWith('url("data:image/svg+xml,') && lit >= 0 && lit <= 1, `moon mask set, lit ${lit}`);
+  log(w.getComputedStyle(d.querySelector('.scene-moon')).display === 'block', 'moon layer shown at night');
+};
+</script>

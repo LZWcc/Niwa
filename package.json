@@ -12,17 +12,30 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test": "pnpm test:unit && pnpm test:e2e",
+    "test:unit": "node --experimental-strip-types --no-warnings tests/unit/layout.test.mjs",
+    "test:e2e": "wxt build -b edge && node tests/e2e/run.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "check": "pnpm compile && pnpm lint && prettier --check ."
   },
   "dependencies": {
+    "ical.js": "^2.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2",
     "web-ext": "^10.5.0",
     "wxt": "^0.21.3"
   }

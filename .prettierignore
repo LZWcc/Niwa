@@ -1,0 +1,5 @@
+.output/
+.wxt/
+pnpm-lock.yaml
+# 测试页里的检查是一行一条，保持紧凑便于对照
+tests/e2e/*.html

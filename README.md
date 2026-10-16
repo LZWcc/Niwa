@@ -1,3 +1,208 @@
-# WXT + React
+# Niwa
 
-This template should help get you started developing with React in WXT.
+使用 WXT + React + TypeScript 开发的轻量浏览器新标签页：左上角时间与节气，正中搜索框，下面是快捷方式和小组件自由摆放的网格，背景是随季节、时辰变化的山水（深色时是月夜）。右上角可以切换浅色 / 深色（日落月升的过渡，默认跟随系统），也可以把全部数据导出成备份，在另一个浏览器里导入。
+
+## 开发
+
+```sh
+pnpm install
+pnpm dev -b edge
+```
+
+在自动打开的开发浏览器中按 `⌘T`（Windows/Linux 使用 `Ctrl+T`）查看新标签页；如果浏览器询问是否保留新标签页更改，选择保留。保存源码后 WXT 会热更新或重载扩展。
+
+本机浏览器路径在 `web-ext.config.ts` 中配置，该文件被 Git 忽略。`pnpm dev` 默认编译 Chrome 目标，`pnpm dev -b edge` 编译 Edge 目标。
+
+提交前运行：
+
+```sh
+pnpm check   # 类型检查 + ESLint + Prettier 格式检查
+pnpm test    # 布局算法单元测试 + 页面测试
+```
+
+`pnpm format` 按 Prettier 格式化全部文件。
+
+## 目录结构
+
+按 WXT 的约定分 `entrypoints/`、`components/`、`hooks/`、`utils/`，组件再按功能分子目录。
+
+```
+config.ts                  可以按需调整的配置：搜索引擎、默认快捷方式、图标服务、日程参数、配色
+entrypoints/newtab/        新标签页入口
+  App.tsx                  页面骨架：景、时间、搜索、网格
+  main.tsx                 挂载；首帧前写好季节与时辰
+  styles/                  样式，index.css 按顺序引入各部分（后面的可以覆盖前面的）
+    tokens / base / dialog / utilities.css   全局：变量、基础、对话框、工具类
+    page/  search/  grid/  widgets/          和 components/ 对应
+components/
+  common/                  Popover（挂在 body 上、按视口定位的弹出层）、Dialog（原生 <dialog> 的模态对话框）、ErrorBoundary
+  page/                    Scene（背景的景）、Clock（时间、日期、节气）、ThemeToggle（浅色 / 深色）、BackupButton（备份与恢复）
+  search/Search.tsx        搜索框与搜索引擎菜单
+  grid/                    网格：Grid（组装）、AddTile、Shortcut、ShortcutIcon、ShortcutDialog、IconPicker（选图标）
+  widgets/                 小组件
+    index.ts               每种小组件对应哪个组件（注册表）
+    types.ts               小组件的参数约定（WidgetProps、FrameProps）
+    WidgetFrame.tsx        共用外框：卡片、“…”菜单（尺寸、额外项、移除）
+    WidgetError.tsx        小组件出错时顶替它的卡片
+    notes/  calendar/  garden/
+hooks/
+  grid/
+    useGrid.ts             网格数据：增删改，存 niwa:grid；快捷方式的图标图片存 niwa:icons
+    useGridLayout.ts       摆放：列数、每一格在哪（含「添加」）、新格子放哪、改尺寸怎么让
+    useGridDrag.ts         拖动交互：指针、吸附、占位框、自动滚动、Esc 取消
+    useFlip.ts             布局动画：改数据前后各格从旧位置弹到新位置
+  useCalendar.ts           日程数据与缓存
+  useStored.ts             存在 localStorage 里的数据（useStored、useStoredList），多个标签页之间同步
+  useSiteIcons.ts          输入网址后自动获取网站图标
+  useTheme.ts              浅色 / 深色：跟随系统或固定一种，写到 <html data-theme>
+  useMinute.ts、useVisits.ts
+utils/                     不依赖 React 的纯函数和数据
+  grid/
+    items.ts               网格里每一项的类型、校验和默认项
+    layout.ts              网格摆放规则（拖放、往下推、找空位），单元测试覆盖
+    dom.ts                 网格在页面上的查询（格子、排版位置）
+    links.ts               快捷方式的网址补全与默认名称
+  icons/
+    model.ts               图标的类型（图片 / 文字）、文字图标的默认样子、niwa:icons 的校验
+    fetch.ts               自动获取网站图标：网站自己声明的优先，Google 图标服务兜底
+    image.ts               图片统一成 128px 的方形 webp
+  calendar/
+    ical.ts                读 iCal：下载、解析、展开重复日程
+    format.ts              日程的时间、日期、地点怎么显示
+  storage.ts               所有 localStorage 键、JSON 读写与校验
+  backup.ts                备份与恢复：导出、校验、整体替换（见「备份与恢复」）
+  permissions.ts           按需申请访问网站的权限（日历、获取图标）
+  errors.ts                错误处理：AppError、toUserMessage、reportError（见「错误处理」）
+  widgets.ts               小组件目录：种类、名称、默认尺寸、尺寸占几格
+  date.ts                  日期基础：DAY、星期、补零、当天 0 点、日期键
+  almanac.ts               节气、七十二候、季节与时辰
+  theme.ts                 浅色 / 深色的选择，以及切换时的日落月升（switchTheme）
+  spring.ts                弹簧动画曲线
+  notes.ts、visits.ts、preview.ts
+tests/                     见下文「测试」
+public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
+```
+
+各层的分工：`utils/` 只放纯函数和数据，不碰 React；`hooks/` 管状态和副作用；`components/` 只负责画出来，尽量不含规则。新代码按这个分工放。
+
+## 网格
+
+网站快捷方式和小组件存在同一个列表里（`niwa:grid`），每一项记自己左上角的列 x、行 y，可以留空、竖着叠。网格单位 80px、间距 20px，最多 12 列（1180px，搜索框固定 716px）；快捷方式 1×1（图标 58px），小组件小 2×2、中 4×2、大 4×4。
+
+数据流：`useGrid`（存什么）→ `useGridLayout`（结合当前列数算出每一格在哪）→ `Grid` 画出来；拖动由 `useGridDrag` 处理，增删、改尺寸、拖动都经过 `useFlip` 的 `animate`，其余格子会滑到新位置。
+
+- 「添加」也是一个能拖的格子，位置存在 `niwa:add`，第一次打开时放在最后一格后面。新加的格子：「添加」排在最后时占它的位置、它往后挪一格；否则接在最后一格后面，不填前面留的空。
+- 没有位置的项（第一次打开时的默认项）按顺序补进空位并保存；窗口变窄、某一格超出列数时临时挪到空位里，不改保存的位置。
+- 页面打开期间不移动 DOM 节点，位置全靠 `grid-column` / `grid-row`（移动节点会让毛玻璃重建合成层、闪一下）。
+
+拖放规则在 `utils/grid/layout.ts`，参照 react-grid-layout / gridstack 和手机桌面，只有四条（`moveItem`）：
+
+1. 拖到空位：直接放下；
+2. 压到同尺寸的（压住一半以上）：两块互换；大的压到几个小的：这几个保持相互位置整组搬进它腾出来的地方；
+3. 搬不进去时：小的竖直往下推，下面碰到的也依次往下推，从不横向绕行（`pushDown`，改尺寸变大也用它）；
+4. 小的压到大的：不接受，留在上一个有效位置。
+
+拖动时从上一次判断到的格子一格一格走到当前格子（`stepDrag`），先让开路上的小图标，再碰到后面的组件；互换和整组搬移会累积，拖过一排图标时每个只挪一格。交互细节在 `hooks/grid/useGridDrag.ts` 开头：按住移动超过 4px 才算拖动，落点是被拖那块左上角吸附到的格子（挪过半格就到下一格），指针移动很快时先不定落点，拖动期间列数锁定，按 Esc 恢复。
+
+## 小组件
+
+- **便签**（`widgets/notes/`）：回车保存，点一条复制；焦点不在输入框时在页面任意处粘贴会直接存成一条（`niwa:notes`）。
+- **日程**（`widgets/calendar/`）：粘贴 Google 日历的「iCal 格式的私密地址」（或任意 .ics 订阅地址），只读、无需登录，可以连接多个日历。`CalendarWidget` 负责数据、菜单和两个对话框；`CalendarAgenda` 列出接下来 7 天，按实际高度放得下几条显示几条，不出滚动条；`CalendarMonth` 是月历；`EventDetail` 是详情；`CalendarDialog` 管理日历。数据先显示本地缓存，超过 15 分钟（失败后 2 分钟）在后台刷新；ical.js 按需加载；访问日历网站的权限在添加时按需申请（`optional_host_permissions`）。
+- **庭**（`widgets/garden/`）：一只等距视角的箱庭，按累计打开天数生长（`MILESTONES`）：第 1 天一块石，第 3 天第二块，第 5 天起有四季落物，第 7 天长苔，第 14 天一棵随季节换装的树，第 21 天一块小石，第 30 天一盏夜里会亮的石灯笼。天数只计累计不计连续（`niwa:garden`）。
+
+### 新增一种小组件
+
+1. 在 `utils/widgets.ts` 的 `WidgetType` 和 `WIDGETS` 里登记名称、说明、默认尺寸。
+2. 在 `components/widgets/<名字>/` 写组件，参数是 `WidgetProps`（`widget`、`frame`、`now`），内容用 `WidgetFrame` 包起来；要在“…”菜单里加项就传 `menu`。
+3. 在 `components/widgets/index.ts` 的 `WIDGET_COMPONENTS` 里对上组件。
+4. 要存数据就在 `utils/storage.ts` 的 `KEYS` 里加一个键，用 `useStoredList` 或 `readJson` / `writeJson` 读写。
+5. 样式加到 `entrypoints/newtab/styles/widgets/`，新文件记得在 `index.css` 里引入。
+
+「添加」菜单会自动列出新的小组件。
+
+## 代码约定
+
+- 注释和界面文字用中文；注释写“为什么这样做”，显而易见的不写。
+- 组件文件用 PascalCase，一个文件一个默认导出的组件；hooks 以 `use` 开头；`utils/` 用具名导出。
+- 摆放规则这类不依赖页面的逻辑写成 `utils/` 里的纯函数，并在 `tests/unit/` 里补测试。
+- 本地数据的键一律在 `utils/storage.ts` 的 `KEYS` 里登记；字符串直接用 `localStorage.getItem / setItem`，JSON 用 `readJson`（带校验）/ `writeJson`。
+- 新代码按功能放进对应子目录（`grid/`、`calendar/` 等），和 `components/` 的分法保持一致；多处共用的基础量（如 `DAY`、星期）放在 `utils/date.ts`，不在各文件里重复定义。
+- 一行就能写完、又只在一处用到的，直接写在用的地方，不单独包成函数。
+- 换个值就行、不用改逻辑的放进根目录的 `config.ts`：依赖外部世界、会过时的（第三方服务的地址、别的网站的链接格式），内容和偏好（默认项、可选项、配色），调节参数（超时、刷新间隔）。和 CSS、交互手感绑在一起的（网格尺寸、拖动阈值、动画时长）、本身就是作品或事实的（庭的画法、节气表）、本身就是结构的（存储键、备份版本、小组件注册表）留在代码旁边。`config.ts` 只放数据，怎么用这些数据写在用的地方。
+- 不为不会发生的情况加兜底（多余的 `try/catch`、`?.`、`?? 默认值`、判断浏览器是否支持某个 API）。只校验真正来自外部的数据：localStorage 里存的、iCal 下载的、用户输入的。出错了怎么办见「错误处理」。
+- 打开新标签页本身从不联网：不加远程字体、远程图片；优先使用 CSS、浏览器原生 API 和 React 自带能力，按实际需求增加依赖。只在用户主动操作时联网：添加的日程（之后在后台定时刷新）、添加快捷方式时获取网站图标（取到就存在本地，之后不再联网）。访问网站的权限都在用的时候才申请。
+- 深色样式写在 `:where([data-theme='dark'])` 下，不用 `prefers-color-scheme`（是否深色由 `utils/theme.ts` 决定）。
+- `useEffect` 的依赖确实需要省略时，用 `eslint-disable-next-line` 并在上一行写明原因。
+
+开发模式下可以在新标签页地址后加 `?days=30&season=winter&phase=night` 预览庭和季节、时辰（`utils/preview.ts`）；正式构建会忽略这些参数。
+
+## 快捷方式的图标
+
+每个快捷方式记 `icon`：图片，或文字图标（一两个字 + 背景色）。没有 `icon` 的（默认项、更早添加的）用浏览器本地缓存的网站图标（`_favicon`），取不到时显示首字母。
+
+- **自动获取**（`utils/icons/fetch.ts`）：输入网址后同时从几个来源取，取到的都列成候选，先回来的先显示：
+  - 网站自己声明的图标（`apple-touch-icon`、`<link rel="icon">`、manifest 里的 icons）排在最前、默认选中：最清晰，也不经过第三方。但不少网站（B 站、知乎等）的首页是反爬页，读不到。
+  - 第三方图标服务配置在 `config.ts` 的 `ICONS.sources` 里，按优先级排：icon.horse、Google、favicone。加、删、调顺序只改这个数组。它们会知道你添加了哪个域名；免费服务可能限流、停掉，或在某些网络下连不上（国内直连时 Google 不通），所以配了几个，互不影响。
+  - 查不到时，有的服务会返回一张生成的占位图，而不是报错：按各自配置的 `placeholder` 识别后丢掉。favicone 的占位图对所有域名都一样，按内容比对；icon.horse 只能靠缓存时间特别短来判断，服务变了要跟着改。
+  - 原图小于 48px 的太糊，不要；都没有时默认用文字图标。
+- **权限**：获取图标要访问任意网站（manifest 里可选的 `https://*/*`）。浏览器只允许在点击里申请，所以第一次要点「自动获取网站图标」，之后输入网址就自动获取。
+- **图片怎么存**：都统一成 128px 的方形 webp data URL（`image.ts`；只是个标志的放在白底上留边），每张几 KB。图片单独存在 `niwa:icons`（快捷方式 id → 图片），快捷方式上只记 `{ kind: 'image' }`：拖动时每挪一格都会重写 `niwa:grid`，图片放进去会拖慢它。删除快捷方式或换成文字图标时，图片一起删掉。
+- 用 localStorage 而不是 IndexedDB：同步读取，第一帧图标就在，不会先闪首字母。图标多到接近容量（约 5MB）时再换。
+
+## 备份与恢复
+
+右上角的按钮导出一个 JSON 文件（`utils/backup.ts`），在另一个浏览器里导入：
+
+```json
+{
+  "app": "niwa",
+  "version": 1,
+  "exportedAt": "…",
+  "data": { "grid": [], "addTile": {}, "icons": {}, "notes": [], "visits": {}, "engine": "Bing", "theme": "system" }
+}
+```
+
+- 包含布局（每一格的位置、链接、图标）、图标图片、便签、庭的天数、搜索引擎和浅色 / 深色。日程的缓存可以重新获取，不导出。
+- **日历订阅地址相当于密码**，默认不导出，勾选后才带上（`data.calendars`）。备份里没有日历时，导入后保留这边原来的日历。
+- **导入是整体替换**，不和现有数据合并；写完重新加载页面。文件先整体校验（每一项的格式、id 不重复、同一种小组件只有一个、图片图标都有图片），有一处不对就整个拒绝，不只导入一部分。
+- **改了 `BackupData` 的结构就把 `VERSION` 加一**，并在 `parseBackup` 里把旧版本的备份迁移过来；比当前版本还新的备份会提示先更新。
+
+## 错误处理
+
+约定都在 `utils/errors.ts`，分三类：
+
+| 哪种错误                       | 例子                                          | 怎么做                                                               |
+| ------------------------------ | --------------------------------------------- | -------------------------------------------------------------------- |
+| 预料之中、用户能看懂的失败     | 连不上日历网站、地址 404、不是 .ics、权限被拒 | 在出错的地方 `throw new AppError('给用户看的话', { cause })`         |
+| 外部数据不对，但有合理的默认值 | localStorage 里的数据被改坏、网址输入无效     | 校验后返回 `null` 或用默认值（`readJson`、`normalizeUrl`），不算错误 |
+| 意料之外的错误（bug）          | 代码写错、库抛出的异常                        | 不 catch，让它往上冒                                                 |
+
+- **只在能给用户反馈的地方 catch**：对话框里的提示、小组件的状态栏。用 `toUserMessage(error, 在做什么)` 转成一句话：`AppError` 显示它的 message；其余显示“出了点问题”，同时记录下来，不会被吞掉。没有反馈可给的地方不写 catch。
+- **全局兜底只有两处**：组件渲染出错由 `ErrorBoundary` 接住，每个小组件单独一个（出错的只有这一格换成 `WidgetError`，还能重试或移除），整页外面再包一个；事件处理里抛的错误和没人处理的 Promise 失败，由 `main.tsx` 里的 `error` / `unhandledrejection` 监听接住。
+- **记录只有一个出口**：`reportError`。现在只打到控制台（新标签页不联网）；以后要存日志或上报，只改这一个函数。
+- 多个互不相关的请求用 `Promise.allSettled`，一个失败不影响其他的（例如多个日历）。
+
+## 打包
+
+```sh
+pnpm exec wxt build -b edge
+```
+
+Edge 构建输出位于 `.output/edge-mv3/`。可以在日常浏览器的 `edge://extensions` 中开启开发人员模式，通过“加载解压缩的扩展”选择该目录。不要直接修改 `.output/` 或 `.wxt/`，它们是生成目录。
+
+## 测试
+
+```sh
+pnpm test        # 两种都跑
+pnpm test:unit   # 布局算法（utils/grid/layout.ts），只要 Node，不开浏览器
+pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
+```
+
+- `tests/unit/layout.test.mjs`：拖放规则的单元测试，用字母画出网格，每条写明期望的摆放。改 `utils/grid/layout.ts` 时先跑它。
+- `tests/e2e/`：页面测试。`run.mjs` 起一个本地服务器（扩展文件来自 `.output/edge-mv3/`，测试页来自 `tests/e2e/`，测试日历由 `fixtures.mjs` 按今天生成），用独立的临时配置目录打开无头 Edge，汇总每个测试页输出的 PASS / FAIL；有失败或没跑完时退出码非 0。Edge 不在默认位置时用 `EDGE_BIN` 指定。
+  - `main.test.html`：搜索、便签、小组件、日程与月历、快捷方式增删改、拖动摆放、刷新后保持。无头模式的虚拟时间里动画不会推进，所以这一页在“减少动态效果”下运行。
+  - `calendars.test.html`：多个日历的添加、去重、命名与合并显示，日历失败时显示的原因。
+  - `icons.test.html`：自动获取网站图标（`run.mjs` 提供一个声明了图标的假网站；第三方图标服务的请求在测试页里转到假响应，不依赖外网）、找不到时用文字图标、上传图片、图片的保存与删除。
+  - `backup.test.html`：导出的内容、日历默认不导出、坏文件整个拒绝、导入后整体替换。
+  - 无头模式用的是虚拟时间：页面空闲时会直接快进，不等读文件、解码图片这类真实的异步操作。要等它们时用测试页里的 `waitFor`（等待期间一直请求 `run.mjs` 的 `/__tick`，请求挂起时虚拟时间会暂停）。
+- 拖拽的手感、深色模式、真实网站的图标、访问网站的授权弹窗这些测不到，改动后在浏览器里手动过一遍。

@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- 页面测试：同一种小组件可以放多个，各管各的数据；旧版本单独存的小组件数据在启动时搬进网格。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+// 旧版本的数据：便签、收藏夹的文件夹单独存；没有历史、天气小组件，它们的旧数据没处去
+localStorage.setItem('niwa:grid', JSON.stringify([
+  { id: 'n1', kind: 'widget', type: 'notes', size: 'm', x: 0, y: 0 },
+  { id: 'b1', kind: 'widget', type: 'bookmarks', size: 's', x: 4, y: 0 },
+]));
+localStorage.setItem('niwa:notes', JSON.stringify([{ id: 'old', text: '旧便签' }]));
+localStorage.setItem('niwa:bookmark-folder', '7');
+localStorage.setItem('niwa:history-tab', 'top');
+localStorage.setItem('niwa:weather-city', JSON.stringify({ id: '101210101', name: '杭州', region: '浙江省', lat: 30.25, lon: 120.21 }));
+
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument, ls = w.localStorage;
+  const grid = () => JSON.parse(ls.getItem('niwa:grid'));
+  const notesOf = (id) => grid().find((i) => i.id === id)?.settings?.notes?.map((n) => n.text) ?? [];
+
+  // 启动时搬进网格：便签、文件夹搬到对应的小组件上；旧键都删掉
+  log(JSON.stringify(notesOf('n1')) === '["旧便签"]', `old notes moved into widget: ${notesOf('n1')}`);
+  log(grid().find((i) => i.id === 'b1')?.settings?.folder === '7', 'old bookmark folder moved into widget');
+  log(['niwa:notes', 'niwa:bookmark-folder', 'niwa:history-tab', 'niwa:weather-city'].every((k) => ls.getItem(k) === null), 'legacy keys removed');
+
+  // 同一种可以再加一个：两个便签各管各的
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  const notesOption = [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('便签'));
+  log(!notesOption.disabled, 'notes can be added again');
+  notesOption.click(); await sleep(150);
+  const widgets = () => [...d.querySelectorAll('[data-type="notes"]')];
+  log(widgets().length === 2, 'two notes widgets');
+  const second = widgets().find((x) => x.dataset.key !== 'n1');
+  const id2 = second.dataset.key;
+  const input = second.querySelector('.notes-input');
+  Object.getOwnPropertyDescriptor(w.HTMLTextAreaElement.prototype, 'value').set.call(input, '第二组');
+  input.dispatchEvent(new w.Event('input', { bubbles: true }));
+  input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(100);
+  log(JSON.stringify(notesOf(id2)) === '["第二组"]' && JSON.stringify(notesOf('n1')) === '["旧便签"]', `notes kept apart: ${notesOf('n1')} / ${notesOf(id2)}`);
+  log(second.textContent.includes('第二组') && !widgets().find((x) => x.dataset.key === 'n1').textContent.includes('第二组'), 'each widget shows its own notes');
+
+  // 页面空白处粘贴：只存进最靠左上的那个（n1 在第一行第一格）
+  input.blur();
+  const cd = new w.DataTransfer(); cd.setData('text/plain', '粘贴的');
+  d.body.dispatchEvent(new w.ClipboardEvent('paste', { clipboardData: cd, bubbles: true })); await sleep(100);
+  log(JSON.stringify(notesOf('n1')) === '["粘贴的","旧便签"]' && JSON.stringify(notesOf(id2)) === '["第二组"]', `paste goes to the first: ${notesOf('n1')} / ${notesOf(id2)}`);
+
+  // 移除一个便签小组件：它的便签跟着没了，另一个不受影响
+  second.querySelector('.widget-more').click(); await sleep(50);
+  [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '移除小组件').click(); await sleep(150);
+  log(!grid().some((i) => i.id === id2) && JSON.stringify(notesOf('n1')) === '["粘贴的","旧便签"]', 'removing a notes widget drops its notes');
+};
+</script>

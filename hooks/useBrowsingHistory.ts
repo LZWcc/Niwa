@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
-import { hostOf, isWebUrl } from '@/utils/browsing';
-
-export type HistoryTab = 'recent' | 'top' | 'closed';
+import { hostOf, isWebUrl, type HistoryTab } from '@/utils/browsing';
 
 /** 列表里的一页。time：最近访问或关闭的时间（常去没有）；session：最近关闭的，点了恢复它 */
 export type Page = { key: string; url: string; title: string; time?: number; session?: string };

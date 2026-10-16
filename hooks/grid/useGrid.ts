@@ -1,5 +1,5 @@
 import { DEFAULT_ITEMS } from '@/config';
-import { isGridItem, type GridItem, type LinkItem, type WidgetItem } from '@/utils/grid/items';
+import { isGridItem, type GridItem, type LinkItem, type WidgetItem, type WidgetSettings } from '@/utils/grid/items';
 import type { Layout } from '@/utils/grid/layout';
 import { isIconStore, type IconSpec, type IconStore, type LinkIcon } from '@/utils/icons/model';
 import { KEYS, readJson } from '@/utils/storage';
@@ -43,6 +43,13 @@ export function useGrid() {
     updateLink: (id: string, { name, url, icon }: LinkDraft) => patch(id, { name, url, icon: storeIcon(id, icon) }),
     addWidget: (type: WidgetType, at: { x: number; y: number }) =>
       setItems((list) => [...list, { id: crypto.randomUUID(), kind: 'widget', type, size: WIDGETS[type].defaultSize, ...at }]),
+    /** 改小组件自己的设置和数据（便签的内容、天气的城市等）：按当前的设置算出要改的那几项，合并进去。 */
+    configure: (id: string, change: (settings: WidgetSettings) => WidgetSettings) =>
+      setItems((list) =>
+        list.map((item) =>
+          item.id === id && item.kind === 'widget' ? { ...item, settings: { ...item.settings, ...change(item.settings ?? {}) } } : item,
+        ),
+      ),
     /** 改尺寸（压到的格子怎么让由 useGridLayout 的 resized 算，再用 place 写回）。 */
     resize: (id: string, size: WidgetSize) => patch(id, { size }),
     remove: (id: string) => {

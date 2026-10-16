@@ -16,16 +16,14 @@ localStorage.clear();
 localStorage.setItem('niwa:grid', JSON.stringify([
   { id: 'a', kind: 'link', name: 'A', url: 'https://a.example/', icon: { kind: 'image' }, x: 0, y: 0 },
   { id: 'b', kind: 'link', name: 'B', url: 'https://b.example/', icon: { kind: 'text', text: 'B', color: '#4f86c6' }, x: 1, y: 0 },
-  { id: 'n', kind: 'widget', type: 'notes', size: 'm', x: 2, y: 0 },
+  { id: 'n', kind: 'widget', type: 'notes', size: 'm', x: 2, y: 0, settings: { notes: [{ id: '1', text: 'hello' }] } },
 ]));
 localStorage.setItem('niwa:icons', JSON.stringify({ a: 'data:image/webp;base64,AAAA' }));
-localStorage.setItem('niwa:notes', JSON.stringify([{ id: '1', text: 'hello' }]));
 localStorage.setItem('niwa:calendars', JSON.stringify([{ id: 'c', url: 'https://cal.example/x.ics', name: 'Cal', color: '#4f86c6' }]));
 localStorage.setItem('niwa:engine', 'Bing');
 localStorage.setItem('niwa:search-exclude', JSON.stringify(['secret.example']));
 localStorage.setItem('niwa:weather-account', JSON.stringify({ host: 'h.re.qweatherapi.com', key: 'k' }));
 localStorage.setItem('niwa:theme', 'dark');
-localStorage.setItem('niwa:weather-city', JSON.stringify({ id: '101210101', name: '杭州', region: '浙江省', lat: 30.25, lon: 120.21 }));
 
 let restored = false;
 const f = document.getElementById('f');
@@ -36,28 +34,26 @@ f.onload = async () => {
   if (restored) {
     const grid = JSON.parse(ls.getItem('niwa:grid'));
     log(grid.length === 3 && grid[0].icon.kind === 'image' && JSON.parse(ls.getItem('niwa:icons')).a === 'data:image/webp;base64,AAAA', 'layout and icons restored');
-    log(JSON.parse(ls.getItem('niwa:notes'))[0]?.text === 'hello' && d.documentElement.dataset.theme === 'dark', 'notes and theme restored');
-    log(JSON.parse(ls.getItem('niwa:weather-city'))?.name === '杭州', 'weather city restored');
+    log(grid[2].settings?.notes?.[0]?.text === 'hello' && d.documentElement.dataset.theme === 'dark', 'notes and theme restored');
     log(ls.getItem('niwa:calendars') === '[]' && JSON.parse(ls.getItem('niwa:weather-account'))?.host === 'other.re.qweatherapi.com', 'secrets kept when backup has none');
     return;
   }
 
   // 拦下导出时生成的文件
-  // 只截下文件内容，不真的下载：否则每跑一次测试，都会往这台电脑的下载文件夹里存两份备份
-  const click = w.HTMLAnchorElement.prototype.click;
-  w.HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
   const blobs = [];
   const create = w.URL.createObjectURL.bind(w.URL);
   w.URL.createObjectURL = (blob) => { blobs.push(blob); return create(blob); };
+  // 只截下文件内容，不真的下载：否则每跑一次测试，都会往这台电脑的下载文件夹里存两份备份
+  const click = w.HTMLAnchorElement.prototype.click;
+  w.HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
   d.querySelector('[aria-label="备份与恢复"]').click(); await sleep(100);
   const dlg = d.querySelector('dialog[aria-labelledby="backup-title"]');
   const button = (text) => [...dlg.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 
   button('导出备份').click(); await sleep(100);
   const plain = JSON.parse(await blobs[0].text());
-  log(plain.app === 'niwa' && plain.version === 4 && plain.data.grid.length === 3, 'export has layout');
-  log(plain.data.icons.a === 'data:image/webp;base64,AAAA' && plain.data.notes[0].text === 'hello' && plain.data.theme === 'dark' && plain.data.engine === 'Bing' && plain.data.visits?.days === 1, 'export has icons, notes, prefs and visits');
-  log(plain.data.weather?.name === '杭州', 'export has weather city');
+  log(plain.app === 'niwa' && plain.version === 5 && plain.data.grid.length === 3, 'export has layout');
+  log(plain.data.icons.a === 'data:image/webp;base64,AAAA' && plain.data.grid[2].settings.notes[0].text === 'hello' && plain.data.theme === 'dark' && plain.data.engine === 'Bing' && plain.data.visits?.days === 1, 'export has icons, notes, prefs and visits');
   log(!('secrets' in plain.data) && !JSON.stringify(plain).includes('cal.example') && !JSON.stringify(plain).includes('qweatherapi') && !JSON.stringify(plain).includes('secret.example'), 'secrets not exported by default');
   dlg.querySelector('input[type=checkbox]').click(); await sleep(50);
   button('导出备份').click(); await sleep(100);
@@ -96,16 +92,19 @@ f.onload = async () => {
   await pick(JSON.stringify(v2));
   const v2Text = dlg.querySelector('.backup-pending')?.textContent ?? '';
   log(!error() && v2Text.includes('日历订阅地址也会被替换') && v2Text.includes('天气 KEY、联想排除的网站保持不变'), `version 2 calendars migrated: ${error() || v2Text}`);
+  // 第 5 版之前便签单独放在 data.notes：搬进便签小组件，没有便签小组件时补一个
+  const v4 = structuredClone(plain); v4.version = 4; v4.data.grid = v4.data.grid.filter((i) => i.kind === 'link'); v4.data.notes = [{ id: 'x', text: 'a' }, { id: 'y', text: 'b' }];
+  await pick(JSON.stringify(v4));
+  const v4Text = dlg.querySelector('.backup-pending')?.textContent ?? '';
+  log(!error() && v4Text.includes('1 个小组件、2 条便签'), `version 4 notes migrated: ${error() || v4Text}`);
   const badSecret = structuredClone(full); badSecret.data.secrets.weatherAccount = { host: 1 };
   await pick(JSON.stringify(badSecret));
   log(error().includes('天气 KEY的数据不对'), `bad secret rejected: ${error()}`);
 
   // 模拟另一个浏览器：数据都不一样，再导入不带日历的备份
-  ls.setItem('niwa:notes', '[]');
   ls.setItem('niwa:calendars', '[]');
   ls.setItem('niwa:weather-account', JSON.stringify({ host: 'other.re.qweatherapi.com', key: 'x' }));
   ls.setItem('niwa:theme', 'light');
-  ls.removeItem('niwa:weather-city');
   await pick(JSON.stringify(plain));
   const summary = dlg.querySelector('.backup-pending')?.textContent ?? '';
   log(summary.includes('2 个快捷方式、1 个小组件、1 条便签') && summary.includes('日历订阅地址、天气 KEY、联想排除的网站保持不变') && !error(), `summary before replacing: ${summary}`);

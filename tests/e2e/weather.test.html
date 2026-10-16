@@ -10,6 +10,8 @@ window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.rea
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
+// 升级前留下的旧格式缓存（只存一个城市：{ key, fetchedAt, forecast, error }）：不能让它卡住新的读取
+localStorage.setItem('niwa:weather-forecast', JSON.stringify({ key: '101210101|h|k', fetchedAt: 1, forecast: null, error: null }));
 
 // 假的和风数据，时间按测试机的时区写（和风返回的时间带时区，例如 2026-10-16T20:00+08:00）。
 const pad = (n) => String(n).padStart(2, '0');
@@ -86,13 +88,13 @@ f.onload = async () => {
   dlg.querySelector('.place').click(); await sleep(200);
 
   // 选定后取实况和预报：温度、天气、今天的最高最低
-  log(!dlg.open && JSON.parse(w.localStorage.getItem('niwa:weather-city'))?.id === '101210101', 'place saved');
+  log(!dlg.open && JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'weather')?.settings?.place?.id === '101210101', 'place saved');
   log(['/v7/weather/now', '/v7/weather/24h', '/v7/weather/7d'].every((p) => requests.some((u) => u.includes(p) && u.includes('location=101210101'))), 'forecast requested for place');
   log(ww.querySelector('.widget-meta')?.textContent === '杭州', `meta is city: ${ww.querySelector('.widget-meta')?.textContent}`);
   log(ww.querySelector('.weather-temp')?.textContent === '23°', `current temp: ${ww.querySelector('.weather-temp')?.textContent}`);
   log(ww.querySelector('.weather-desc')?.textContent === '雾 · 25° / 20°', `description: ${ww.querySelector('.weather-desc')?.textContent}`);
   log(!ww.querySelector('.weather-hours'), 'small has no hourly');
-  log(JSON.parse(w.localStorage.getItem('niwa:weather-forecast'))?.forecast?.current?.temp === 23, 'forecast cached');
+  log(Object.values(JSON.parse(w.localStorage.getItem('niwa:weather-forecast'))).some((e) => e.forecast?.current?.temp === 23), 'forecast cached');
 
   // 中：现在加接下来 4 小时
   await resize(ww, '中');

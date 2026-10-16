@@ -5,11 +5,11 @@ import type { WeatherState } from '@/hooks/useWeather';
 import { toUserMessage } from '@/utils/errors';
 import { normalizeHost, searchPlaces, type Place } from '@/utils/weather';
 
-type Props = { open: boolean; weather: WeatherState; onClose: () => void };
+type Props = { open: boolean; weather: WeatherState; onPick: (place: Place) => void; onClose: () => void };
 
 // 天气设置：先填和风天气的 API Host 和 KEY（保存前试搜一次，确认填对了），再按名称搜城市，点一个就选定。
-export default function WeatherDialog({ open, weather, onClose }: Props) {
-  const { account, setAccount, setPlace } = weather;
+export default function WeatherDialog({ open, weather, onPick, onClose }: Props) {
+  const { account, setAccount } = weather;
   const [editing, setEditing] = useState(!account);
   const [host, setHost] = useState('');
   const [key, setKey] = useState('');
@@ -145,7 +145,7 @@ export default function WeatherDialog({ open, weather, onClose }: Props) {
                         type="button"
                         className="place"
                         onClick={() => {
-                          setPlace(p);
+                          onPick(p);
                           onClose();
                         }}
                       >

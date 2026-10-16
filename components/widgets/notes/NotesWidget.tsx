@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useStoredList } from '@/hooks/useStored';
-import { isNote, type Note } from '@/utils/notes';
-import { KEYS } from '@/utils/storage';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import type { Note } from '@/utils/notes';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
 
-// 便签：回车保存，点一条复制；焦点不在输入框时，在页面任意处粘贴也会存成一条。
+// 便签：回车保存，点一条复制；焦点不在输入框时，在页面任意处粘贴也会存成一条（放了几个便签时存进最靠左上的那个）。
+// 每个便签小组件是独立的一组，内容在自己的 settings.notes 里。
 
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
-export default function NotesWidget({ widget, frame }: WidgetProps) {
+export default function NotesWidget({ widget, frame, settings, onSettings, first }: WidgetProps) {
   const { size } = widget;
-  const [notes, setNotes] = useStoredList<Note>(KEYS.notes, isNote, []);
+  const notes = settings.notes ?? [];
+  const setNotes = useCallback((change: (list: Note[]) => Note[]) => onSettings((s) => ({ notes: change(s.notes ?? []) })), [onSettings]);
+  const inputId = useId();
   const [draft, setDraft] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   // 刚存的那条有入场动画；打开页面时已有的不动。
@@ -32,6 +33,7 @@ export default function NotesWidget({ widget, frame }: WidgetProps) {
 
   // 焦点不在输入框时，在页面任意处粘贴，就直接存成一条便签。
   useEffect(() => {
+    if (!first) return;
     const onPaste = (e: ClipboardEvent) => {
       if ((e.target as Element).closest('input, textarea, [contenteditable="true"]')) return;
       const text = e.clipboardData!.getData('text/plain');
@@ -41,7 +43,7 @@ export default function NotesWidget({ widget, frame }: WidgetProps) {
     };
     document.addEventListener('paste', onPaste);
     return () => document.removeEventListener('paste', onPaste);
-  }, [add]);
+  }, [add, first]);
 
   const copy = (note: Note) => {
     // 不等剪贴板 API 返回：它在少数环境下会一直挂起。失败时没有要做的，交给全局记录。
@@ -61,11 +63,11 @@ export default function NotesWidget({ widget, frame }: WidgetProps) {
 
         {size !== 's' && (
           <>
-            <label className="sr-only" htmlFor="note-input">
+            <label className="sr-only" htmlFor={inputId}>
               新便签
             </label>
             <textarea
-              id="note-input"
+              id={inputId}
               className="notes-input"
               rows={1}
               value={draft}

@@ -100,8 +100,8 @@ f.onload = async () => {
   log(!d.querySelector('.search-hint'), 'no / hint');
 
   // 便签
-  const notes = () => JSON.parse(w.localStorage.getItem('niwa:notes') || '[]');
-  const ni = d.querySelector('#note-input');
+  const notes = () => JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'notes')?.settings?.notes ?? [];
+  const ni = d.querySelector('[data-type="notes"] .notes-input');
   log(!!d.querySelector('.notes-empty'), 'notes empty state shown');
   ni.focus();
   setVal2(ni, 'ssh lzwcc'); await sleep(30);
@@ -142,7 +142,7 @@ f.onload = async () => {
   log(!w.document.querySelector('[data-type="calendar"]') && !w.localStorage.getItem('niwa:calendar-cache'), 'calendar off by default, no fetch');
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
   const pick = (name) => [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name));
-  log(pick('便签').disabled && pick('庭').disabled && !pick('日程').disabled, 'picker disables added widgets');
+  log(!pick('便签').disabled && !pick('庭').disabled && !pick('日程').disabled, 'picker allows adding the same widget again');
   pick('日程').click(); await sleep(80);
   log(types() === 'notes:m,garden:s,calendar:s', `calendar added: ${types()}`);
   log(!!d.querySelector('.cal-empty'), 'calendar shows connect state');

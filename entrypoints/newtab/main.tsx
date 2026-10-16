@@ -4,6 +4,7 @@ import { browser } from 'wxt/browser';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { applyAtmosphere } from '@/utils/almanac';
 import { reportError } from '@/utils/errors';
+import { migrateWidgetData } from '@/utils/grid/migrate';
 import { preview } from '@/utils/preview';
 import { applyTheme, readThemeChoice, systemTheme } from '@/utils/theme';
 import { applySceneWeather } from '@/utils/weather';
@@ -27,6 +28,9 @@ addEventListener('unhandledrejection', (e) => {
   if (detached()) e.preventDefault();
   else reportError(e.reason, '未处理的 Promise 失败');
 });
+
+// 旧版本单独存的小组件数据搬进网格（只有升级后第一次打开时有事做）。
+migrateWidgetData();
 
 // 首帧前写好浅色 / 深色和季节、时辰，避免颜色闪变。
 const choice = readThemeChoice();

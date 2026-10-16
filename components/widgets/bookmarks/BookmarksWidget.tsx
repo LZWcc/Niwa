@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { usePermissions } from '@/hooks/usePermissions';
 import { folderName, hostOf, isWebUrl, pathTo, searchBookmarks } from '@/utils/browsing';
-import { KEYS } from '@/utils/storage';
 import AccessPrompt from '../AccessPrompt';
 import LinkRow from '../LinkRow';
 import LinksSearch from '../LinksSearch';
@@ -10,22 +9,19 @@ import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
 
-// 收藏夹：在卡片里按文件夹浏览浏览器的收藏，记住上次看到的文件夹；中、大尺寸可以搜索全部收藏。
+// 收藏夹：在卡片里按文件夹浏览浏览器的收藏，记住上次看到的文件夹（settings.folder，放了几个时各记各的）；中、大尺寸可以搜索全部收藏。
 
 const PERMISSIONS = ['bookmarks'];
 
-export default function BookmarksWidget({ widget, frame }: WidgetProps) {
+export default function BookmarksWidget({ widget, frame, settings, onSettings }: WidgetProps) {
   const { size } = widget;
   const [granted, request] = usePermissions(PERMISSIONS);
   const tree = useBookmarks(granted === true);
-  const [folderId, setFolderId] = useState(() => localStorage.getItem(KEYS.bookmarkFolder));
+  const folderId = settings.folder ?? null;
   // null：没在搜索
   const [query, setQuery] = useState<string | null>(null);
 
-  const open = (id: string) => {
-    setFolderId(id);
-    localStorage.setItem(KEYS.bookmarkFolder, id);
-  };
+  const open = (folder: string) => onSettings(() => ({ folder }));
 
   let content = null;
   if (granted === false) {

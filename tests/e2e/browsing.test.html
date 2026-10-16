@@ -70,7 +70,7 @@ f.onload = async () => {
   // 进出文件夹，记住看到哪里
   row(bw, '工作').click(); await sleep(50);
   log(JSON.stringify(titles(bw)) === '["Linear"]' && bw.querySelector('.links-path')?.textContent === '收藏夹栏 / 工作', `open folder shows path: ${bw.querySelector('.links-path')?.textContent}`);
-  log(w.localStorage.getItem('niwa:bookmark-folder') === '10', 'folder remembered');
+  log(JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'bookmarks')?.settings?.folder === '10', 'folder remembered');
   bw.querySelector('.links-back').click(); await sleep(50);
   bw.querySelector('.links-back').click(); await sleep(50);
   log(!bw.querySelector('.links-path') && !bw.querySelector('.links-back') && JSON.stringify(titles(bw)) === '["收藏夹栏","其他收藏夹"]', `root lists top folders: ${titles(bw)}`);
@@ -111,7 +111,7 @@ f.onload = async () => {
   // 常去：右侧是域名，记住选的是哪一组
   [...hw.querySelectorAll('.links-tab')].find((t) => t.textContent === '常去').click(); await sleep(50);
   log(JSON.stringify(titles(hw)) === '["GitHub"]' && hw.querySelector('.link-meta')?.textContent === 'github.com', `top sites with host: ${titles(hw)}`);
-  log(w.localStorage.getItem('niwa:history-tab') === 'top', 'tab remembered');
+  log(JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'history')?.settings?.tab === 'top', 'tab remembered');
 
   // 大尺寸有最近关闭：窗口算一条，点了恢复并从列表里消失
   await resize(hw, '大');

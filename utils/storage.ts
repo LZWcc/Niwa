@@ -8,7 +8,6 @@ export const KEYS = {
   icons: 'niwa:icons',
   /** 「添加」格子的位置 */
   addTile: 'niwa:add',
-  notes: 'niwa:notes',
   /** 已连接的日历（订阅地址相当于密码，私密数据见 backup.ts 的 SECRETS） */
   calendars: 'niwa:calendars',
   /** 日程的上一次结果，打开页面时先显示它 */
@@ -23,21 +22,26 @@ export const KEYS = {
   searchSuggest: 'niwa:search-suggest',
   /** 联想里排除的网站（域名列表，私密数据见 backup.ts 的 SECRETS） */
   searchExclude: 'niwa:search-exclude',
-  /** 收藏夹小组件上次看的文件夹 id（只对这个浏览器有效，不进备份） */
-  bookmarkFolder: 'niwa:bookmark-folder',
-  /** 历史小组件上次看的一组：recent、top、closed */
-  historyTab: 'niwa:history-tab',
-  /** 天气小组件选的城市（和风的 LocationID） */
-  weather: 'niwa:weather-city',
   /** 和风天气的 API Host 和 KEY（相当于密码，私密数据见 backup.ts 的 SECRETS） */
   weatherAccount: 'niwa:weather-account',
-  /** 天气的上一次结果，打开页面时先显示它 */
+  /** 天气的上一次结果（按城市分开），打开页面时先显示它 */
   weatherCache: 'niwa:weather-forecast',
   /** 背景是否跟随天气：on 表示跟随（天气小组件菜单里的开关，默认不跟随） */
   sceneWeather: 'niwa:scene-weather',
 } as const;
 
 export type StorageKey = (typeof KEYS)[keyof typeof KEYS];
+
+/**
+ * 旧版本每种小组件只能放一个，各自的数据单独存在这些键里；现在放在网格里每个小组件自己的 settings 里。
+ * 页面启动时搬一次（utils/grid/migrate.ts），搬完删掉。
+ */
+export const LEGACY_KEYS = {
+  notes: 'niwa:notes',
+  weatherPlace: 'niwa:weather-city',
+  bookmarkFolder: 'niwa:bookmark-folder',
+  historyTab: 'niwa:history-tab',
+} as const;
 
 /** 读出 JSON 并校验；没有、解析失败（数据被改坏）或校验不过都返回 null。 */
 export function readJson<T>(key: StorageKey, isValid: (value: unknown) => value is T): T | null {

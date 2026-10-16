@@ -20,7 +20,7 @@ import ShortcutDialog from './ShortcutDialog';
 const area = (r: Rect): CSSProperties => ({ gridColumn: `${r.x + 1} / span ${r.w}`, gridRow: `${r.y + 1} / span ${r.h}` });
 
 export default function Grid({ now }: { now: Date }) {
-  const { items, iconOf, addLink, updateLink, addWidget, resize, remove, place } = useGrid();
+  const { items, iconOf, addLink, updateLink, addWidget, configure, resize, remove, place } = useGrid();
   // undefined：对话框关闭；null：新建；对象：编辑
   const [editing, setEditing] = useState<LinkItem | null | undefined>(undefined);
   const closeDialog = () => setEditing(undefined);
@@ -44,6 +44,17 @@ export default function Grid({ now }: { now: Date }) {
   const domOrder = useRef<string[]>([]);
   domOrder.current = [...domOrder.current.filter((id) => ids.includes(id)), ...ids.filter((id) => !domOrder.current.includes(id))];
   const byId = new Map(items.map((i) => [i.id, i]));
+  // 每种小组件里最靠左上的那个（先比行再比列）
+  const first = new Set<string>();
+  const seen = new Set<string>();
+  for (const item of items
+    .filter((i) => i.kind === 'widget')
+    .sort((a, b) => layout.get(a.id)!.y - layout.get(b.id)!.y || layout.get(a.id)!.x - layout.get(b.id)!.x)) {
+    if (item.kind === 'widget' && !seen.has(item.type)) {
+      seen.add(item.type);
+      first.add(item.id);
+    }
+  }
 
   return (
     <>
@@ -76,14 +87,20 @@ export default function Grid({ now }: { now: Date }) {
           };
           return (
             <ErrorBoundary key={id} fallback={(retry) => <WidgetError widget={item} frame={frame} onRetry={retry} />}>
-              <Widget widget={item} frame={frame} now={now} />
+              <Widget
+                widget={item}
+                frame={frame}
+                now={now}
+                settings={item.settings ?? {}}
+                onSettings={(change) => configure(id, change)}
+                first={first.has(id)}
+              />
             </ErrorBoundary>
           );
         })}
         <AddTile
           style={area(layout.get('add')!)}
           lifted={dragId === 'add'}
-          present={items.flatMap((i) => (i.kind === 'widget' ? [i.type] : []))}
           onAddLink={() => setEditing(null)}
           onAddWidget={(type) => animate(() => addWidget(type, spotForNew(WIDGET_SIZES[WIDGETS[type].defaultSize])))}
         />

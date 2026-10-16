@@ -5,14 +5,12 @@ import { WIDGETS, WIDGET_TYPES, type WidgetType } from '@/utils/widgets';
 type Props = {
   style: CSSProperties;
   lifted: boolean;
-  /** 已经放在网格里的小组件（每种只能放一个） */
-  present: WidgetType[];
   onAddLink: () => void;
   onAddWidget: (type: WidgetType) => void;
 };
 
-// 「添加」格子：点开菜单，加一个网站或一种小组件。它本身也能拖到别处。
-export default function AddTile({ style, lifted, present, onAddLink, onAddWidget }: Props) {
+// 「添加」格子：点开菜单，加一个网站或一个小组件（同一种可以加多个）。它本身也能拖到别处。
+export default function AddTile({ style, lifted, onAddLink, onAddWidget }: Props) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -45,22 +43,12 @@ export default function AddTile({ style, lifted, present, onAddLink, onAddWidget
             <span className="picker-desc">添加一个快捷方式</span>
           </button>
           <p className="add-heading">小组件</p>
-          {WIDGET_TYPES.map((type) => {
-            const added = present.includes(type);
-            return (
-              <button
-                key={type}
-                type="button"
-                role="menuitem"
-                className="add-option"
-                disabled={added}
-                onClick={pick(() => onAddWidget(type))}
-              >
-                <span className="picker-name">{WIDGETS[type].name}</span>
-                <span className="picker-desc">{added ? '已添加' : WIDGETS[type].desc}</span>
-              </button>
-            );
-          })}
+          {WIDGET_TYPES.map((type) => (
+            <button key={type} type="button" role="menuitem" className="add-option" onClick={pick(() => onAddWidget(type))}>
+              <span className="picker-name">{WIDGETS[type].name}</span>
+              <span className="picker-desc">{WIDGETS[type].desc}</span>
+            </button>
+          ))}
         </Popover>
       )}
     </div>

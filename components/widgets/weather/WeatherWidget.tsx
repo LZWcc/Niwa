@@ -12,22 +12,24 @@ import WeatherIcon from './WeatherIcon';
 
 // 天气：点阵面板里是现在的温度和天气；中尺寸加接下来几小时，大尺寸再加体感、湿度、风和接下来几天。
 // 数据来自和风天气，用户自己填 API Host 和 KEY。数据钩子只在这个小组件存在时挂载，没填 KEY、没选城市时不联网。
-// 菜单里可以打开「背景跟随天气」：阴、雾、雨、雪时背景跟着变（只有这个小组件在时才跟随）。
+// 每个天气小组件各选各的城市（settings.place），和风的 KEY 共用。
+// 菜单里可以打开「背景跟随天气」：阴、雾、雨、雪时背景跟着变（只有天气小组件在时才跟随，放了几个时跟最靠左上的那个）。
 
-export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
+export default function WeatherWidget({ widget, frame, now, settings, onSettings, first }: WidgetProps) {
   const { size } = widget;
-  const weather = useWeather(now);
+  const weather = useWeather(now, settings.place ?? null);
   const { account, place, forecast, error, loading } = weather;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sceneOn, setSceneOn] = useState(() => localStorage.getItem(KEYS.sceneWeather) === 'on');
 
   // 在绘制前写好，打开页面时背景不会先晴后雨；小组件移除时背景恢复。
   const fresh = forecast && now.getTime() - weather.fetchedAt < WEATHER.sceneMaxAge;
-  const scene = preview.weather ?? (sceneOn && fresh ? sceneOf(kindOf(forecast.current.code)) : null);
+  const scene = first ? (preview.weather ?? (sceneOn && fresh ? sceneOf(kindOf(forecast.current.code)) : null)) : null;
   useLayoutEffect(() => {
+    if (!first) return;
     applySceneWeather(scene);
     return () => applySceneWeather(null);
-  }, [scene]);
+  }, [scene, first]);
 
   const menu = (
     <>
@@ -149,7 +151,12 @@ export default function WeatherWidget({ widget, frame, now }: WidgetProps) {
           {body}
         </div>
       </WidgetFrame>
-      <WeatherDialog open={dialogOpen} weather={weather} onClose={() => setDialogOpen(false)} />
+      <WeatherDialog
+        open={dialogOpen}
+        weather={weather}
+        onPick={(place) => onSettings(() => ({ place }))}
+        onClose={() => setDialogOpen(false)}
+      />
     </>
   );
 }

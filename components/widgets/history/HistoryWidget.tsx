@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useBrowsingHistory, type HistoryTab } from '@/hooks/useBrowsingHistory';
+import { useBrowsingHistory } from '@/hooks/useBrowsingHistory';
 import { usePermissions } from '@/hooks/usePermissions';
-import { hostOf, visitLabel } from '@/utils/browsing';
-import { KEYS } from '@/utils/storage';
+import { hostOf, visitLabel, type HistoryTab } from '@/utils/browsing';
 import AccessPrompt from '../AccessPrompt';
 import LinkRow from '../LinkRow';
 import LinksSearch from '../LinksSearch';
@@ -10,7 +9,7 @@ import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
 
-// 历史：最近看过的、常去的网站，大尺寸再加最近关闭的标签页（点了恢复）。记住上次看的是哪一组。
+// 历史：最近看过的、常去的网站，大尺寸再加最近关闭的标签页（点了恢复）。记住上次看的是哪一组（settings.tab，放了几个时各记各的）。
 // 中、大尺寸可以搜索全部浏览记录。
 
 // 最近关闭的网址和标题要有 tabs 权限才拿得到。
@@ -22,21 +21,17 @@ const TABS: Record<HistoryTab, { name: string; empty: string }> = {
   closed: { name: '最近关闭', empty: '最近没有关闭的标签页' },
 };
 
-export default function HistoryWidget({ widget, frame, now }: WidgetProps) {
+export default function HistoryWidget({ widget, frame, now, settings, onSettings }: WidgetProps) {
   const { size } = widget;
   const [granted, request] = usePermissions(PERMISSIONS);
-  const [saved, setSaved] = useState(() => localStorage.getItem(KEYS.historyTab));
   // null：没在搜索
   const [query, setQuery] = useState<string | null>(null);
   const searching = size !== 's' && query !== null;
   const tabs = (Object.keys(TABS) as HistoryTab[]).filter((t) => t !== 'closed' || size === 'l');
-  const tab = tabs.find((t) => t === saved) ?? 'recent';
+  const tab = tabs.find((t) => t === settings.tab) ?? 'recent';
   const { pages, restore } = useBrowsingHistory(granted ? tab : null, searching ? query : '', now);
 
-  const choose = (t: HistoryTab) => {
-    setSaved(t);
-    localStorage.setItem(KEYS.historyTab, t);
-  };
+  const choose = (t: HistoryTab) => onSettings(() => ({ tab: t }));
 
   return (
     <WidgetFrame widget={widget} frame={frame}>

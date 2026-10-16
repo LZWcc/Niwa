@@ -33,12 +33,35 @@ f.onload = async () => {
   const tw = [...d.querySelectorAll('[data-type="timer"]')].find((x) => x.dataset.key !== 't0');
   const id = tw.dataset.key;
   log(time(tw) === '25:00', `default 25 minutes: ${time(tw)}`);
-  [...tw.querySelectorAll('.timer-preset')].find((b) => b.textContent === '5 分').click(); await sleep(50);
+  // 滑块调时长：拖到 5 分钟那一格（第 5 格），时间跟着变；最右边是 3 小时
+  const slider = tw.querySelector('.timer-slider');
+  const slide = (to) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(slider, String(to)); slider.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  slide(slider.max); await sleep(50);
+  log(time(tw) === '3:00:00' && slider.getAttribute('aria-valuetext') === '180 分钟', `slider max is 3 hours: ${time(tw)}`);
+  slide(4); await sleep(50);
   log(time(tw) === '05:00' && state(id).duration === 300000, 'picked 5 minutes');
+
+  // 面板上的箭头细调：秒加一、分减一；聚焦秒数按 ↓；秒从 00 往下转到 59，不动分钟
+  const seg = (label) => [...tw.querySelectorAll('.timer-seg')].find((x) => x.getAttribute('aria-label') === label);
+  const tap = async (label, dir) => {
+    const b = seg(label).querySelector(dir === 1 ? '.is-up' : '.is-down');
+    b.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true })); b.dispatchEvent(new w.PointerEvent('pointerup', { bubbles: true })); await sleep(50);
+  };
+  await tap('秒', 1);
+  log(time(tw) === '05:01', `seconds up: ${time(tw)}`);
+  await tap('分钟', -1);
+  log(time(tw) === '04:01', `minutes down: ${time(tw)}`);
+  seg('秒').focus(); seg('秒').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })); await sleep(50);
+  log(time(tw) === '04:00', `arrow key: ${time(tw)}`);
+  await tap('秒', -1);
+  log(time(tw) === '04:59' && state(id).duration === 299000, `seconds wrap without touching minutes: ${time(tw)}`);
+  // 滑块还停在 5 分钟那一格：挪开再挪回来，回到整 5 分钟
+  slide(3); await sleep(50); slide(4); await sleep(50);
+  log(time(tw) === '05:00', `slider snaps back to whole minutes: ${time(tw)}`);
 
   // 开始、走、暂停（停住不动）、继续、重置
   btn(tw, '开始').click(); await sleep(2100);
-  log(/^04:5[78]$/.test(time(tw)) && typeof state(id).startedAt === 'number' && !tw.querySelector('.timer-preset'), `counting down: ${time(tw)}`);
+  log(/^04:5[78]$/.test(time(tw)) && typeof state(id).startedAt === 'number' && !tw.querySelector('.timer-slider'), `counting down: ${time(tw)}`);
   btn(tw, '暂停').click(); await sleep(50);
   const paused = time(tw);
   await sleep(1500);

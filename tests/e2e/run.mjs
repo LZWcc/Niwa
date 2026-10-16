@@ -28,9 +28,10 @@ const suites = [
   { file: 'widgets.test.html', flags: ['--force-prefers-reduced-motion'], done: 'removing a notes widget drops its notes' },
   { file: 'worldclock.test.html', flags: ['--force-prefers-reduced-motion'], done: 'second world clock has its own cities' },
   { file: 'timer.test.html', flags: ['--force-prefers-reduced-motion'], done: 'stopwatch counting' },
+  { file: 'alarm.test.html', flags: [], done: 'restart runs the same duration again' },
   { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no moon phase on the sun in light theme' },
-  { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
   { file: 'weather-cache.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no request while cache is fresh' },
+  { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
 ];
 
 const types = {

@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- 页面测试：计时器到点的提醒小窗——显示的内容，点「知道了」「再计一次」改网格里那个计时器。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:360px;height:240px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+const done = { mode: 'countdown', duration: 300000, elapsed: 0, startedAt: Date.now() - 301000 };
+localStorage.setItem('niwa:grid', JSON.stringify([
+  { id: 't1', kind: 'widget', type: 'timer', size: 'm', x: 0, y: 0, settings: { timer: done } },
+  { id: 't2', kind: 'widget', type: 'timer', size: 'm', x: 4, y: 0, settings: { timer: done } },
+]));
+const timer = (id) => JSON.parse(localStorage.getItem('niwa:grid')).find((i) => i.id === id).settings.timer;
+const f = document.getElementById('f');
+const open = (id) => new Promise((resolve) => { f.onload = () => setTimeout(resolve, 300); f.src = `/alarm.html?id=${id}&message=${encodeURIComponent('5 分钟的倒计时结束了')}`; });
+(async () => {
+  // 小窗里写着时间到和是哪个倒计时
+  await open('t1');
+  const d = f.contentDocument;
+  const btn = (text) => [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
+  log(d.querySelector('.alarm-title')?.textContent === '时间到' && d.querySelector('.alarm-message')?.textContent === '5 分钟的倒计时结束了', 'alarm shows message');
+
+  // 知道了：这个计时器回到开始前，另一个不动
+  btn('知道了').click(); await sleep(50);
+  log(timer('t1').startedAt === null && timer('t1').elapsed === 0 && timer('t2').startedAt !== null, 'acknowledge resets only this timer');
+
+  // 再计一次：同样的时长重新开始
+  await open('t2');
+  const before = Date.now();
+  [...f.contentDocument.querySelectorAll('button')].find((b) => b.textContent.trim() === '再计一次').click(); await sleep(50);
+  log(timer('t2').startedAt >= before && timer('t2').elapsed === 0 && timer('t2').duration === 300000, 'restart runs the same duration again');
+})();
+</script>

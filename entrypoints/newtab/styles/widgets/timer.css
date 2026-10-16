@@ -44,6 +44,48 @@
 .timer-colon {
   opacity: 0.45;
 }
+/* 还没开始的倒计时：时、分、秒上下各有一个箭头，悬停或聚焦时出现。箭头浮在数字上下，不占位置，出现时数字不动 */
+.timer-seg {
+  position: relative;
+  display: inline-block;
+  border-radius: 6px;
+  outline: 0;
+  cursor: default;
+}
+.timer-seg:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+.timer-arrow {
+  position: absolute;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 16px;
+  margin-left: -14px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.timer-arrow.is-up {
+  bottom: 100%;
+}
+.timer-arrow.is-down {
+  top: 100%;
+}
+.timer-arrow:hover {
+  background: var(--border);
+  color: var(--ink);
+}
+.timer-panel:hover .timer-arrow,
+.timer-seg:focus-visible .timer-arrow {
+  opacity: 1;
+}
 .timer-bar {
   width: 80%;
   height: 3px;
@@ -91,49 +133,39 @@
   flex: 1;
   min-width: 0;
 }
-.timer-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.timer-preset {
-  height: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+.timer-slider {
+  width: 100%;
+  height: 20px;
+  margin: 0;
   background: transparent;
-  font-size: 12px;
-  color: var(--muted);
   cursor: pointer;
+  appearance: none;
 }
-.timer-preset:hover {
-  color: var(--ink);
+/* 轨道：已选的部分是节气色，--pct 是滑块的位置 */
+.timer-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--term) var(--pct), var(--border) var(--pct));
 }
-.timer-preset[aria-pressed='true'] {
-  border-color: transparent;
-  background: var(--border);
-  color: var(--ink);
-}
-.timer-custom {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.timer-custom input {
-  width: 64px;
-  height: 26px;
-  padding: 0 8px;
+.timer-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  outline: 0;
-  background: color-mix(in srgb, var(--surface-hover) 70%, transparent);
-  font: inherit;
-  font-size: 12px;
+  border-radius: 50%;
+  background: var(--elevated);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
+  appearance: none;
+  transition: transform 0.15s;
 }
-.timer-custom input:focus {
-  border-color: var(--focus);
+.timer-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.timer-slider:focus-visible {
+  outline: 0;
+}
+.timer-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--focus);
 }
 .timer-buttons {
   display: flex;

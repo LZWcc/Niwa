@@ -26,6 +26,8 @@ export const KEYS = {
   weatherAccount: 'niwa:weather-account',
   /** 天气的上一次结果（按城市分开），打开页面时先显示它 */
   weatherCache: 'niwa:weather-forecast',
+  /** 计时器第一次开始倒计时时问过要不要发通知了：yes。只问一次，之后在菜单里开关 */
+  timerNotifyAsked: 'niwa:timer-notify-asked',
   /** 背景是否跟随天气：on 表示跟随（天气小组件菜单里的开关，默认不跟随） */
   sceneWeather: 'niwa:scene-weather',
 } as const;

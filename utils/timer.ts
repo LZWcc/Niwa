@@ -1,4 +1,4 @@
-// 计时器：倒计时和正计时的状态和显示，以及到点提醒的闹钟（后台脚本 entrypoints/background.ts 收到后发系统通知）。
+// 计时器：倒计时和正计时的状态和显示，以及到点提醒的闹钟（后台脚本 entrypoints/background.ts 收到后弹出提醒小窗、发系统通知）。
 import { pad2 } from './date';
 
 export type TimerMode = 'countdown' | 'stopwatch';
@@ -23,6 +23,18 @@ export const isTimerState = (v: unknown): v is TimerState => {
 
 /** 到现在一共走了多久 */
 export const spentOf = (t: TimerState, now: number) => t.elapsed + (t.startedAt === null ? 0 : now - t.startedAt);
+
+/** 倒计时最长一天，最短一秒 */
+export const MAX_DURATION = 24 * 3_600_000;
+
+/** 倒计时多长，写在提醒里：25 分钟、4 分 30 秒、1 小时 30 分 */
+export function durationText(ms: number) {
+  const total = Math.round(ms / 1000);
+  const [h, m, s] = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60];
+  if (h) return m ? `${h} 小时 ${m} 分` : `${h} 小时`;
+  if (s) return m ? `${m} 分 ${s} 秒` : `${s} 秒`;
+  return `${m} 分钟`;
+}
 
 /** 时间写成 05:00、1:05:00。倒计时向上取整（最后一秒显示 00:01），正计时向下取整 */
 export function clockText(ms: number, round: 'up' | 'down') {
@@ -50,7 +62,29 @@ export async function clearTimerAlarm(id: string) {
   }
 }
 
-/** 到 when 时提醒；message 写在通知里，例如“25 分钟的倒计时结束了” */
+/**
+ * 提醒小窗里的一声轻响：两个正弦音，像敲了一下小钟。
+ * 没有点击就弹出来的页面，浏览器可能不让出声（自动播放限制），那就只是不响。
+ */
+export function chime() {
+  const ctx = new AudioContext();
+  for (const [freq, at] of [
+    [880, 0],
+    [1318.5, 0.18],
+  ] as const) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + at + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 1.4);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(ctx.currentTime + at);
+    osc.stop(ctx.currentTime + at + 1.5);
+  }
+}
+
+/** 到 when 时提醒；message 写在小窗和通知里，例如“25 分钟的倒计时结束了” */
 export async function scheduleTimerAlarm(id: string, when: number, message: string) {
   await clearTimerAlarm(id);
   alarms?.create(`${TIMER_ALARM}|${id}|${message}`, { when });

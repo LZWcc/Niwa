@@ -239,6 +239,10 @@ pnpm exec wxt build -b edge
 
 Edge 构建输出位于 `.output/edge-mv3/`。可以在日常浏览器的 `edge://extensions` 中开启开发人员模式，通过“加载解压缩的扩展”选择该目录。不要直接修改 `.output/` 或 `.wxt/`，它们是生成目录。
 
+`pnpm zip` 打成 `.output/niwa-<版本>-edge.zip`，上架扩展商店或发给别人用。版本号取自 `package.json` 的 `version`。
+
+只支持 Chromium 内核的浏览器（Edge、Chrome）：用到了浏览器本地缓存的网站图标（`favicon` 权限、`_favicon`）等 Firefox 没有的接口，所以没有 Firefox 的构建脚本。
+
 ## 测试
 
 ```sh

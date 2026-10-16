@@ -3,7 +3,7 @@
 
 import type { Size } from './grid/layout';
 
-export type WidgetType = 'notes' | 'calendar' | 'garden' | 'bookmarks' | 'history' | 'weather' | 'worldclock' | 'timer';
+export type WidgetType = 'notes' | 'calendar' | 'garden' | 'bookmarks' | 'history' | 'weather' | 'worldclock' | 'timer' | 'hotlist';
 export type WidgetSize = 's' | 'm' | 'l';
 
 export const WIDGETS: Record<WidgetType, { name: string; desc: string; defaultSize: WidgetSize }> = {
@@ -15,6 +15,7 @@ export const WIDGETS: Record<WidgetType, { name: string; desc: string; defaultSi
   weather: { name: '天气', desc: '选一个城市，看接下来的天气', defaultSize: 's' },
   worldclock: { name: '世界时钟', desc: '几个城市的时间，和一张昼夜分明的地图', defaultSize: 'm' },
   timer: { name: '计时器', desc: '倒计时和正计时，到点提醒', defaultSize: 'm' },
+  hotlist: { name: '热榜', desc: '知乎、微博、B 站等正在热议的', defaultSize: 'm' },
 };
 
 export const WIDGET_TYPES = Object.keys(WIDGETS) as WidgetType[];

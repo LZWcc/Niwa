@@ -24,6 +24,32 @@ export const WEATHER = {
   sceneMaxAge: 3 * 3_600_000,
 };
 
+// ---------- 热榜 ----------
+
+/** 热榜的来源。id 对应 utils/hotlist.ts 里的解析规则；login：要在这个浏览器里登录那个网站才拿得到（请求时带上登录状态） */
+export type HotSource = { id: 'zhihu' | 'weibo' | 'bilibili' | 'baidu' | 'toutiao' | 'juejin'; name: string; url: string; login?: boolean };
+
+/**
+ * 热榜：各网站自己网页上用的接口，不是公开的 API，随时可能变（变了改这里的地址和 utils/hotlist.ts 的解析）。
+ * 都不允许跨域，要有访问那个网站的权限（添加、换来源时申请）。2026-10 在国内网络下验证过，微博不登录会被拒绝。
+ */
+export const HOTLIST = {
+  sources: [
+    { id: 'zhihu', name: '知乎', url: 'https://api.zhihu.com/topstory/hot-lists/total?limit=50' },
+    { id: 'weibo', name: '微博', url: 'https://weibo.com/ajax/side/hotSearch', login: true },
+    { id: 'bilibili', name: 'B 站', url: 'https://api.bilibili.com/x/web-interface/popular?ps=50&pn=1' },
+    { id: 'baidu', name: '百度', url: 'https://top.baidu.com/api/board?platform=wise&tab=realtime' },
+    { id: 'toutiao', name: '头条', url: 'https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc' },
+    { id: 'juejin', name: '掘金', url: 'https://api.juejin.cn/content_api/v1/content/article_rank?category_id=1&type=hot' },
+  ] satisfies HotSource[],
+  /** 多久刷新一次（毫秒），只有正在看的标签页去取 */
+  refreshEvery: 30 * 60_000,
+  /** 失败后多久重试（毫秒） */
+  retryAfter: 5 * 60_000,
+  /** 一次请求最多等多久（毫秒） */
+  timeout: 10_000,
+};
+
 // ---------- 世界时钟 ----------
 
 /** 世界时钟可选的城市：id、中文名、英文名（搜索用）、IANA 时区、大致的纬度和经度（地图上的标记） */

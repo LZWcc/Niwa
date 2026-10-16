@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- 页面测试：热榜——各来源的解析、换来源、要登录的来源、格式变了。网络请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+// 假数据：知乎的问题 id 有 19 位（超出 JS 数字的精度），只能从链接字符串里取
+const zhihu = `{"data":[{"detail_text":"681 万热度","target":{"id":2094093125488566874,"title":"知乎第一","url":"https://api.zhihu.com/questions/2094093125488566874"}},{"detail_text":"3 万热度","target":{"id":1,"title":"知乎第二","url":"https://api.zhihu.com/questions/592258573"}}]}`;
+const bilibili = JSON.stringify({ code: 0, data: { list: [{ title: 'B 站第一', bvid: 'BV1xx', stat: { view: 1616401 } }] } });
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const requests = [];
+  w.fetch = (input, init) => {
+    const url = String(input);
+    requests.push({ url, credentials: init?.credentials });
+    const body = (text, status = 200) => Promise.resolve(new w.Response(text, { status, headers: { 'content-type': 'application/json' } }));
+    if (url.startsWith('https://api.zhihu.com/')) return body(zhihu);
+    if (url.startsWith('https://api.bilibili.com/')) return body(bilibili);
+    if (url.startsWith('https://weibo.com/')) return body('{"error":"Forbidden"}', 403);
+    if (url.startsWith('https://top.baidu.com/')) return body('{"success":true,"data":{"cards":[]}}');
+    return body('{}', 404);
+  };
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('热榜')).click(); await sleep(200);
+  const hw = d.querySelector('[data-type="hotlist"]');
+  const titles = () => [...hw.querySelectorAll('.hot-title')].map((x) => x.textContent);
+
+  // 默认知乎：标题、热度、前三名突出；19 位 id 的链接一位不差
+  log(JSON.stringify(titles()) === '["知乎第一","知乎第二"]', `zhihu items: ${titles()}`);
+  const first = hw.querySelector('.hot-row');
+  log(first.getAttribute('href') === 'https://www.zhihu.com/question/2094093125488566874', `19-digit id kept: ${first.getAttribute('href')}`);
+  log(first.querySelector('.hot-value')?.textContent === '681万' && first.querySelector('.hot-rank').classList.contains('is-top'), 'hot value and top rank');
+  log(requests[0]?.credentials === 'omit', 'no cookies for sources that need no login');
+
+  // 换来源：存在自己的 settings 里
+  const pick = async (name) => {
+    hw.querySelector('.hot-source').click(); await sleep(50);
+    [...d.querySelectorAll('.hot-menu .menu-item')].find((b) => b.textContent.startsWith(name)).click(); await sleep(200);
+  };
+  await pick('B 站');
+  const saved = JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'hotlist')?.settings?.hotSource;
+  log(JSON.stringify(titles()) === '["B 站第一"]' && hw.querySelector('.hot-value')?.textContent === '162万播放' && saved === 'bilibili', `switched to bilibili: ${titles()}`);
+
+  // 要登录的来源：带上登录状态；没登录给出原因
+  await pick('微博');
+  log(requests.at(-1).credentials === 'include', 'cookies sent for weibo');
+  log(hw.querySelector('.hot-note')?.textContent === '微博要先登录：在这个浏览器里登录 weibo.com 后再试', `weibo needs login: ${hw.querySelector('.hot-note')?.textContent}`);
+
+  // 格式变了：说暂时用不了，不往下猜
+  await pick('百度');
+  log(hw.querySelector('.hot-note')?.textContent === '百度的数据格式变了，暂时用不了', `format changed: ${hw.querySelector('.hot-note')?.textContent}`);
+
+  // 换回知乎：缓存还新鲜，直接用，不再请求
+  const before = requests.length;
+  await pick('知乎');
+  log(titles()[0] === '知乎第一' && requests.length === before, 'cached source not refetched');
+};
+</script>

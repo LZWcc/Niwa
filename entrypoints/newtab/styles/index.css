@@ -17,4 +17,5 @@
 @import './widgets/weather.css';
 @import './widgets/worldclock.css';
 @import './widgets/timer.css';
+@import './widgets/hotlist.css';
 @import './utilities.css';

@@ -1,0 +1,98 @@
+/* 热榜小组件。 */
+
+/* ---------- 热榜 ---------- */
+.hot {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hot-source {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--border);
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.hot-menu {
+  width: 150px;
+}
+.hot-menu .menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hot-menu [aria-checked='true'] {
+  font-weight: 600;
+}
+.hot-login {
+  font-size: 11px;
+  color: var(--faint);
+}
+.hot-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.hot-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0 -6px;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.hot-row {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+.hot-row:hover,
+.hot-row:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.hot-s .hot-row {
+  height: 24px;
+  font-size: 12px;
+}
+.hot-rank {
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 12px;
+  color: var(--faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* 前三名用节气色 */
+.hot-rank.is-top {
+  font-weight: 600;
+  color: var(--term);
+}
+.hot-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hot-value {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}

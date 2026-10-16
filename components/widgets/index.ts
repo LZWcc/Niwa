@@ -4,6 +4,7 @@ import BookmarksWidget from './bookmarks/BookmarksWidget';
 import CalendarWidget from './calendar/CalendarWidget';
 import GardenWidget from './garden/GardenWidget';
 import HistoryWidget from './history/HistoryWidget';
+import HotListWidget from './hotlist/HotListWidget';
 import NotesWidget from './notes/NotesWidget';
 import TimerWidget from './timer/TimerWidget';
 import WeatherWidget from './weather/WeatherWidget';
@@ -21,6 +22,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<WidgetProps>> =
   weather: WeatherWidget,
   worldclock: WorldClockWidget,
   timer: TimerWidget,
+  hotlist: HotListWidget,
 };
 
 export type { FrameProps, WidgetProps } from './types';

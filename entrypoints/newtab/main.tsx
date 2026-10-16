@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { browser } from 'wxt/browser';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { applyAtmosphere } from '@/utils/almanac';
 import { reportError } from '@/utils/errors';
@@ -9,9 +10,23 @@ import { applySceneWeather } from '@/utils/weather';
 import App from './App';
 import './styles/index.css';
 
+// 扩展更新或重新加载后，之前打开的新标签页就和扩展断开了（Extension context invalidated）：
+// 收藏、历史、权限这些接口都用不了，每分钟的刷新都会报错。断开后不再记录这些错误，回到这个标签页时重新加载成新版本。
+// 只看一开始就在扩展里运行的页面（页面测试不在扩展里，本来就没有 runtime.id）。
+const inExtension = !!browser.runtime?.id;
+const detached = () => inExtension && !browser.runtime?.id;
+addEventListener('visibilitychange', () => {
+  if (!document.hidden && detached()) location.reload();
+});
+
 // 没有被哪里处理的错误（事件处理里抛的、没人接的 Promise 失败）都在这里统一记录。
-addEventListener('error', (e) => reportError(e.error, '未捕获的错误'));
-addEventListener('unhandledrejection', (e) => reportError(e.reason, '未处理的 Promise 失败'));
+addEventListener('error', (e) => {
+  if (!detached()) reportError(e.error, '未捕获的错误');
+});
+addEventListener('unhandledrejection', (e) => {
+  if (detached()) e.preventDefault();
+  else reportError(e.reason, '未处理的 Promise 失败');
+});
 
 // 首帧前写好浅色 / 深色和季节、时辰，避免颜色闪变。
 const choice = readThemeChoice();

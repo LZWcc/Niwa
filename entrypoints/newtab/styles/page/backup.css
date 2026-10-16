@@ -1,0 +1,40 @@
+/* 备份与恢复对话框 */
+.backup-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.backup-section h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.backup-section p {
+  margin: 0;
+  line-height: 1.6;
+}
+.backup-section label.btn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+}
+.backup-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.backup-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg);
+}

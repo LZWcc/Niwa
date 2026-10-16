@@ -10,4 +10,3 @@ export const startOfDay = (t: number) => new Date(t).setHours(0, 0, 0, 0);
 
 /** 本地日期键，例如 2026-10-14 */
 export const dayKey = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-  

@@ -27,7 +27,7 @@ pnpm test    # 布局算法单元测试 + 页面测试
 按 WXT 的约定分 `entrypoints/`、`components/`、`hooks/`、`utils/`，组件再按功能分子目录。
 
 ```
-config.ts                  可以按需调整的配置：搜索引擎、默认快捷方式、图标服务、日程参数、配色
+config.ts                  可以按需调整的配置：搜索引擎、默认快捷方式、图标服务、日程与天气参数、配色
 entrypoints/newtab/        新标签页入口
   App.tsx                  页面骨架：景、时间、搜索、网格
   main.tsx                 挂载；首帧前写好季节与时辰
@@ -46,7 +46,7 @@ components/
     WidgetHeader.tsx       共用标题栏：标题、元信息、右侧工具（见「小组件的卡片」）
     WidgetError.tsx        小组件出错时顶替它的卡片
     LinkRow.tsx、LinksSearch.tsx、AccessPrompt.tsx   收藏夹、历史共用：一行网站链接、搜索、申请权限的提示
-    notes/  calendar/  garden/  bookmarks/  history/
+    notes/  calendar/  garden/  bookmarks/  history/  weather/
 hooks/
   grid/
     useGrid.ts             网格数据：增删改，存 niwa:grid；快捷方式的图标图片存 niwa:icons
@@ -56,6 +56,7 @@ hooks/
   useCalendar.ts           日程数据与缓存
   useBookmarks.ts          收藏夹树，浏览器里改了收藏时重新读
   useBrowsingHistory.ts    历史：最近、常去、最近关闭
+  useWeather.ts            天气数据与缓存
   usePermissions.ts        可选权限（收藏夹、历史）是否已有、点击申请
   useStored.ts             存在 localStorage 里的数据（useStored、useStoredList），多个标签页之间同步
   useSiteIcons.ts          输入网址后自动获取网站图标
@@ -78,6 +79,7 @@ utils/                     不依赖 React 的纯函数和数据
   backup.ts                备份与恢复：导出、校验、整体替换（见「备份与恢复」）
   permissions.ts           按需申请的权限：访问网站（日历、获取图标）、读取浏览器数据（收藏夹、历史）
   browsing.ts              收藏夹与历史：只显示网页、时间写法、收藏夹的路径与搜索
+  weather.ts               天气：搜城市、取预报（Open-Meteo）、天气代码的说法与图标
   errors.ts                错误处理：AppError、toUserMessage、reportError（见「错误处理」）
   widgets.ts               小组件目录：种类、名称、默认尺寸、尺寸占几格
   date.ts                  日期基础：DAY、星期、补零、当天 0 点、日期键
@@ -120,6 +122,8 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - **历史**（`widgets/history/`）：「最近」是浏览记录（每个网址一条），「常去」和浏览器自带新标签页的常去网站是同一份数据（`topSites`），大尺寸多一组「最近关闭」，点了恢复那个标签页或窗口。每分钟和回到这个标签页时重新读，记住选的是哪一组（`niwa:history-tab`）。中、大尺寸点放大镜可以搜索全部浏览记录。
 - 收藏夹和历史都只显示 http(s) 网页（`chrome://`、`javascript:` 从新标签页点不开），没有标题的显示域名；是普通链接，⌘ / Ctrl 点击在新标签页打开；网站图标用浏览器本地缓存的 `_favicon`，不联网。权限在 manifest 的 `optional_permissions` 里，安装时不提示，添加小组件后点一下才申请（最近关闭的网址和标题要 `tabs` 权限）。
 
+- **天气**（`widgets/weather/`）：在对话框里按名称搜城市（同名的按省份、国家区分），选定后存在 `niwa:weather`。数据来自 Open-Meteo（免费、不需要 key，允许跨域，所以不用申请访问网站的权限），地址在 `config.ts` 的 `WEATHER`。先显示本地缓存，超过 30 分钟（失败后 5 分钟）在后台刷新；失败时保留上一次的数据，标题栏显示「更新失败」，悬停看原因。小尺寸是现在的温度与天气，中尺寸加接下来 5 小时，大尺寸再加体感、湿度、风和接下来 5 天。钟点和星期按城市当地时间写。图标是自己画的 SVG（`WeatherIcon`），颜色是 `--w-*` 变量。
+
 ### 小组件的卡片
 
 所有小组件长得一样，新的小组件照着做：
@@ -147,7 +151,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - 一行就能写完、又只在一处用到的，直接写在用的地方，不单独包成函数。
 - 换个值就行、不用改逻辑的放进根目录的 `config.ts`：依赖外部世界、会过时的（第三方服务的地址、别的网站的链接格式），内容和偏好（默认项、可选项、配色），调节参数（超时、刷新间隔）。和 CSS、交互手感绑在一起的（网格尺寸、拖动阈值、动画时长）、本身就是作品或事实的（庭的画法、节气表）、本身就是结构的（存储键、备份版本、小组件注册表）留在代码旁边。`config.ts` 只放数据，怎么用这些数据写在用的地方。
 - 不为不会发生的情况加兜底（多余的 `try/catch`、`?.`、`?? 默认值`、判断浏览器是否支持某个 API）。只校验真正来自外部的数据：localStorage 里存的、iCal 下载的、用户输入的。出错了怎么办见「错误处理」。
-- 打开新标签页本身从不联网：不加远程字体、远程图片；优先使用 CSS、浏览器原生 API 和 React 自带能力，按实际需求增加依赖。只在用户主动操作时联网：添加的日程（之后在后台定时刷新）、添加快捷方式时获取网站图标（取到就存在本地，之后不再联网）。访问网站的权限都在用的时候才申请。
+- 打开新标签页本身从不联网：不加远程字体、远程图片；优先使用 CSS、浏览器原生 API 和 React 自带能力，按实际需求增加依赖。只在用户主动操作时联网：添加的日程、选了城市的天气（之后都在后台定时刷新）、添加快捷方式时获取网站图标（取到就存在本地，之后不再联网）。访问网站的权限都在用的时候才申请。
 - 深色样式写在 `:where([data-theme='dark'])` 下，不用 `prefers-color-scheme`（是否深色由 `utils/theme.ts` 决定）。
 - `useEffect` 的依赖确实需要省略时，用 `eslint-disable-next-line` 并在上一行写明原因。
 
@@ -173,13 +177,13 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 ```json
 {
   "app": "niwa",
-  "version": 1,
+  "version": 2,
   "exportedAt": "…",
-  "data": { "grid": [], "addTile": {}, "icons": {}, "notes": [], "visits": {}, "engine": "Bing", "theme": "system" }
+  "data": { "grid": [], "addTile": {}, "icons": {}, "notes": [], "visits": {}, "engine": "Bing", "theme": "system", "weather": null }
 }
 ```
 
-- 包含布局（每一格的位置、链接、图标）、图标图片、便签、庭的天数、搜索引擎和浅色 / 深色。日程的缓存可以重新获取，不导出。
+- 包含布局（每一格的位置、链接、图标）、图标图片、便签、庭的天数、搜索引擎、浅色 / 深色和天气的城市（第 2 版起；导入第 1 版的备份时当作没有选城市）。日程和天气的缓存可以重新获取，不导出。
 - **日历订阅地址相当于密码**，默认不导出，勾选后才带上（`data.calendars`）。备份里没有日历时，导入后保留这边原来的日历。
 - **导入是整体替换**，不和现有数据合并；写完重新加载页面。文件先整体校验（每一项的格式、id 不重复、同一种小组件只有一个、图片图标都有图片），有一处不对就整个拒绝，不只导入一部分。
 - **改了 `BackupData` 的结构就把 `VERSION` 加一**，并在 `parseBackup` 里把旧版本的备份迁移过来；比当前版本还新的备份会提示先更新。
@@ -221,6 +225,7 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `calendars.test.html`：多个日历的添加、去重、命名与合并显示，日历失败时显示的原因。
   - `icons.test.html`：自动获取网站图标（`run.mjs` 提供一个声明了图标的假网站；第三方图标服务的请求在测试页里转到假响应，不依赖外网）、找不到时用文字图标、上传图片、图片的保存与删除。
   - `backup.test.html`：导出的内容、日历默认不导出、坏文件整个拒绝、导入后整体替换。
+  - `weather.test.html`：天气。天气服务的请求在测试页里转到假数据：选择城市、各尺寸显示的内容、缓存、更新失败时保留数据。
   - `browsing.test.html`：收藏夹与历史。测试页不在扩展里，把 `chrome.bookmarks` 等接口换成假的：文件夹进出与记忆、只列网页、长标题不溢出、新收藏出现、搜索、最近 / 常去 / 最近关闭与恢复。
   - 无头模式用的是虚拟时间：页面空闲时会直接快进，不等读文件、解码图片这类真实的异步操作。要等它们时用测试页里的 `waitFor`（等待期间一直请求 `run.mjs` 的 `/__tick`，请求挂起时虚拟时间会暂停）。
 - 拖拽的手感、深色模式、真实网站的图标、访问网站的授权弹窗这些测不到，改动后在浏览器里手动过一遍。

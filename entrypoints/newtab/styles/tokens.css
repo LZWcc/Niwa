@@ -40,6 +40,16 @@
   /* 小组件里的内嵌面板和它的点阵底纹 */
   --panel: rgb(38 49 59 / 0.045);
   --panel-dot: rgb(38 49 59 / 0.12);
+  /* 天气图标与温度条 */
+  --w-sun: #e8b45e;
+  --w-moon: #e6dcc0;
+  /* 卡片是近白的毛玻璃，云用浅灰蓝才看得见 */
+  --w-cloud: #d5dde4;
+  --w-cloud-back: #a9b7c2;
+  --w-rain: #6f93b0;
+  --w-snow: #9fb4c6;
+  --w-cool: #8fb0c8;
+  --w-warm: #e3a86a;
 
   /* 动效：弹簧曲线由 utils/spring.ts 的同一组参数采样而来（30 帧/秒） */
   --spring-button: linear(0, 0.233, 0.625, 0.918, 1.059, 1.087, 1.063, 1.029, 1.005, 0.994, 0.992, 0.995, 0.998, 1);
@@ -143,6 +153,14 @@
   --danger: #ec8a75;
   --panel: rgb(0 0 0 / 0.16);
   --panel-dot: rgb(255 255 255 / 0.08);
+  --w-sun: #e8c98a;
+  --w-moon: #efe6c8;
+  --w-cloud: #a7b2b8;
+  --w-cloud-back: #6c7a82;
+  --w-rain: #8fb3cc;
+  --w-snow: #dfe7ec;
+  --w-cool: #7fa3bd;
+  --w-warm: #d9a46e;
 
   --orb: #e9ecdf;
   --orb-glow: rgb(233 236 223 / 0.22);

@@ -23,6 +23,10 @@ export const KEYS = {
   bookmarkFolder: 'niwa:bookmark-folder',
   /** 历史小组件上次看的一组：recent、top、closed */
   historyTab: 'niwa:history-tab',
+  /** 天气小组件选的城市 */
+  weather: 'niwa:weather',
+  /** 天气的上一次结果，打开页面时先显示它 */
+  weatherCache: 'niwa:weather-cache',
 } as const;
 
 export type StorageKey = (typeof KEYS)[keyof typeof KEYS];

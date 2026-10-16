@@ -5,6 +5,7 @@ import CalendarWidget from './calendar/CalendarWidget';
 import GardenWidget from './garden/GardenWidget';
 import HistoryWidget from './history/HistoryWidget';
 import NotesWidget from './notes/NotesWidget';
+import WeatherWidget from './weather/WeatherWidget';
 import type { WidgetProps } from './types';
 
 // 每种小组件用哪个组件来画。
@@ -15,6 +16,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<WidgetProps>> =
   garden: GardenWidget,
   bookmarks: BookmarksWidget,
   history: HistoryWidget,
+  weather: WeatherWidget,
 };
 
 export type { FrameProps, WidgetProps } from './types';

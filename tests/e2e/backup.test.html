@@ -23,6 +23,7 @@ localStorage.setItem('niwa:notes', JSON.stringify([{ id: '1', text: 'hello' }]))
 localStorage.setItem('niwa:calendars', JSON.stringify([{ id: 'c', url: 'https://cal.example/x.ics', name: 'Cal', color: '#4f86c6' }]));
 localStorage.setItem('niwa:engine', 'Bing');
 localStorage.setItem('niwa:theme', 'dark');
+localStorage.setItem('niwa:weather', JSON.stringify({ id: '1808926', name: '杭州', region: '浙江，中国', lat: 30.29, lon: 120.16 }));
 
 let restored = false;
 const f = document.getElementById('f');
@@ -34,6 +35,7 @@ f.onload = async () => {
     const grid = JSON.parse(ls.getItem('niwa:grid'));
     log(grid.length === 3 && grid[0].icon.kind === 'image' && JSON.parse(ls.getItem('niwa:icons')).a === 'data:image/webp;base64,AAAA', 'layout and icons restored');
     log(JSON.parse(ls.getItem('niwa:notes'))[0]?.text === 'hello' && d.documentElement.dataset.theme === 'dark', 'notes and theme restored');
+    log(JSON.parse(ls.getItem('niwa:weather'))?.name === '杭州', 'weather city restored');
     log(ls.getItem('niwa:calendars') === '[]', 'calendars kept when backup has none');
     return;
   }
@@ -48,8 +50,9 @@ f.onload = async () => {
 
   button('导出备份').click(); await sleep(100);
   const plain = JSON.parse(await blobs[0].text());
-  log(plain.app === 'niwa' && plain.version === 1 && plain.data.grid.length === 3, 'export has layout');
+  log(plain.app === 'niwa' && plain.version === 2 && plain.data.grid.length === 3, 'export has layout');
   log(plain.data.icons.a === 'data:image/webp;base64,AAAA' && plain.data.notes[0].text === 'hello' && plain.data.theme === 'dark' && plain.data.engine === 'Bing' && plain.data.visits?.days === 1, 'export has icons, notes, prefs and visits');
+  log(plain.data.weather?.name === '杭州', 'export has weather city');
   log(!('calendars' in plain.data), 'calendars not exported by default');
   dlg.querySelector('input[type=checkbox]').click(); await sleep(50);
   button('导出备份').click(); await sleep(100);
@@ -64,6 +67,8 @@ f.onload = async () => {
     const input = dlg.querySelector('input[type=file]');
     input.files = dt.files;
     input.dispatchEvent(new w.Event('change', { bubbles: true }));
+    // 先等读完这个文件，再看结果（上一个文件的结果可能还在）
+    for (let i = 0; i < 5; i++) await fetch('/__tick');
     await waitFor(() => error() || dlg.querySelector('.backup-pending'));
   };
   await pick('not json');
@@ -77,10 +82,16 @@ f.onload = async () => {
   await pick(JSON.stringify(noImage));
   log(error().includes('缺少图标图片'), `missing image rejected: ${error()}`);
 
+  // 第 1 版的备份（还没有天气）照样能导入
+  const v1 = structuredClone(plain); v1.version = 1; delete v1.data.weather;
+  await pick(JSON.stringify(v1));
+  log(!error() && !!dlg.querySelector('.backup-pending'), `version 1 backup accepted: ${error()}`);
+
   // 模拟另一个浏览器：数据都不一样，再导入不带日历的备份
   ls.setItem('niwa:notes', '[]');
   ls.setItem('niwa:calendars', '[]');
   ls.setItem('niwa:theme', 'light');
+  ls.removeItem('niwa:weather');
   await pick(JSON.stringify(plain));
   const summary = dlg.querySelector('.backup-pending')?.textContent ?? '';
   log(summary.includes('2 个快捷方式、1 个小组件、1 条便签') && summary.includes('日历保持不变') && !error(), `summary before replacing: ${summary}`);

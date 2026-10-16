@@ -10,9 +10,10 @@ import { isNote, type Note } from './notes';
 import { KEYS, readJson, readList, writeJson } from './storage';
 import { isThemeChoice, readThemeChoice, type ThemeChoice } from './theme';
 import { isVisits, type Visits } from './visits';
+import { isPlace, type Place } from './weather';
 
 /** 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。 */
-const VERSION = 1;
+const VERSION = 2;
 
 export type BackupData = {
   grid: GridItem[];
@@ -23,6 +24,8 @@ export type BackupData = {
   visits: Visits | null;
   engine: string | null;
   theme: ThemeChoice;
+  /** 天气小组件选的城市（第 2 版起） */
+  weather: Place | null;
   calendars?: CalendarSource[];
 };
 
@@ -37,6 +40,7 @@ export function createBackup(includeCalendars: boolean): Backup {
     visits: readJson(KEYS.visits, isVisits),
     engine: localStorage.getItem(KEYS.engine),
     theme: readThemeChoice(),
+    weather: readJson(KEYS.weather, isPlace),
   };
   if (includeCalendars) data.calendars = readList(KEYS.calendars, isCalendarSource, []);
   return { app: 'niwa', version: VERSION, exportedAt: new Date().toISOString(), data };
@@ -56,6 +60,7 @@ function findProblem(d: BackupData): string | null {
   if (d.visits !== null && !isVisits(d.visits)) return '庭的数据不对';
   if (d.engine !== null && typeof d.engine !== 'string') return '搜索引擎的设置不对';
   if (!isThemeChoice(d.theme)) return '浅色 / 深色的设置不对';
+  if (d.weather !== null && !isPlace(d.weather)) return '天气的城市不对';
   if (d.calendars !== undefined && !(Array.isArray(d.calendars) && d.calendars.every(isCalendarSource))) return '日历的数据不对';
   return null;
 }
@@ -72,6 +77,8 @@ export function parseBackup(text: string): Backup {
     throw new AppError('这不是 Niwa 的备份文件');
   }
   if (backup.version > VERSION) throw new AppError('这个备份来自更新版本的 Niwa，请先更新再导入');
+  // 第 1 版还没有天气。
+  if (backup.version < 2) backup.data.weather = null;
   const problem = findProblem(backup.data);
   if (problem) throw new AppError(`备份文件有问题：${problem}。没有导入任何数据`);
   return backup;
@@ -90,6 +97,9 @@ export function restoreBackup({ data }: Backup) {
   if (data.engine) localStorage.setItem(KEYS.engine, data.engine);
   else localStorage.removeItem(KEYS.engine);
   localStorage.setItem(KEYS.theme, data.theme);
+  if (data.weather) writeJson(KEYS.weather, data.weather);
+  else localStorage.removeItem(KEYS.weather);
+  localStorage.removeItem(KEYS.weatherCache);
   if (data.calendars) {
     writeJson(KEYS.calendars, data.calendars);
     localStorage.removeItem(KEYS.calendarCache);

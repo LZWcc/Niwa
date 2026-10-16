@@ -3,6 +3,21 @@
 // 留在各自的代码旁边，不放这里，见 README「代码约定」。
 import type { GridItem } from './utils/grid/items';
 
+// ---------- 天气 ----------
+
+/** 天气：Open-Meteo，免费、不需要 key，允许跨域请求（不用申请访问网站的权限）。只在选了城市后请求。 */
+export const WEATHER = {
+  /** 按名称搜城市 */
+  geocode: 'https://geocoding-api.open-meteo.com/v1/search',
+  forecast: 'https://api.open-meteo.com/v1/forecast',
+  /** 多久在后台刷新一次（毫秒） */
+  refreshEvery: 30 * 60_000,
+  /** 更新失败后多久重试（毫秒） */
+  retryAfter: 5 * 60_000,
+  /** 一次请求最多等多久（毫秒） */
+  timeout: 15_000,
+};
+
 // ---------- 搜索 ----------
 
 export type SearchEngine = {

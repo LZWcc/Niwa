@@ -25,6 +25,7 @@ const suites = [
   { file: 'icons.test.html', flags: ['--force-prefers-reduced-motion'], done: 'deleting shortcut removes its image' },
   { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'calendars kept when backup has none' },
   { file: 'browsing.test.html', flags: ['--force-prefers-reduced-motion'], done: 'restore closed tab' },
+  { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'recovered after refresh' },
 ];
 
 const types = {

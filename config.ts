@@ -24,6 +24,75 @@ export const WEATHER = {
   sceneMaxAge: 3 * 3_600_000,
 };
 
+// ---------- 世界时钟 ----------
+
+/** 世界时钟可选的城市：id、中文名、英文名（搜索用）、IANA 时区、大致的纬度和经度（地图上的标记） */
+export type City = { id: string; name: string; en: string; zone: string; lat: number; lon: number };
+
+export const WORLD_CLOCK = {
+  /** 刚加上时显示的城市 */
+  defaults: ['london', 'newyork', 'tokyo'],
+  /** 最多放几个城市 */
+  max: 8,
+  cities: [
+    { id: 'beijing', name: '北京', en: 'Beijing', zone: 'Asia/Shanghai', lat: 39.9, lon: 116.4 },
+    { id: 'shanghai', name: '上海', en: 'Shanghai', zone: 'Asia/Shanghai', lat: 31.2, lon: 121.5 },
+    { id: 'hongkong', name: '香港', en: 'Hong Kong', zone: 'Asia/Hong_Kong', lat: 22.3, lon: 114.2 },
+    { id: 'taipei', name: '台北', en: 'Taipei', zone: 'Asia/Taipei', lat: 25.0, lon: 121.5 },
+    { id: 'tokyo', name: '东京', en: 'Tokyo', zone: 'Asia/Tokyo', lat: 35.7, lon: 139.7 },
+    { id: 'seoul', name: '首尔', en: 'Seoul', zone: 'Asia/Seoul', lat: 37.6, lon: 127.0 },
+    { id: 'singapore', name: '新加坡', en: 'Singapore', zone: 'Asia/Singapore', lat: 1.3, lon: 103.8 },
+    { id: 'kualalumpur', name: '吉隆坡', en: 'Kuala Lumpur', zone: 'Asia/Kuala_Lumpur', lat: 3.1, lon: 101.7 },
+    { id: 'bangkok', name: '曼谷', en: 'Bangkok', zone: 'Asia/Bangkok', lat: 13.8, lon: 100.5 },
+    { id: 'hanoi', name: '河内', en: 'Hanoi', zone: 'Asia/Ho_Chi_Minh', lat: 21.0, lon: 105.8 },
+    { id: 'jakarta', name: '雅加达', en: 'Jakarta', zone: 'Asia/Jakarta', lat: -6.2, lon: 106.8 },
+    { id: 'manila', name: '马尼拉', en: 'Manila', zone: 'Asia/Manila', lat: 14.6, lon: 121.0 },
+    { id: 'newdelhi', name: '新德里', en: 'New Delhi', zone: 'Asia/Kolkata', lat: 28.6, lon: 77.2 },
+    { id: 'mumbai', name: '孟买', en: 'Mumbai', zone: 'Asia/Kolkata', lat: 19.1, lon: 72.9 },
+    { id: 'kathmandu', name: '加德满都', en: 'Kathmandu', zone: 'Asia/Kathmandu', lat: 27.7, lon: 85.3 },
+    { id: 'dhaka', name: '达卡', en: 'Dhaka', zone: 'Asia/Dhaka', lat: 23.8, lon: 90.4 },
+    { id: 'karachi', name: '卡拉奇', en: 'Karachi', zone: 'Asia/Karachi', lat: 24.9, lon: 67.0 },
+    { id: 'ulaanbaatar', name: '乌兰巴托', en: 'Ulaanbaatar', zone: 'Asia/Ulaanbaatar', lat: 47.9, lon: 106.9 },
+    { id: 'dubai', name: '迪拜', en: 'Dubai', zone: 'Asia/Dubai', lat: 25.2, lon: 55.3 },
+    { id: 'tehran', name: '德黑兰', en: 'Tehran', zone: 'Asia/Tehran', lat: 35.7, lon: 51.4 },
+    { id: 'riyadh', name: '利雅得', en: 'Riyadh', zone: 'Asia/Riyadh', lat: 24.7, lon: 46.7 },
+    { id: 'istanbul', name: '伊斯坦布尔', en: 'Istanbul', zone: 'Europe/Istanbul', lat: 41.0, lon: 29.0 },
+    { id: 'moscow', name: '莫斯科', en: 'Moscow', zone: 'Europe/Moscow', lat: 55.8, lon: 37.6 },
+    { id: 'cairo', name: '开罗', en: 'Cairo', zone: 'Africa/Cairo', lat: 30.0, lon: 31.2 },
+    { id: 'nairobi', name: '内罗毕', en: 'Nairobi', zone: 'Africa/Nairobi', lat: -1.3, lon: 36.8 },
+    { id: 'lagos', name: '拉各斯', en: 'Lagos', zone: 'Africa/Lagos', lat: 6.5, lon: 3.4 },
+    { id: 'johannesburg', name: '约翰内斯堡', en: 'Johannesburg', zone: 'Africa/Johannesburg', lat: -26.2, lon: 28.0 },
+    { id: 'london', name: '伦敦', en: 'London', zone: 'Europe/London', lat: 51.5, lon: -0.1 },
+    { id: 'dublin', name: '都柏林', en: 'Dublin', zone: 'Europe/Dublin', lat: 53.3, lon: -6.3 },
+    { id: 'paris', name: '巴黎', en: 'Paris', zone: 'Europe/Paris', lat: 48.9, lon: 2.4 },
+    { id: 'berlin', name: '柏林', en: 'Berlin', zone: 'Europe/Berlin', lat: 52.5, lon: 13.4 },
+    { id: 'amsterdam', name: '阿姆斯特丹', en: 'Amsterdam', zone: 'Europe/Amsterdam', lat: 52.4, lon: 4.9 },
+    { id: 'madrid', name: '马德里', en: 'Madrid', zone: 'Europe/Madrid', lat: 40.4, lon: -3.7 },
+    { id: 'rome', name: '罗马', en: 'Rome', zone: 'Europe/Rome', lat: 41.9, lon: 12.5 },
+    { id: 'zurich', name: '苏黎世', en: 'Zurich', zone: 'Europe/Zurich', lat: 47.4, lon: 8.5 },
+    { id: 'stockholm', name: '斯德哥尔摩', en: 'Stockholm', zone: 'Europe/Stockholm', lat: 59.3, lon: 18.1 },
+    { id: 'reykjavik', name: '雷克雅未克', en: 'Reykjavik', zone: 'Atlantic/Reykjavik', lat: 64.1, lon: -21.9 },
+    { id: 'newyork', name: '纽约', en: 'New York', zone: 'America/New_York', lat: 40.7, lon: -74.0 },
+    { id: 'toronto', name: '多伦多', en: 'Toronto', zone: 'America/Toronto', lat: 43.7, lon: -79.4 },
+    { id: 'chicago', name: '芝加哥', en: 'Chicago', zone: 'America/Chicago', lat: 41.9, lon: -87.6 },
+    { id: 'denver', name: '丹佛', en: 'Denver', zone: 'America/Denver', lat: 39.7, lon: -105.0 },
+    { id: 'losangeles', name: '洛杉矶', en: 'Los Angeles', zone: 'America/Los_Angeles', lat: 34.1, lon: -118.2 },
+    { id: 'sanfrancisco', name: '旧金山', en: 'San Francisco', zone: 'America/Los_Angeles', lat: 37.8, lon: -122.4 },
+    { id: 'seattle', name: '西雅图', en: 'Seattle', zone: 'America/Los_Angeles', lat: 47.6, lon: -122.3 },
+    { id: 'vancouver', name: '温哥华', en: 'Vancouver', zone: 'America/Vancouver', lat: 49.3, lon: -123.1 },
+    { id: 'anchorage', name: '安克雷奇', en: 'Anchorage', zone: 'America/Anchorage', lat: 61.2, lon: -149.9 },
+    { id: 'honolulu', name: '檀香山', en: 'Honolulu', zone: 'Pacific/Honolulu', lat: 21.3, lon: -157.9 },
+    { id: 'mexicocity', name: '墨西哥城', en: 'Mexico City', zone: 'America/Mexico_City', lat: 19.4, lon: -99.1 },
+    { id: 'saopaulo', name: '圣保罗', en: 'São Paulo', zone: 'America/Sao_Paulo', lat: -23.6, lon: -46.6 },
+    { id: 'buenosaires', name: '布宜诺斯艾利斯', en: 'Buenos Aires', zone: 'America/Argentina/Buenos_Aires', lat: -34.6, lon: -58.4 },
+    { id: 'lima', name: '利马', en: 'Lima', zone: 'America/Lima', lat: -12.0, lon: -77.0 },
+    { id: 'sydney', name: '悉尼', en: 'Sydney', zone: 'Australia/Sydney', lat: -33.9, lon: 151.2 },
+    { id: 'melbourne', name: '墨尔本', en: 'Melbourne', zone: 'Australia/Melbourne', lat: -37.8, lon: 145.0 },
+    { id: 'perth', name: '珀斯', en: 'Perth', zone: 'Australia/Perth', lat: -31.95, lon: 115.9 },
+    { id: 'auckland', name: '奥克兰', en: 'Auckland', zone: 'Pacific/Auckland', lat: -36.8, lon: 174.8 },
+  ] satisfies City[],
+};
+
 // ---------- 搜索 ----------
 
 export type SearchEngine = {

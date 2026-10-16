@@ -26,6 +26,7 @@ const suites = [
   { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'secrets kept when backup has none' },
   { file: 'browsing.test.html', flags: ['--force-prefers-reduced-motion'], done: 'suggestions turned back on' },
   { file: 'widgets.test.html', flags: ['--force-prefers-reduced-motion'], done: 'removing a notes widget drops its notes' },
+  { file: 'worldclock.test.html', flags: ['--force-prefers-reduced-motion'], done: 'second world clock has its own cities' },
   { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no moon phase on the sun in light theme' },
   { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
 ];

@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- 页面测试：世界时钟——默认城市、当地时间与时差、昼夜地图、选城市，以及放两个时各选各的。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  const add = async () => {
+    d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+    [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('世界时钟')).click(); await sleep(150);
+  };
+  const clocks = () => [...d.querySelectorAll('[data-type="worldclock"]')];
+  const names = (el) => [...el.querySelectorAll('.wc-name')].map((x) => x.textContent);
+  const zoneTime = (zone) => new Intl.DateTimeFormat('zh-CN', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
+
+  // 默认的三个城市：时间是当地时间，下面写着和本地差几小时
+  await add();
+  const wc = clocks()[0];
+  log(JSON.stringify(names(wc)) === '["伦敦","纽约","东京"]', `default cities: ${names(wc)}`);
+  const times = [...wc.querySelectorAll('.wc-time')].map((x) => x.textContent);
+  log(times[0] === zoneTime('Europe/London') && times[2] === zoneTime('Asia/Tokyo'), `local times: ${times}`);
+  const diffs = [...wc.querySelectorAll('.wc-diff')].map((x) => x.textContent);
+  log(diffs.every((x) => /^((明天|昨天) · )?([+−]\d+(:\d\d)? 小时|同一时间)$/.test(x)), `time differences: ${diffs}`);
+
+  // 地图：陆地上的点有白天也有夜里（任何时刻地球上都有一半在夜里），三个城市各有一个标记
+  const map = wc.querySelector('.wc-map');
+  log(map.querySelectorAll('.is-day').length > 50 && map.querySelectorAll('.is-night').length > 50, `day and night on the map: ${map.querySelectorAll('.is-day').length} / ${map.querySelectorAll('.is-night').length}`);
+  log(map.querySelectorAll('.wc-city').length === 3, 'a marker for each city');
+
+  // 选城市：移除东京，按中文搜加德满都；搜不到给出提示
+  wc.querySelector('.widget-more').click(); await sleep(50);
+  [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '选择城市…').click(); await sleep(100);
+  const dlg = d.querySelector('dialog[aria-labelledby="cities-title"]');
+  [...dlg.querySelectorAll('.sources li')].find((li) => li.textContent.includes('东京')).querySelector('button').click(); await sleep(50);
+  setVal(dlg.querySelector('input'), 'zzz'); await sleep(50);
+  log(dlg.querySelector('.places-empty')?.textContent.includes('没有这个城市'), 'unknown city');
+  setVal(dlg.querySelector('input'), '加德满'); await sleep(50);
+  dlg.querySelector('.place').click(); await sleep(50);
+  [...dlg.querySelectorAll('button')].find((b) => b.textContent.trim() === '完成').click(); await sleep(100);
+  const saved = JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'worldclock')?.settings?.cities;
+  log(JSON.stringify(saved) === '["london","newyork","kathmandu"]' && JSON.stringify(names(wc)) === '["伦敦","纽约","加德满都"]', `cities changed: ${saved}`);
+  log(wc.querySelectorAll('.wc-time')[2].textContent === zoneTime('Asia/Kathmandu'), 'kathmandu keeps its 45-minute offset');
+
+  // 再放一个：用默认城市，和第一个互不影响
+  await add();
+  const second = clocks().find((x) => x !== wc);
+  log(clocks().length === 2 && JSON.stringify(names(second)) === '["伦敦","纽约","东京"]' && JSON.stringify(names(wc)) === '["伦敦","纽约","加德满都"]', 'second world clock has its own cities');
+};
+</script>

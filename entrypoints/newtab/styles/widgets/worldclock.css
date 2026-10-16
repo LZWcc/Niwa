@@ -1,0 +1,118 @@
+/* 世界时钟小组件与点阵地图。 */
+
+/* ---------- 世界时钟 ---------- */
+.wc {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wc-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.wc-empty p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wc-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wc-m .wc-body {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+/* 地图放在内嵌面板里：中尺寸在左边，大尺寸在上面 */
+.wc-panel {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+}
+.wc-m .wc-panel {
+  flex: 0 0 196px;
+  align-self: stretch;
+}
+.wc-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* 中尺寸的地图小，点放大一点，不然挤成一片灰 */
+.wc-m .wc-map circle:not(.wc-city) {
+  r: 0.42px;
+}
+.wc-map .is-day {
+  fill: var(--map-day);
+}
+.wc-map .is-dusk {
+  fill: var(--map-dusk);
+}
+.wc-map .is-night {
+  fill: var(--map-night);
+}
+.wc-map .wc-city {
+  fill: none;
+  stroke: var(--term);
+  stroke-width: 0.45;
+}
+
+.wc-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wc-l .wc-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 18px;
+  align-content: start;
+}
+.wc-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wc-place {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wc-name {
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.wc-diff {
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.wc-now {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wc-time {
+  font-family: 'Niwa Clock', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}

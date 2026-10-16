@@ -50,6 +50,10 @@
   --w-snow: #9fb4c6;
   --w-cool: #8fb0c8;
   --w-warm: #e3a86a;
+  /* 世界时钟地图的点：白天、晨昏、夜里 */
+  --map-day: rgb(38 49 59 / 0.42);
+  --map-dusk: rgb(38 49 59 / 0.26);
+  --map-night: rgb(38 49 59 / 0.13);
 
   /* 动效：弹簧曲线由 utils/spring.ts 的同一组参数采样而来（30 帧/秒） */
   --spring-button: linear(0, 0.233, 0.625, 0.918, 1.059, 1.087, 1.063, 1.029, 1.005, 0.994, 0.992, 0.995, 0.998, 1);
@@ -161,6 +165,9 @@
   --w-snow: #dfe7ec;
   --w-cool: #7fa3bd;
   --w-warm: #d9a46e;
+  --map-day: rgb(238 241 236 / 0.55);
+  --map-dusk: rgb(238 241 236 / 0.3);
+  --map-night: rgb(238 241 236 / 0.12);
 
   --orb: #e9ecdf;
   --orb-glow: rgb(233 236 223 / 0.22);

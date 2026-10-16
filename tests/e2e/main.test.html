@@ -1,0 +1,403 @@
+<!doctype html>
+<!-- 页面测试：新标签页的主要功能：搜索、便签、小组件、日程、月历、快捷方式增删改、拖动摆放、保存。由 tests/e2e/run.mjs 在无头 Edge 里打开，逐条输出 PASS / FAIL。 -->
+<meta charset="utf-8">
+<body style="margin:0">
+<iframe id="f" style="border:0;width:1440px;height:900px"></iframe>
+<pre id="out"></pre>
+<script>
+const mode = location.hash.slice(1);
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(400);
+  const w = f.contentWindow, d = f.contentDocument;
+  const stored = () => JSON.parse(w.localStorage.getItem('niwa:grid')).filter((i) => i.kind === 'link');
+  const openAdd = async (name) => { d.querySelector('.grid-add .shortcut-add').click(); await sleep(50); [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name)).click(); await sleep(50); };
+  const names = () => stored().map((s) => s.name).join(',');
+  const dialog = () => d.querySelector('dialog[aria-labelledby="dialog-title"]');
+  const setVal = (input, v) => {
+    Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(input, v);
+    input.dispatchEvent(new w.Event('input', { bubbles: true }));
+  };
+  const setVal2 = (el, v) => {
+    Object.getOwnPropertyDescriptor(w.HTMLTextAreaElement.prototype, 'value').set.call(el, v);
+    el.dispatchEvent(new w.Event('input', { bubbles: true }));
+  };
+  const inputs = () => dialog().querySelectorAll('input');
+  // 指针拖拽：按下、分几步移到目标中心、松手（或按 Esc 取消）
+  const center = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const pe = (type, x, y) => new w.PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerType: 'mouse', isPrimary: true });
+  // 无头模式的虚拟时间里动画不会推进，测试以 --force-prefers-reduced-motion 运行（同时覆盖减少动态效果的路径）
+  const dragTo = async (from, to, { cancel = false, afterUp } = {}) => {
+    const [x0, y0] = center(from), [x1, y1] = center(to);
+    from.dispatchEvent(pe('pointerdown', x0, y0));
+    for (let i = 1; i <= 8; i++) { w.dispatchEvent(pe('pointermove', x0 + (x1 - x0) * i / 8, y0 + (y1 - y0) * i / 8)); await sleep(25); }
+    // 停在目标上：真实浏览器里每帧都会再判断一次，无头模式没有动画帧，补一次移动
+    await sleep(150); w.dispatchEvent(pe('pointermove', x1, y1)); await sleep(30);
+    const lifted = !!d.querySelector('.is-lifted') && d.documentElement.classList.contains('is-reordering');
+    if (cancel) w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    else w.dispatchEvent(pe('pointerup', x1, y1));
+    afterUp?.();
+    await sleep(60);
+    return lifted;
+  };
+  const btn = (text) => [...dialog().querySelectorAll('button')].find((b) => b.textContent.trim() === text);
+
+  if (mode === 'shot-add') {
+    await openAdd('网站');
+    setVal(inputs()[0], 'bilibili'); await sleep(50);
+    inputs()[0].dispatchEvent(new w.FocusEvent('focusout', { bubbles: true })); await sleep(300);
+    return;
+  }
+  if (mode === 'shot-edit') {
+    d.querySelectorAll('.shortcut-edit')[0].click(); await sleep(300);
+    return;
+  }
+
+  log(names() === 'GitHub,WXT,React,MDN', `defaults persisted: ${names()}`);
+
+  // 浅色 / 深色切换（无头模式下系统是浅色）：点一下固定深色，再点回到跟随系统
+  const root = d.documentElement, tt = d.querySelector('.theme-toggle');
+  const bg = () => w.getComputedStyle(root).getPropertyValue('--bg').trim();
+  const lightBg = bg();
+  log(root.dataset.theme === 'light' && !!tt, `theme follows system: ${root.dataset.theme}`);
+  tt.click(); await sleep(50);
+  log(root.dataset.theme === 'dark' && w.localStorage.getItem('niwa:theme') === 'dark' && bg() !== lightBg, `toggled to dark: ${bg()}`);
+  tt.click(); await sleep(50);
+  log(root.dataset.theme === 'light' && w.localStorage.getItem('niwa:theme') === 'system' && bg() === lightBg, 'toggled back to follow system');
+
+  // 搜索引擎下拉
+  const eb = d.querySelector('.engine-button');
+  log(!d.querySelector('.engine-menu'), 'engine menu closed initially');
+  eb.click(); await sleep(50);
+  log(!!d.querySelector('.engine-menu') && eb.getAttribute('aria-expanded') === 'true', 'engine menu opens');
+  log(d.activeElement.getAttribute('aria-checked') === 'true', 'focus on checked item');
+  [...d.querySelectorAll('[role=menuitemradio]')].find((b) => b.textContent.includes('Bing')).click(); await sleep(50);
+  const form = d.querySelector('form.search'), q = d.querySelector('#search-query');
+  log(!d.querySelector('.engine-menu') && form.action === 'https://www.bing.com/search' && q.placeholder === '在 Bing 中搜索', `chose Bing: ${form.action} / ${q.placeholder}`);
+  log(w.localStorage.getItem('niwa:engine') === 'Bing', 'engine persisted');
+  log(eb.offsetWidth > 0, `engine button width ${eb.offsetWidth}`);
+  const widths = new Set();
+  for (const name of ['Google', 'DuckDuckGo', '百度']) {
+    eb.click(); await sleep(30);
+    [...d.querySelectorAll('[role=menuitemradio]')].find((b) => b.textContent.includes(name)).click(); await sleep(30);
+    widths.add(eb.offsetWidth);
+  }
+  log(widths.size === 1, `engine button width constant: ${[...widths]}`);
+  eb.click(); await sleep(30);
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
+  log(!d.querySelector('.engine-menu'), 'Esc closes menu');
+  eb.click(); await sleep(30);
+  d.body.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true })); await sleep(30);
+  log(!d.querySelector('.engine-menu'), 'outside click closes menu');
+  log(!d.querySelector('.search-hint'), 'no / hint');
+
+  // 便签
+  const notes = () => JSON.parse(w.localStorage.getItem('niwa:notes') || '[]');
+  const ni = d.querySelector('#note-input');
+  log(!!d.querySelector('.notes-empty'), 'notes empty state shown');
+  ni.focus();
+  setVal2(ni, 'ssh lzwcc'); await sleep(30);
+  ni.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await sleep(50);
+  log(notes().length === 1 && notes()[0].text === 'ssh lzwcc' && ni.value === '', `enter saves note: ${JSON.stringify(notes())}`);
+  setVal2(ni, 'line1'); await sleep(30);
+  ni.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true })); await sleep(30);
+  log(notes().length === 1, 'shift+enter does not save');
+  setVal2(ni, ''); await sleep(30);
+  ni.blur();
+  const cd = new w.DataTransfer(); cd.setData('text/plain', 'pasted from clipboard\nsecond line');
+  d.body.dispatchEvent(new w.ClipboardEvent('paste', { clipboardData: cd, bubbles: true, cancelable: true })); await sleep(50);
+  log(notes()[0]?.text === 'pasted from clipboard\nsecond line', `page paste saves note (newest first): ${notes().map((n) => n.text.split('\n')[0]).join(' | ')}`);
+  const q2 = d.querySelector('#search-query');
+  const cd2 = new w.DataTransfer(); cd2.setData('text/plain', 'into search');
+  q2.dispatchEvent(new w.ClipboardEvent('paste', { clipboardData: cd2, bubbles: true, cancelable: true })); await sleep(50);
+  log(notes().length === 2, 'paste inside search box is not captured');
+  d.querySelectorAll('.note-copy')[1].click(); await sleep(100);
+  log(d.querySelectorAll('.note-state')[1].textContent === '已复制', 'click shows copied');
+  d.querySelectorAll('.note-remove')[0].click(); await sleep(50);
+  log(notes().length === 1 && notes()[0].text === 'ssh lzwcc', 'delete note');
+  d.querySelectorAll('.note-remove')[0].click(); await sleep(50);
+
+  // 小组件：默认便签（大）+ 庭（中）
+  // 显示顺序（阅读顺序）：DOM 顺序在页面打开期间不变，位置由 grid-column / grid-row 决定
+  const visual = (sel, doc = d) => [...doc.querySelectorAll(sel)].sort((a, b) => a.offsetTop - b.offsetTop || a.offsetLeft - b.offsetLeft);
+  const shown = () => visual('.shortcut').map((e) => e.querySelector('.shortcut-name').textContent).join();
+  const positions = (doc = d) => visual('.grid > [data-key]', doc).map((e) => `${e.dataset.key}@${e.offsetLeft},${e.offsetTop}`).join(' ');
+  const overlapFree = () => { const t = [...d.querySelectorAll('.grid > [data-key]')]; return t.every((a) => t.every((b) => a === b || a.offsetLeft + a.offsetWidth <= b.offsetLeft || b.offsetLeft + b.offsetWidth <= a.offsetLeft || a.offsetTop + a.offsetHeight <= b.offsetTop || b.offsetTop + b.offsetHeight <= a.offsetTop)); };
+  const types = () => visual('.widget').map((x) => `${x.dataset.type}:${x.className.match(/size-(\w)/)[1]}`).join(',');
+  log(types() === 'notes:m,garden:s', `default widgets: ${types()}`);
+  {
+    // 第一次打开：「添加」在最后一格后面，并保存了位置
+    const add = d.querySelector('.grid-add'), last = visual('.grid > [data-key]').filter((t) => t !== add).at(-1);
+    log((add.offsetTop > last.offsetTop || (add.offsetTop === last.offsetTop && add.offsetLeft > last.offsetLeft)) && !!w.localStorage.getItem('niwa:add'), `add starts after the last tile (${add.offsetLeft},${add.offsetTop})`);
+  }
+  log([...d.querySelector('.grid').children].map((c) => c.dataset.type || c.querySelector('.shortcut-name')?.textContent).slice(0, 3).join(',') === 'notes,garden,GitHub', 'widgets and links share one grid');
+  log(!w.document.querySelector('[data-type="calendar"]') && !w.localStorage.getItem('niwa:calendar-cache'), 'calendar off by default, no fetch');
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  const pick = (name) => [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name));
+  log(pick('便签').disabled && pick('庭').disabled && !pick('日程').disabled, 'picker disables added widgets');
+  pick('日程').click(); await sleep(80);
+  log(types() === 'notes:m,garden:s,calendar:s', `calendar added: ${types()}`);
+  log(!!d.querySelector('.cal-empty'), 'calendar shows connect state');
+  [...d.querySelectorAll('.cal-empty button')][0].click(); await sleep(80);
+  const cdlg = [...d.querySelectorAll('dialog')].find((x) => x.open);
+  log(!!cdlg && cdlg.querySelector('h2').textContent === '管理日历', 'calendar dialog opens');
+  const cin = cdlg.querySelector('textarea');
+  setVal2(cin, 'not a url'); await sleep(30);
+  cdlg.querySelector('form').requestSubmit(); await sleep(50);
+  log(!!cdlg.querySelector('#cal-url-error'), 'invalid calendar url rejected');
+  setVal2(cin, location.origin + '/sample.ics'); await sleep(30);
+  cdlg.querySelector('form').requestSubmit(); await sleep(150);
+  log(cdlg.querySelectorAll('.sources li').length === 1, 'calendar source added');
+  [...cdlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(2500);
+  const calW0 = d.querySelector('[data-type="calendar"]');
+  log(calW0.querySelector('.event-title')?.textContent === '全天事项', 'small shows next event');
+  calW0.querySelector('.widget-more').click(); await sleep(50);
+  [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '中').click(); await sleep(80);
+  calW0.querySelector('.widget-more').click(); await sleep(50);
+  log([...calW0.querySelectorAll('.event')].find((e) => e.textContent.includes('深夜复盘'))?.querySelector('.event-place')?.textContent.includes('会议室 A'), 'medium row shows location');
+  const titles = () => [...d.querySelectorAll('[data-type="calendar"] .event-title')].map((e) => e.textContent);
+  // 今天 9:45 之前跑，今天的每日站会还没结束，会排在前面
+  const t = new Date(), beforeStandup = t.getHours() * 60 + t.getMinutes() < 9 * 60 + 45;
+  const nearest = beforeStandup ? '全天事项,每日站会,深夜复盘' : '全天事项,深夜复盘,站会（改期）';
+  log(titles().length === 4 && titles().indexOf('站会（改期）') === (beforeStandup ? 3 : 2), `medium rows: ${titles().join(' | ')}`);
+  const noScroll = (el) => el.scrollHeight <= el.clientHeight + 1;
+  const mList = d.querySelector('[data-type="calendar"] .cal-list');
+  log(noScroll(mList), `medium has no scrollbar (${mList.scrollHeight}/${mList.clientHeight})`);
+  log(d.querySelector('[data-type="calendar"] .cal-more').textContent === '月历 ›', 'medium footer is just a month link');
+  const mLast = [...mList.querySelectorAll('.event')].at(-1).getBoundingClientRect();
+  log(mLast.bottom <= mList.getBoundingClientRect().bottom + 0.5, 'medium rows all fully visible');
+  log(JSON.parse(w.localStorage.getItem('niwa:calendars'))[0].name === '测试日历', 'calendar name from X-WR-CALNAME');
+  // 改成大尺寸
+  const calW = () => d.querySelector('[data-type="calendar"]');
+  calW().querySelector('.widget-more').click(); await sleep(50);
+  log(d.querySelector('.widget-menu')?.parentElement === d.body, 'widget menu rendered at page level');
+  [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '大').click(); await sleep(80);
+  log(calW().classList.contains('size-l'), 'resize to large');
+  calW().querySelector('.widget-more').click(); await sleep(50);
+  log(!d.querySelector('.widget-menu'), 'menu toggles closed');
+  const all = titles();
+  log(all.length >= 6 && all.slice(0, 3).join() === nearest, `large shows nearest events: ${all.join(' | ')}`);
+  const lList = calW().querySelector('.cal-groups');
+  log(noScroll(lList), `large has no scrollbar (${lList.scrollHeight}/${lList.clientHeight})`);
+  const weekCount = 2 + 1 + 4 + [3, 4, 5, 6].length + 1; // 今天 2、明天 1、后天 4、之后每天站会 4 天 + 每周例会 1
+  const moreText = calW().querySelector('.cal-more').textContent;
+  log(moreText === '月历 ›' && all.length < weekCount, `large footer: ${moreText} (shown ${all.length} of ${weekCount})`);
+  log(!all.includes('已取消会议') && !all.includes('旧事件'), 'cancelled and old events hidden');
+
+  // 月历
+  calW().querySelector('.cal-more').click(); await sleep(400);
+  const mdlg = d.querySelector('.month-dialog');
+  const nowD = new Date();
+  log(mdlg.open && mdlg.querySelector('#month-title').textContent === `${nowD.getFullYear()}年${nowD.getMonth() + 1}月`, `month view opens on this month: ${mdlg.querySelector('#month-title').textContent}`);
+  log(mdlg.querySelectorAll('.month-day').length === 42 && mdlg.querySelectorAll('.month-day.is-today').length === 1, '42 day cells, one today');
+  log(mdlg.querySelector('.month-day.is-today').textContent.includes('全天事项'), 'today cell shows chips');
+  const sideTitles = () => [...mdlg.querySelectorAll('.month-event-title')].map((e) => e.textContent);
+  log(sideTitles().includes('深夜复盘') && sideTitles().includes('全天事项'), `side lists today: ${sideTitles().join(' | ')}`);
+  log(mdlg.querySelector('.month-day.is-today .month-term') ? true : !mdlg.textContent.includes('undefined'), 'no undefined text');
+  log([...mdlg.querySelectorAll('.month-term')].some((t) => ['寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分'].includes(t.textContent)), 'solar term shown on its day');
+  [...mdlg.querySelectorAll('.month-event')].find((b) => b.textContent.includes('深夜复盘')).click(); await sleep(50);
+  log(mdlg.querySelector('.month-side .detail-title')?.textContent === '深夜复盘' && !!mdlg.querySelector('.month-side .detail-join'), 'event detail inside month view');
+  mdlg.querySelector('.month-back').click(); await sleep(50);
+  log(sideTitles().length > 0, 'back to day list');
+  [...mdlg.querySelectorAll('.month-arrow')][1].click(); await sleep(400);
+  const nm = new Date(nowD.getFullYear(), nowD.getMonth() + 1, 1);
+  log(mdlg.querySelector('#month-title').textContent === `${nm.getFullYear()}年${nm.getMonth() + 1}月`, 'next month');
+  const day15 = [...mdlg.querySelectorAll('.month-day:not(.is-outside)')][14];
+  log(day15.textContent.includes('下月例会'), 'next-month event visible (expanded beyond widget range)');
+  day15.click(); await sleep(50);
+  log(sideTitles().includes('下月例会') && mdlg.querySelector('.month-event .event-place')?.textContent === '二楼会议室', 'selected day shows event with place');
+  mdlg.querySelector('.month-today').click(); await sleep(300);
+  log(mdlg.querySelector('#month-title').textContent === `${nowD.getFullYear()}年${nowD.getMonth() + 1}月`, 'today button returns');
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
+  mdlg.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(80);
+  log(!mdlg.open, 'Esc closes month view');
+  const groups = [...calW().querySelectorAll('.cal-group h3')].map((h) => h.textContent);
+  log(groups[0] === '今天' && groups[1] === '明天', `day groups: ${groups.join(',')}`);
+  const tomorrow = [...calW().querySelectorAll('.cal-group')][1];
+  log(tomorrow.textContent.includes('站会（改期）') && tomorrow.textContent.includes('11:00') && !tomorrow.textContent.includes('每日站会'), 'exception replaces tomorrow standup');
+  // 日程详情
+  const lateRow = [...calW().querySelectorAll('.event')].find((e) => e.textContent.includes('深夜复盘'));
+  log(lateRow.querySelector('.event-place')?.textContent === '上海市徐汇区某某路 123 号 会议室 A', 'row shows location without opening');
+  lateRow.click(); await sleep(80);
+  const pop = d.querySelector('.detail-popover');
+  log(!!pop && pop.querySelector('.detail-title').textContent === '深夜复盘', 'click opens detail');
+  log(pop.querySelector('.detail-cal').textContent.includes('测试日历'), 'detail shows calendar name');
+  log(/\d+月\d+日 周. 23:30 – 23:55/.test(pop.querySelector('.detail-when').textContent), `detail time: ${pop.querySelector('.detail-when').textContent}`);
+  log(pop.querySelector('.detail-join')?.href === 'https://meet.google.com/abc-defg-hij', 'join meeting link');
+  log(pop.querySelector('.detail-text').textContent.includes('会议室 A') && !pop.querySelector('.detail-copy'), 'location shown, no copy button');
+  const desc = pop.querySelector('.detail-desc');
+  log(!desc.innerHTML.includes('<b>') && desc.textContent.startsWith('议程\n1. 回顾本周\n2. 下周计划'), `description stripped: ${JSON.stringify(desc.textContent.slice(0, 30))}`);
+  log(desc.querySelector('a')?.href === 'https://example.com/doc', 'description link clickable');
+  const pr = pop.getBoundingClientRect(), wr = calW().getBoundingClientRect();
+  log((pr.left >= wr.right || pr.right <= wr.left) && pr.left >= 0 && pr.right <= w.innerWidth && pr.bottom <= w.innerHeight, `detail beside widget, on screen (${Math.round(pr.left)},${Math.round(pr.top)} ${Math.round(pr.width)}x${Math.round(pr.height)})`);
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(50);
+  log(!d.querySelector('.detail-popover'), 'Esc closes detail');
+  const allDayRow = [...calW().querySelectorAll('.event')].find((e) => e.textContent.includes('全天事项'));
+  allDayRow.click(); await sleep(60);
+  log(/· 全天$/.test(d.querySelector('.detail-when').textContent) && !d.querySelector('.detail-join'), 'all-day detail, no join button');
+  allDayRow.click(); await sleep(60);
+  log(!d.querySelector('.detail-popover'), 'clicking same row closes detail');
+
+  // 小尺寸：菜单不被裁切
+  calW().querySelector('.widget-more').click(); await sleep(50);
+  [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '小').click(); await sleep(80);
+  calW().querySelector('.widget-more').click(); await sleep(50);
+  calW().querySelector('.widget-more').click(); await sleep(80);
+  const mr = d.querySelector('.widget-menu').getBoundingClientRect();
+  log(mr.left >= 0 && mr.right <= w.innerWidth && mr.bottom <= w.innerHeight && mr.width >= 160, `small widget menu fully visible (${Math.round(mr.left)}..${Math.round(mr.right)})`);
+  [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '大').click(); await sleep(80);
+  calW().querySelector('.widget-more').click(); await sleep(50);
+  // 移除庭
+  d.querySelector('[data-type="garden"] .widget-more').click(); await sleep(50);
+  [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '移除小组件').click(); await sleep(80);
+  log(types() === 'notes:m,calendar:l', `garden removed: ${types()}`);
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  log(!pick('庭').disabled, 'removed widget can be re-added');
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  // 拖动日程到第一位
+  const ws = () => visual('.widget');
+  // 在便签输入框上按下拖动不会拿起小组件
+  const noteInput = d.querySelector('.notes-input');
+  if (noteInput) { await dragTo(noteInput, ws()[1]); log(types() === 'notes:m,calendar:l' && !d.querySelector('.is-lifted'), 'drag from input does not move widget'); }
+  {
+    const n = d.querySelector('[data-type="notes"]'), c = d.querySelector('[data-type="calendar"]');
+    const cal0 = { x: c.offsetLeft, y: c.offsetTop }, notes0 = { x: n.offsetLeft, y: n.offsetTop };
+    log(await dragTo(c, n), 'widget lifted while dragging');
+    // 大的（日程 4×4）拖到小的（便签 4×2）上：日程到了便签的位置，路上的格子让开，没有重叠
+    log(c.offsetLeft === notes0.x && c.offsetTop === notes0.y && overlapFree(), `large onto medium: it lands there, others make way: ${types()}`);
+  }
+  // 中组件往右挪过半格（46px），右边的格子立刻让位；Esc 恢复
+  {
+    const n = d.querySelector('[data-type="notes"]'), r = n.getBoundingClientRect();
+    const before = positions(), left0 = n.offsetLeft;
+    const x0 = r.left + r.width / 2, y0 = r.top + 30;
+    // 右边有地方就往右挪，否则往左
+    const cols = getComputedStyle(d.querySelector('.grid')).gridTemplateColumns.split(' ').length;
+    const dir = left0 / 100 + 4 < cols ? 1 : -1;
+    n.dispatchEvent(pe('pointerdown', x0, y0));
+    w.dispatchEvent(pe('pointermove', x0 + 46 * dir, y0)); await sleep(150);
+    const still = n.offsetLeft === left0;
+    w.dispatchEvent(pe('pointermove', x0 + 54 * dir, y0)); await sleep(150);
+    const moved = n.offsetLeft === left0 + 100 * dir && overlapFree();
+    // 被压到的格子只能落进便签腾出来的那一列里
+    const old = { x: left0, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight };
+    const b0 = Object.fromEntries(before.split(' ').map((t) => t.split('@')));
+    const sideways = [...d.querySelectorAll('.grid > [data-key]')].filter((t) => t !== n && b0[t.dataset.key] !== `${t.offsetLeft},${t.offsetTop}`).every((t) => (dir > 0 ? t.offsetLeft >= old.x && t.offsetLeft + t.offsetWidth <= old.x + 100 : t.offsetLeft >= old.x + old.w - 80 && t.offsetLeft + t.offsetWidth <= old.x + old.w) && t.offsetTop >= old.y && t.offsetTop + t.offsetHeight <= old.y + old.h);
+    w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(60);
+    log(still && moved && sideways, `medium widget moves one cell after half a cell, displaced tiles go into the vacated column (${left0} -> ${left0 + 100 * dir})`);
+    log(positions() === before, 'escape restores positions');
+  }
+
+  // 添加
+  await openAdd('网站');
+  log(dialog().open, 'add dialog opens');
+  log(btn('保存').disabled, 'save disabled when url empty');
+  log(!btn('删除'), 'no delete button in add mode');
+  setVal(inputs()[0], 'not a url'); await sleep(50);
+  btn('保存').click(); await sleep(50);
+  log(dialog().open && !!d.querySelector('#url-error'), 'invalid url shows error, keeps dialog');
+  setVal(inputs()[0], 'bilibili.com'); await sleep(50);
+  log(inputs()[1].placeholder === 'Bilibili', `name placeholder derived: ${inputs()[1].placeholder}`);
+  btn('保存').click(); await sleep(50);
+  log(!dialog().open, 'dialog closes after save');
+  const added = stored().at(-1);
+  log(added.name === 'Bilibili' && added.url === 'https://bilibili.com/', `added: ${JSON.stringify(added)}`);
+  log(d.querySelectorAll('.shortcut-link[href]').length === 5, 'rendered 5 links');
+
+  // 编辑
+  d.querySelectorAll('.shortcut-edit')[0].click(); await sleep(50);
+  log(inputs()[0].value === 'https://github.com/' && inputs()[1].value === 'GitHub', 'edit dialog prefilled');
+  setVal(inputs()[1], 'GH'); await sleep(50);
+  dialog().querySelector('.dialog-body').requestSubmit(); await sleep(50);
+  log(stored()[0].name === 'GH', `edited (Enter submits): ${names()}`);
+
+  // 取消不保存
+  d.querySelectorAll('.shortcut-edit')[0].click(); await sleep(50);
+  setVal(inputs()[1], 'XXX'); await sleep(50);
+  btn('取消').click(); await sleep(50);
+  log(!dialog().open && stored()[0].name === 'GH', 'cancel discards changes');
+
+  // 右键编辑 + 删除
+  d.querySelectorAll('.shortcut')[1].dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(50);
+  log(dialog().open && inputs()[1].value === 'WXT', 'right-click opens edit');
+  btn('删除').click(); await sleep(50);
+  log(names() === 'GH,React,MDN,Bilibili', `deleted: ${names()}`);
+
+  // 拖拽排序：把 Bilibili 拖到第一位
+  const links = () => visual('.shortcut').map((e) => e.querySelector('.shortcut-link'));
+  // 拖动排序不移动 DOM 节点（避免毛玻璃闪一下）
+  const domBefore = [...d.querySelectorAll('.grid > [data-key]')].map((e) => e.dataset.key).join();
+  // 只是点一下（没有移动）不会排序，点击照常
+  let clickPrevented = null;
+  d.addEventListener('click', (e) => { if (e.target.closest?.('.shortcut-link')) { clickPrevented = e.defaultPrevented; e.preventDefault(); } });
+  links()[0].dispatchEvent(pe('pointerdown', ...center(links()[0])));
+  w.dispatchEvent(pe('pointerup', ...center(links()[0])));
+  links()[0].dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(30);
+  log(clickPrevented === false && shown() === 'GH,React,MDN,Bilibili', 'plain click still opens link');
+  // Esc 取消：恢复原位置
+  const pos0 = positions();
+  await dragTo(links()[3], links()[0], { cancel: true });
+  log(positions() === pos0 && !d.querySelector('.is-lifted'), `escape cancels drag: ${shown()}`);
+  // 同尺寸互换：找一对左右相邻的快捷方式，把左边的拖到右边的上；松手后的 click 不会打开链接
+  const pair = () => { const ls = visual('.shortcut'); for (const p of ls) { const q = ls.find((o) => o.offsetTop === p.offsetTop && o.offsetLeft === p.offsetLeft + 100); if (q) return [p, q]; } return null; };
+  const [p1, q1] = pair();
+  const at = (e) => `${e.offsetLeft},${e.offsetTop}`;
+  const p1at = at(p1), q1at = at(q1);
+  const rest0 = positions().split(' ').filter((t) => !t.startsWith(p1.dataset.key + '@') && !t.startsWith(q1.dataset.key + '@')).join(' ');
+  let clickAllowed = null;
+  const lifted = await dragTo(p1.querySelector('.shortcut-link'), q1, { afterUp: () => { clickAllowed = p1.querySelector('.shortcut-link').dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); } });
+  log(lifted, 'shortcut lifted while dragging');
+  log(clickAllowed === false, 'click after drag is suppressed');
+  const rest1 = positions().split(' ').filter((t) => !t.startsWith(p1.dataset.key + '@') && !t.startsWith(q1.dataset.key + '@')).join(' ');
+  log(at(p1) === q1at && at(q1) === p1at && rest1 === rest0, `adjacent icons swap, nothing else moves`);
+  log(overlapFree(), 'no overlapping tiles');
+  log([...d.querySelectorAll('.grid > [data-key]')].map((e) => e.dataset.key).join() === domBefore, 'drag does not move DOM nodes');
+  log(!d.querySelector('.is-lifted') && !d.documentElement.classList.contains('is-reordering') && !p1.style.transform, 'drag state cleared');
+  // 拖回去：恢复
+  await dragTo(p1.querySelector('.shortcut-link'), q1);
+  log(at(p1) === p1at && at(q1) === q1at, 'swap back');
+  // 小的压到大的上：组件不动，图标也不会压在组件上
+  {
+    const cal = d.querySelector('[data-type="calendar"]'), c0 = at(cal);
+    await dragTo(links()[0], cal);
+    log(at(cal) === c0 && overlapFree(), 'icon onto widget: widget stays, no overlap');
+  }
+  // 自由摆放：拖到空位上，其他格子都不动，原来的位置留空
+  {
+    const g = d.querySelector('.grid'), cols = getComputedStyle(g).gridTemplateColumns.split(' ').length;
+    const tiles = [...g.querySelectorAll(':scope > [data-key]')];
+    const add = g.querySelector('.grid-add');
+    const taken = (x, y) => tiles.some((t) => t.offsetLeft <= x * 100 && x * 100 < t.offsetLeft + t.offsetWidth && t.offsetTop <= y * 100 && y * 100 < t.offsetTop + t.offsetHeight);
+    const rows = Math.max(...tiles.map((t) => (t.offsetTop + t.offsetHeight + 20) / 100));
+    let cell = null;
+    for (let y = 0; y < rows && !cell; y++) for (let x = 0; x < cols && !cell; x++) if (!taken(x, y)) cell = { x, y };
+    const mdn = visual('.shortcut')[3];
+    const others = positions().split(' ').filter((p) => !p.startsWith(mdn.dataset.key + '@') && !p.startsWith('add@'));
+    const target = { getBoundingClientRect: () => { const gr = g.getBoundingClientRect(), ox = (g.clientWidth - (cols * 100 - 20)) / 2; return { left: gr.left + ox + cell.x * 100, top: gr.top + cell.y * 100, width: 80, height: 80 }; } };
+    await dragTo(mdn.querySelector('.shortcut-link'), target);
+    const othersAfter = positions().split(' ').filter((p) => !p.startsWith(mdn.dataset.key + '@') && !p.startsWith('add@'));
+    log(!!cell && mdn.offsetLeft === cell.x * 100 && mdn.offsetTop === cell.y * 100 && othersAfter.join() === others.join(), `free placement into empty cell ${cell?.x},${cell?.y}`);
+    // 「添加」也能拖：拖到第一个空位，松手后停在那里；点击不会误开菜单
+    const empty = (() => { const ts = [...g.querySelectorAll(':scope > [data-key]')]; for (let y = 0; y < 8; y++) for (let x = 0; x < cols; x++) if (!ts.some((t) => t.offsetLeft <= x * 100 && x * 100 < t.offsetLeft + t.offsetWidth && t.offsetTop <= y * 100 && y * 100 < t.offsetTop + t.offsetHeight)) return { x, y }; })();
+    const cellBox = (c) => ({ getBoundingClientRect: () => { const gr = g.getBoundingClientRect(), ox = (g.clientWidth - (cols * 100 - 20)) / 2; return { left: gr.left + ox + c.x * 100, top: gr.top + c.y * 100, width: 80, height: 80 }; } });
+    await dragTo(add.querySelector('.shortcut-add'), cellBox(empty));
+    log(add.offsetLeft === empty.x * 100 && add.offsetTop === empty.y * 100 && !d.querySelector('.add-menu'), `add tile draggable to ${empty.x},${empty.y}, menu not opened`);
+    log(JSON.parse(w.localStorage.getItem('niwa:add'))?.x === empty.x, 'add position saved');
+  }
+  const posBeforeReload = positions();
+
+  // 刷新后保持
+  f.onload = async () => {
+    await sleep(400);
+    const p = positions(f.contentDocument);
+    log(p === posBeforeReload, `positions persist after reload`);
+  };
+  w.location.reload();
+};
+</script>

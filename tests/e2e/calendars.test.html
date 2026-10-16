@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><body><iframe id="f" style="width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = []; const log = (ok, m) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${m}`); document.getElementById('out').textContent = out.join('\n'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'c', kind: 'widget', type: 'calendar', size: 'l' }]));
+const f = document.getElementById('f'); f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const setVal = (i, v) => { Object.getOwnPropertyDescriptor(w.HTMLTextAreaElement.prototype, 'value').set.call(i, v); i.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  d.querySelector('.cal-empty button').click(); await sleep(100);
+  const dlg = d.querySelector('.dialog-wide');
+  const area = dlg.querySelector('textarea');
+  // 一次粘贴两个有效地址 + 一个无效的 + 一个重复的
+  setVal(area, `${location.origin}/sample.ics\n${location.origin}/sample2.ics\nhello\n${location.origin}/sample.ics`); await sleep(30);
+  dlg.querySelector('form').requestSubmit(); await sleep(200);
+  const stored = JSON.parse(w.localStorage.getItem('niwa:calendars'));
+  log(stored.length === 2, `two calendars from one paste: ${stored.length}`);
+  log(area.value === 'hello' && dlg.querySelector('.field-error').textContent.includes('hello'), `invalid line kept and reported: ${dlg.querySelector('.field-error')?.textContent}`);
+  log(dlg.querySelectorAll('.source-new').length === 2 && dlg.querySelector('.sources-title').textContent === '已连接 2 个日历', 'list shows both as newly added');
+  log(dlg.querySelector('.field > span').textContent === '添加更多日历', 'label invites adding more');
+  await sleep(2500);
+  const names = [...dlg.querySelectorAll('.source-name')].map((n) => n.textContent);
+  log(names.join() === '测试日历,第二个日历', `names loaded: ${names.join()}`);
+  setVal(area, `${location.origin}/sample2.ics`); await sleep(30);
+  dlg.querySelector('form').requestSubmit(); await sleep(100);
+  log(dlg.querySelector('.field-error').textContent === '这些日历已经添加过了', 'duplicate rejected');
+  [...dlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(300);
+  const t = [...d.querySelectorAll('.event-title')].map((e) => e.textContent);
+  log(t.filter((x) => x === '深夜复盘').length === 2, `widget merges both calendars: ${t.join(' | ')}`);
+
+  // 出错的日历：地址失效（404）、地址返回的不是日历。显示给用户看的原因，其他日历照常显示。
+  d.querySelector('.widget-more').click(); await sleep(50);
+  [...d.querySelectorAll('.menu-item')].find((b) => b.textContent === '管理日历…').click(); await sleep(100);
+  setVal(area, `${location.origin}/missing.ics\n${location.origin}/newtab.html`); await sleep(30);
+  dlg.querySelector('form').requestSubmit(); await sleep(100);
+  [...dlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(2500);
+  const status = d.querySelector('.cal-status.is-error');
+  log(status?.textContent.startsWith('2 个日历更新失败'), `failed calendars counted: ${status?.textContent}`);
+  log(status?.title.includes('日历地址已失效') && status.title.includes('不是日历'), `failure reasons on hover: ${status?.title}`);
+  log([...d.querySelectorAll('.event-title')].some((e) => e.textContent === '深夜复盘'), 'good calendars still shown');
+  d.querySelector('.cal-more').click(); await sleep(2500);
+  const monthStatus = d.querySelector('.month-status').textContent;
+  log(monthStatus.includes('日历地址已失效') && monthStatus.includes('不是日历'), `month shows failure reasons: ${monthStatus}`);
+};
+</script>

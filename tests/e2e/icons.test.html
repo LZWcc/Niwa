@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- 页面测试：快捷方式的图标——自动获取网站图标、找不到时用文字图标、上传图片，以及图片的保存与删除。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 读文件、解码图片是真实的异步操作，无头模式的虚拟时间不等它们：页面空闲时会直接快进到结束。
+// 请求挂起时虚拟时间会暂停，所以等待期间一直向测试服务器发一个 20ms 后才返回的请求，最多等 5 秒。
+const waitFor = async (ok) => {
+  for (let i = 0; i < 250 && !ok(); i++) await fetch('/__tick');
+};
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const dlg = d.querySelector('dialog[aria-labelledby="dialog-title"]');
+  const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  // 0 网址、1 名称、2 图标上的字（选了文字图标时才有）
+  const field = (i) => dlg.querySelectorAll('input:not([type=file])')[i];
+  const links = () => JSON.parse(w.localStorage.getItem('niwa:grid')).filter((i) => i.kind === 'link');
+  const icons = () => JSON.parse(w.localStorage.getItem('niwa:icons') ?? '{}');
+  const checked = () => dlg.querySelector('.icon-option[aria-checked="true"]');
+  const tile = (name) => [...d.querySelectorAll('.shortcut')].find((s) => s.textContent.includes(name));
+  const openAdd = async () => {
+    d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+    [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('网站')).click(); await sleep(100);
+  };
+  const upload = async (file, done) => {
+    const dt = new w.DataTransfer(); dt.items.add(file);
+    const input = dlg.querySelector('input[type=file]'); input.files = dt.files;
+    input.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await waitFor(done);
+  };
+  const save = async () => { dlg.querySelector('form').requestSubmit(); await sleep(200); };
+
+  // 第三方图标服务换成测试服务器上的假响应，测试不依赖外网。两个假网站域名相同（127.0.0.1），用 found 切换：
+  // found：icon.horse 查到图标；否则返回占位图。Google 一律 404；favicone 一律返回它真实的占位图（按内容识别）。
+  let found = true;
+  const realFetch = w.fetch.bind(w);
+  w.fetch = (input, init) => {
+    const url = String(input);
+    if (url.startsWith('https://icon.horse/')) return realFetch(found ? '/fake-icon/horse.svg' : '/fake-icon/horse-placeholder.svg', init);
+    if (url.startsWith('https://www.google.com/')) return realFetch('/fake-icon/missing', init);
+    if (url.startsWith('https://favicone.com/')) return realFetch('/__tests__/favicone-placeholder.ico', init);
+    return realFetch(input, init);
+  };
+
+  // 网站自己声明的图标和图标服务同时取：都作为候选，网站自己的排在前面、默认选中；
+  // 不存在的 apple-touch-icon、Google 的 404、favicone 的占位图都不算候选。
+  await openAdd();
+  setVal(field(0), `${location.origin}/site/`);
+  await waitFor(() => dlg.querySelector('.icon-status') === null && dlg.querySelector('.icon-option img'));
+  const imgs = [...dlg.querySelectorAll('.icon-option img')];
+  log(imgs.length === 2 && imgs.every((img) => img.src.startsWith('data:image/webp')), `own icon + icon.horse fetched: ${imgs.length}`);
+  log(checked()?.querySelector('img') === imgs[0], 'own icon first and selected by default');
+  log(dlg.querySelector('.dialog-head img')?.src === imgs[0].src, 'preview shows fetched icon');
+  setVal(field(1), 'Site'); await save();
+  const site = links().find((l) => l.name === 'Site');
+  log(site?.icon?.kind === 'image' && icons()[site.id] === imgs[0].src, 'image kept in niwa:icons, item only marks it');
+  log(!!tile('Site')?.querySelector('.shortcut-icon.is-image img')?.src.startsWith('data:image/webp'), 'shortcut shows saved image');
+
+  // 没有图标的网站，图标服务也只给占位图：提示没找到，默认用文字图标；改字和颜色
+  found = false;
+  await openAdd();
+  setVal(field(0), `${location.origin}/plain/`);
+  await waitFor(() => dlg.querySelector('.icon-status')?.textContent.includes('没找到'));
+  const status = dlg.querySelector('.icon-status')?.textContent ?? '';
+  log(status.includes('没找到'), `no icon found: ${status}`);
+  log(!!checked()?.classList.contains('is-text'), 'text icon selected when nothing found');
+  setVal(field(2), '朴'); await sleep(50);
+  dlg.querySelectorAll('.icon-color')[3].click(); await sleep(50);
+  setVal(field(1), 'Plain'); await save();
+  const plain = links().find((l) => l.name === 'Plain');
+  log(plain?.icon?.text === '朴' && plain.icon.color === '#d9853b' && !(plain.id in icons()), `text icon saved: ${JSON.stringify(plain?.icon)}`);
+  log(tile('Plain')?.querySelector('.shortcut-icon.is-text')?.textContent === '朴', 'shortcut shows text icon');
+
+  // 编辑时上传：不是图片的文件给出提示；图片替换原来的图标
+  tile('Site').querySelector('.shortcut-edit').click(); await sleep(100);
+  const before = icons()[site.id];
+  log(checked()?.querySelector('img')?.src === before, 'edit dialog selects current image');
+  await upload(new w.File(['hello'], 'a.txt', { type: 'text/plain' }), () => dlg.querySelector('.field-error'));
+  log(dlg.querySelector('.field-error')?.textContent === '这个文件不是能用的图片', `bad upload reported: ${dlg.querySelector('.field-error')?.textContent}`);
+  await upload(new w.File(['<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="32" fill="#c33"/></svg>'], 'up.svg', { type: 'image/svg+xml' }), () => checked()?.querySelector('img')?.src !== before);
+  const uploaded = checked()?.querySelector('img')?.src ?? '';
+  log(uploaded.startsWith('data:image/webp') && uploaded !== before, 'uploaded image selected');
+  await save();
+  log(icons()[site.id] === uploaded, 'uploaded image saved');
+
+  // 删除快捷方式：它的图片一起删掉
+  tile('Site').querySelector('.shortcut-edit').click(); await sleep(100);
+  [...dlg.querySelectorAll('button')].find((b) => b.textContent.trim() === '删除').click(); await sleep(200);
+  log(!links().some((l) => l.name === 'Site') && !(site.id in icons()), 'deleting shortcut removes its image');
+};
+</script>

@@ -1,0 +1,16 @@
+/* 新标签页的样式入口。按顺序引入：后面的文件可以覆盖前面同优先级的规则（例如 month.css 覆盖 dialog.css）。
+   全局的（变量、基础、对话框、工具类）放在这一层，其余按 components/ 的目录分到子目录。 */
+@import './tokens.css';
+@import './page/scene.css';
+@import './base.css';
+@import './widgets/widgets.css';
+@import './widgets/notes.css';
+@import './widgets/calendar.css';
+@import './search/search.css';
+@import './grid/grid.css';
+@import './dialog.css';
+@import './grid/icon-picker.css';
+@import './page/backup.css';
+@import './widgets/month.css';
+@import './widgets/garden.css';
+@import './utilities.css';

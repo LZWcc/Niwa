@@ -25,7 +25,7 @@ const suites = [
   { file: 'icons.test.html', flags: ['--force-prefers-reduced-motion'], done: 'deleting shortcut removes its image' },
   { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'secrets kept when backup has none' },
   { file: 'browsing.test.html', flags: ['--force-prefers-reduced-motion'], done: 'suggestions turned back on' },
-  { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'moon layer shown at night' },
+  { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no moon phase on the sun in light theme' },
   { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
 ];
 

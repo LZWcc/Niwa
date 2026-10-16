@@ -80,8 +80,8 @@
   height: min(36vh, 340px);
 }
 
-/* 月相：日月是月亮的时候（夜庭，或浅色的夜里），整个圆淡成暗面，亮的部分按 --moon-mask（applyAtmosphere 按当天的月相写）
-   画在 .scene-moon 上；光晕按亮着的比例变弱，新月前后几乎没有。 */
+/* 月相：夜庭里的月亮整个圆淡成暗面，亮的部分按 --moon-mask（applyAtmosphere 按当天的月相写）画在 .scene-moon 上；
+   光晕按亮着的比例变弱，新月前后几乎没有。浅色「山水」里那个圆是太阳，不管几点都是整圆。 */
 .scene-moon {
   position: absolute;
   inset: 0;
@@ -90,16 +90,13 @@
   background: var(--orb);
   mask: var(--moon-mask) center / 100% 100% no-repeat;
 }
-:where([data-theme='dark']) .scene-moon,
-[data-phase='night'] .scene-moon {
+:where([data-theme='dark']) .scene-moon {
   display: block;
 }
-:where([data-theme='dark']) .scene-orb::after,
-[data-phase='night'] .scene-orb::after {
+:where([data-theme='dark']) .scene-orb::after {
   opacity: 0.06;
 }
-:where([data-theme='dark']) .scene-orb::before,
-[data-phase='night'] .scene-orb::before {
+:where([data-theme='dark']) .scene-orb::before {
   opacity: calc(0.25 + 0.75 * var(--moon-lit, 1));
 }
 

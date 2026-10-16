@@ -34,5 +34,9 @@ f.onload = async () => {
   const lit = Number(style.getPropertyValue('--moon-lit'));
   log(style.getPropertyValue('--moon-mask').startsWith('url("data:image/svg+xml,') && lit >= 0 && lit <= 1, `moon mask set, lit ${lit}`);
   log(w.getComputedStyle(d.querySelector('.scene-moon')).display === 'block', 'moon layer shown at night');
+  // 浅色「山水」里是太阳：不管几点都不画月相
+  d.documentElement.dataset.theme = 'light';
+  d.documentElement.dataset.phase = 'night';
+  log(w.getComputedStyle(d.querySelector('.scene-moon')).display === 'none', 'no moon phase on the sun in light theme');
 };
 </script>

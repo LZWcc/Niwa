@@ -1,0 +1,105 @@
+/* 背景的景：日月和三层远山。 */
+
+/* ---------- Scene ---------- */
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+/* 天空（日月、灯笼的光）和远山各占一层，每层都和窗口一样大。
+   日月在动、切换深浅色时，浏览器会把背景里的东西拆开单独合成；拆出来的层要是比窗口小
+   （比如只有日月或远山那么大），它的边在 macOS 上会在背景里隐约显出一个方框或一条线。
+   各自先固定成整窗大小的一层，边就都落在窗口边上。 */
+.scene-sky,
+.scene-land {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  will-change: transform;
+}
+
+/* 切换浅色 / 深色时日月的位移和淡入淡出（utils/theme.ts 的 switchTheme 用动画改这三个值）。
+   有意不用 transform / opacity 动画：那样浏览器会把日月单独放到一层合成，
+   在 macOS 上这一层的范围会在背景上隐约显出一个方框。改位置只重绘它周围一小块，开销很小。 */
+@property --orb-dx {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --orb-dy {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --orb-fade {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+.scene-orb {
+  /* 光晕用径向渐变画，渐变在自己的范围内就淡到全透明（不用大的模糊 box-shadow，它在边上会被截断） */
+  --orb-halo-size: 120px;
+  --orb-halo: radial-gradient(
+    closest-side,
+    var(--orb-glow) 23%,
+    color-mix(in srgb, var(--orb-glow) 50%, transparent) 49%,
+    color-mix(in srgb, var(--orb-glow) 12%, transparent) 72%,
+    transparent
+  );
+  --orb-opacity: 1;
+  position: absolute;
+  left: calc(var(--orb-x) + var(--orb-dx));
+  top: calc(var(--orb-y) + var(--orb-dy));
+  opacity: calc(var(--orb-opacity) * var(--orb-fade));
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+}
+.scene-orb::before,
+.scene-orb::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+/* 光晕在下，日月本身在上 */
+.scene-orb::before {
+  inset: calc(-1 * var(--orb-halo-size));
+  background: var(--orb-halo);
+}
+.scene-orb::after {
+  inset: 0;
+  background: var(--orb);
+}
+.scene-hills {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: min(36vh, 340px);
+}
+
+/* 石灯笼那一角的暖光，只在夜庭里有，画在天空这一层的背景上，颜色来自 --lantern-glow，夜里更亮。 */
+:where([data-theme='dark']) .scene-sky {
+  background: radial-gradient(12vw 9vh at 88vw 91vh, var(--lantern-glow), transparent);
+}
+
+/* 夜庭：没有山，只有月亮。用 visibility 而不是 display: none 藏起来，
+   这一层一直在，切回浅色时山就画在原来那一层里，不会被临时拆成一条和山一样大的层。 */
+:where([data-theme='dark']) .scene-land {
+  visibility: hidden;
+}
+:where([data-theme='dark']) .scene-orb {
+  --orb-halo-size: 70px;
+  --orb-halo: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--orb-glow) 63%, transparent) 31%,
+    color-mix(in srgb, var(--orb-glow) 50%, transparent) 41%,
+    color-mix(in srgb, var(--orb-glow) 12%, transparent) 63%,
+    transparent
+  );
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  --orb-opacity: 0.85;
+}

@@ -1,0 +1,135 @@
+/* 搜索框与搜索引擎菜单。 */
+
+/* ---------- Search ---------- */
+.search {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 716px);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 18px 0 8px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 30px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px) saturate(1.1);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.search:focus-within {
+  border-color: var(--focus);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 6px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 17px;
+}
+.search input::placeholder {
+  color: var(--faint);
+}
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.engine {
+  position: relative;
+  flex-shrink: 0;
+}
+.engine-button {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.engine-button:hover,
+.engine-button[aria-expanded='true'] {
+  background: var(--border);
+  color: var(--muted);
+}
+.engine-button:focus-visible {
+  outline-offset: -2px;
+}
+.engine-chevron {
+  transition: transform 0.2s;
+}
+.engine-button[aria-expanded='true'] .engine-chevron {
+  transform: rotate(180deg);
+}
+
+.engine-mark {
+  flex-shrink: 0;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mark) 14%, transparent);
+}
+
+/* 图标是单色 SVG，当作遮罩，颜色取自引擎的 color */
+.engine-mark::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  background: var(--mark);
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.engine-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: -6px;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--elevated);
+  box-shadow: 0 16px 48px -16px rgb(0 0 0 / 0.3);
+  animation: pop var(--spring-card-duration) var(--spring-card);
+}
+.engine-menu button {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.engine-menu button:hover,
+.engine-menu button:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.engine-menu button span:not(.engine-mark) {
+  flex: 1;
+}
+.engine-check {
+  opacity: 0;
+  color: var(--muted);
+}
+.engine-menu [aria-checked='true'] .engine-check {
+  opacity: 1;
+}

@@ -119,5 +119,78 @@ f.onload = async () => {
   log(JSON.stringify(titles(hw)) === '["关掉的页面","2 个标签页 · 窗口里的页面"]', `recently closed: ${titles(hw)}`);
   row(hw, '关掉的页面').click(); await sleep(50);
   log(restored.join() === 's1' && JSON.stringify(titles(hw)) === '["2 个标签页 · 窗口里的页面"]', `restore closed tab: ${restored}`);
+  // 搜索框联想：收藏在前，浏览记录按访问次数排，同一个网址只留一条
+  w.chrome.bookmarks.search = async (q) => {
+    const found = [];
+    const walk = (n) => { if (n.url && (n.title + n.url).toLowerCase().includes(q.toLowerCase())) found.push(n); n.children?.forEach(walk); };
+    walk(tree);
+    return found;
+  };
+  w.chrome.history.search = async ({ text }) => [
+    { id: 's1', url: 'https://github.com/', title: 'GitHub', visitCount: 9 },
+    { id: 's2', url: 'https://github.com/niwa/issues', title: 'Issues · niwa', visitCount: 2 },
+    { id: 's3', url: 'https://github.com/niwa', title: 'GitHub · niwa', visitCount: 5 },
+  ].filter((h) => (h.title + h.url).toLowerCase().includes(text.toLowerCase()));
+  const opened = [];
+  w.open = (url) => { opened.push(url); };
+  const q = d.querySelector('#search-query');
+  const key = (k, opts = {}) => q.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, bubbles: true, ...opts }));
+  const options = () => [...d.querySelectorAll('.suggest [role=option]')];
+  const selected = () => options().findIndex((o) => o.getAttribute('aria-selected') === 'true');
+  q.focus(); setVal(q, 'git'); await sleep(100);
+  const sugTitles = options().map((o) => o.querySelector('.suggest-title').textContent);
+  const kinds = options().map((o) => o.querySelector('.suggest-kind').textContent).join();
+  log(JSON.stringify(sugTitles) === JSON.stringify([LONG_BOOKMARK, 'GitHub · niwa', 'Issues · niwa']) && kinds === '收藏,历史,历史', `suggestions: ${sugTitles} / ${kinds}`);
+  log(options()[0].querySelector('a')?.getAttribute('href') === 'https://github.com/', 'suggestion is a plain link');
+
+  // ↓↑ 选择，走过两头回到输入框；⌘ + 回车在新标签页打开；Esc 收起但不清空
+  key('ArrowDown'); key('ArrowDown'); await sleep(50);
+  log(selected() === 1 && q.getAttribute('aria-activedescendant') === 'search-option-1', 'arrow keys select');
+  key('ArrowUp'); key('ArrowUp'); await sleep(50);
+  log(selected() === -1 && !q.hasAttribute('aria-activedescendant'), 'back to input');
+  key('ArrowUp'); await sleep(50);
+  log(selected() === 2, 'wraps to last');
+  key('Enter', { metaKey: true }); await sleep(50);
+  log(opened.join() === 'https://github.com/niwa/issues', `cmd+enter opens in new tab: ${opened}`);
+  key('Escape'); await sleep(50);
+  log(!d.querySelector('.suggest') && q.value === 'git', 'escape closes, keeps text');
+  setVal(q, 'zzz'); await sleep(100);
+  log(!d.querySelector('.suggest') && q.getAttribute('aria-expanded') === 'false', 'no match, no dropdown');
+
+  // 点一条右侧的 ×：排除它所在的网站（含子域名），联想里就不再出现
+  w.chrome.history.search = async ({ text }) => [
+    { id: 't1', url: 'https://gist.github.com/', title: 'Gists', visitCount: 4 },
+    { id: 't2', url: 'https://www.gitlab.com/', title: 'GitLab', visitCount: 3 },
+  ].filter((h) => (h.title + h.url).toLowerCase().includes(text.toLowerCase()));
+  setVal(q, 'git'); await sleep(100);
+  options()[0].querySelector('.suggest-remove').click(); await sleep(100);
+  const after = options().map((o) => o.querySelector('.suggest-title').textContent);
+  log(JSON.stringify(JSON.parse(w.localStorage.getItem('niwa:search-exclude'))) === '["github.com"]' && JSON.stringify(after) === '["GitLab"]', `exclude site and subdomains: ${after}`);
+
+  // 引擎菜单里管理排除的网站：移除、添加（网址统一成域名，不像网站的给出提示）
+  const engineMenu = async (text) => {
+    d.querySelector('.engine-button').click(); await sleep(50);
+    [...d.querySelectorAll('.engine-menu button')].find((b) => b.textContent.startsWith(text)).click(); await sleep(100);
+  };
+  await engineMenu('排除的网站');
+  const ex = d.querySelector('dialog[aria-labelledby="exclude-title"]');
+  log(ex?.open && [...ex.querySelectorAll('.source-name')].map((x) => x.textContent).join() === 'github.com', 'dialog lists excluded sites');
+  [...ex.querySelectorAll('button')].find((b) => b.textContent.trim() === '移除').click(); await sleep(50);
+  setVal(ex.querySelector('input'), 'not a site'); ex.querySelector('form').requestSubmit(); await sleep(50);
+  log(ex.querySelector('.field-error')?.textContent.includes('不像一个网站'), 'bad site rejected');
+  setVal(ex.querySelector('input'), 'https://www.GitLab.com/explore'); ex.querySelector('form').requestSubmit(); await sleep(50);
+  log(w.localStorage.getItem('niwa:search-exclude') === '["gitlab.com"]', `site normalized: ${w.localStorage.getItem('niwa:search-exclude')}`);
+  [...ex.querySelectorAll('button')].find((b) => b.textContent.trim() === '完成').click(); await sleep(50);
+  // 输入框里已经是 git：先改一下，React 才会当作有输入
+  q.focus(); setVal(q, 'gi'); setVal(q, 'git'); await sleep(100);
+  log(options().map((o) => o.querySelector('.suggest-title').textContent).join() === `${LONG_BOOKMARK},Gists`, `removed site comes back, added one hidden: ${options().map((o) => o.querySelector('.suggest-title').textContent)}`);
+
+  // 菜单里关掉联想：不再出现；再打开恢复
+  await engineMenu('联想收藏和历史');
+  q.focus(); setVal(q, 'gi'); await sleep(100);
+  log(!d.querySelector('.suggest') && w.localStorage.getItem('niwa:search-suggest') === 'off', 'suggestions turned off');
+  await engineMenu('联想收藏和历史');
+  q.focus(); setVal(q, 'git'); await sleep(100);
+  log(options().length === 2 && !w.localStorage.getItem('niwa:search-suggest'), 'suggestions turned back on');
 };
 </script>

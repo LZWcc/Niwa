@@ -37,7 +37,7 @@ entrypoints/newtab/        新标签页入口
 components/
   common/                  Popover（挂在 body 上、按视口定位的弹出层）、Dialog（原生 <dialog> 的模态对话框）、ErrorBoundary
   page/                    Scene（背景的景）、Clock（时间、日期、节气）、ThemeToggle（浅色 / 深色）、BackupButton（备份与恢复）
-  search/Search.tsx        搜索框与搜索引擎菜单
+  search/                  Search（搜索框与搜索引擎菜单）、Suggestions（收藏和浏览记录的联想）
   grid/                    网格：Grid（组装）、AddTile、Shortcut、ShortcutIcon、ShortcutDialog、IconPicker（选图标）
   widgets/                 小组件
     index.ts               每种小组件对应哪个组件（注册表）
@@ -56,6 +56,7 @@ hooks/
   useCalendar.ts           日程数据与缓存
   useBookmarks.ts          收藏夹树，浏览器里改了收藏时重新读
   useBrowsingHistory.ts    历史：最近、常去、最近关闭
+  useSuggestions.ts        搜索框的联想：在收藏夹和浏览记录里找
   useWeather.ts            天气数据与缓存
   usePermissions.ts        可选权限（收藏夹、历史）是否已有、点击申请
   useStored.ts             存在 localStorage 里的数据（useStored、useStoredList），多个标签页之间同步
@@ -92,6 +93,14 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 ```
 
 各层的分工：`utils/` 只放纯函数和数据，不碰 React；`hooks/` 管状态和副作用；`components/` 只负责画出来，尽量不含规则。新代码按这个分工放。
+
+## 搜索
+
+搜索框是原生表单提交（GET 到 `config.ts` 里搜索引擎的地址），页面任意处按 `/` 聚焦。
+
+输入时在收藏夹和浏览记录里找，列在搜索框下面（`useSuggestions`，只读本地数据，不联网）：收藏排在前面（最多一半），浏览记录按访问次数排，同一个网址只留一条，最多 6 条。↓↑ 选择（走过两头回到输入框），回车打开选中的，⌘ / Ctrl + 回车在新标签页打开；没选中时回车照常搜索。Esc 只收起联想、不清空输入框。读取用的是收藏夹、历史小组件申请过的权限；都没有时联想里问一次「允许 / 不用了」。
+
+引擎菜单（搜索框左边）里可以关掉联想（`niwa:search-suggest`，「不用了」也是关掉它），以及管理**排除的网站**（`niwa:search-exclude`）：排除按域名、含子域名，只影响联想，不动浏览器的收藏和历史；在联想里悬停一条、点右侧的 × 也能排除它所在的网站。排除列表本身会暴露不想被看到的网站，所以算私密信息（见「备份与恢复」）。
 
 ## 网格
 
@@ -178,14 +187,14 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 ```json
 {
   "app": "niwa",
-  "version": 3,
+  "version": 4,
   "exportedAt": "…",
   "data": { "grid": [], "addTile": {}, "icons": {}, "notes": [], "visits": {}, "engine": "Bing", "theme": "system", "weather": null }
 }
 ```
 
 - 包含布局（每一格的位置、链接、图标）、图标图片、便签、庭的天数、搜索引擎、浅色 / 深色和天气的城市（第 2 版起；导入第 1 版的备份时当作没有选城市）。日程和天气的缓存可以重新获取，不导出。
-- **私密信息相当于密码**（日历订阅地址、天气 KEY），统一登记在 `backup.ts` 的 `SECRETS`：默认不导出，勾选「包含私密信息」后才带上（`data.secrets`，这边没有的项不带）。导入时备份里有哪项就替换哪项，没有的保留这边原来的。以后新加的私密数据（KEY、令牌、私密地址）也登记在这里，不要单独处理。
+- **私密信息相当于密码**（日历订阅地址、天气 KEY、联想排除的网站），统一登记在 `backup.ts` 的 `SECRETS`：默认不导出，勾选「包含私密信息」后才带上（`data.secrets`，这边没有的项不带）。导入时备份里有哪项就替换哪项，没有的保留这边原来的。以后新加的私密数据（KEY、令牌、私密地址）也登记在这里，不要单独处理。
 - **导入是整体替换**，不和现有数据合并；写完重新加载页面。文件先整体校验（每一项的格式、id 不重复、同一种小组件只有一个、图片图标都有图片），有一处不对就整个拒绝，不只导入一部分。
 - **改了 `BackupData` 的结构就把 `VERSION` 加一**，并在 `parseBackup` 里把旧版本的备份迁移过来；比当前版本还新的备份会提示先更新。
 
@@ -227,6 +236,6 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `icons.test.html`：自动获取网站图标（`run.mjs` 提供一个声明了图标的假网站；第三方图标服务的请求在测试页里转到假响应，不依赖外网）、找不到时用文字图标、上传图片、图片的保存与删除。
   - `backup.test.html`：导出的内容、私密信息默认不导出、坏文件整个拒绝、旧版本的迁移、导入后整体替换。
   - `weather.test.html`：天气。和风天气的请求在测试页里转到假数据：填 KEY（填错时的提示）、搜城市、各尺寸显示的内容、缓存、更新失败时保留数据、背景跟随天气的开关。
-  - `browsing.test.html`：收藏夹与历史。测试页不在扩展里，把 `chrome.bookmarks` 等接口换成假的：文件夹进出与记忆、只列网页、长标题不溢出、新收藏出现、搜索、最近 / 常去 / 最近关闭与恢复。
+  - `browsing.test.html`：收藏夹与历史，以及搜索框的联想（排序、去重、键盘选择、排除网站、开关）。测试页不在扩展里，把 `chrome.bookmarks` 等接口换成假的：文件夹进出与记忆、只列网页、长标题不溢出、新收藏出现、搜索、最近 / 常去 / 最近关闭与恢复。
   - 无头模式用的是虚拟时间：页面空闲时会直接快进，不等读文件、解码图片这类真实的异步操作。要等它们时用测试页里的 `waitFor`（等待期间一直请求 `run.mjs` 的 `/__tick`，请求挂起时虚拟时间会暂停）。
 - 拖拽的手感、深色模式、真实网站的图标、访问网站的授权弹窗这些测不到，改动后在浏览器里手动过一遍。

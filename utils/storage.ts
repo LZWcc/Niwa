@@ -19,6 +19,10 @@ export const KEYS = {
   engine: 'niwa:engine',
   /** 浅色 / 深色：light、dark，没有或 system 表示跟随系统 */
   theme: 'niwa:theme',
+  /** 搜索框联想收藏和历史：off 表示关掉（默认开） */
+  searchSuggest: 'niwa:search-suggest',
+  /** 联想里排除的网站（域名列表，私密数据见 backup.ts 的 SECRETS） */
+  searchExclude: 'niwa:search-exclude',
   /** 收藏夹小组件上次看的文件夹 id（只对这个浏览器有效，不进备份） */
   bookmarkFolder: 'niwa:bookmark-folder',
   /** 历史小组件上次看的一组：recent、top、closed */

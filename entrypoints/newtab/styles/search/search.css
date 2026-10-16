@@ -126,10 +126,148 @@
 .engine-menu button span:not(.engine-mark) {
   flex: 1;
 }
+.engine-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
+}
+.engine-menu [role='menuitemcheckbox'],
+.engine-menu [role='menuitem'] {
+  padding-left: 12px;
+}
 .engine-check {
   opacity: 0;
   color: var(--muted);
 }
 .engine-menu [aria-checked='true'] .engine-check {
   opacity: 1;
+}
+
+/* 联想：收藏和浏览记录里匹配的网站，挂在搜索框下面 */
+.suggest {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--elevated);
+  box-shadow: 0 16px 48px -16px rgb(0 0 0 / 0.3);
+  animation: pop var(--spring-card-duration) var(--spring-card);
+}
+.suggest ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suggest li {
+  position: relative;
+}
+/* 悬停时右侧的“标签”换成 ×：以后不再联想这个网站 */
+.suggest-remove {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  visibility: hidden;
+}
+.suggest-remove:hover {
+  background: var(--border);
+  color: var(--ink);
+}
+.suggest li:hover .suggest-remove {
+  visibility: visible;
+}
+.suggest li:hover .suggest-kind {
+  visibility: hidden;
+}
+.suggest-row {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: inherit;
+  font-size: 14px;
+  text-decoration: none;
+}
+[aria-selected='true'] > .suggest-row {
+  background: var(--border);
+}
+.suggest-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.suggest-icon img {
+  width: 16px;
+  height: 16px;
+}
+.suggest-title {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest-host {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest-kind {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--border);
+  font-size: 11px;
+  color: var(--muted);
+}
+.suggest-ask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 8px 6px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.suggest-ask .btn {
+  margin-left: auto;
+}
+.suggest-dismiss {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+/* 排除的网站（对话框，列表用 dialog.css 的 .sources） */
+.exclude-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
 }

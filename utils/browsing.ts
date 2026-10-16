@@ -9,6 +9,23 @@ export const isWebUrl = (url: string | undefined): url is string => /^https?:\/\
 
 export const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, '');
 
+/** 用户填的网站（网址或域名）统一成域名，例如 https://www.GitHub.com/x → github.com；不像网站时返回 null */
+export function siteOf(input: string) {
+  const text = input.trim();
+  try {
+    const host = hostOf(/^[a-z]+:\/\//i.test(text) ? text : `https://${text}`);
+    return host.includes('.') ? host : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 网址是不是属于这些网站（含子域名：排除 github.com 也排除 gist.github.com） */
+export const isExcluded = (url: string, sites: string[]) => {
+  const host = hostOf(url);
+  return sites.some((site) => host === site || host.endsWith(`.${site}`));
+};
+
 /** 历史里每一条右侧的时间：今天写时刻，昨天写“昨天”，更早写日期。 */
 export function visitLabel(t: number, now: Date) {
   const days = Math.round((startOfDay(now.getTime()) - startOfDay(t)) / DAY);

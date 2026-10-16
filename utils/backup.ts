@@ -1,6 +1,6 @@
 // 备份与恢复：把布局、图标、便签、庭的天数和偏好打包成一个 JSON 文件，在另一个浏览器里导入。
 // 导入是整体替换，不和现有数据合并；文件校验不过就整个拒绝，不只导入一部分。
-// 私密信息（日历订阅地址、天气 KEY，见 SECRETS）相当于密码，只有用户勾选时才导出；备份里没有的那几项，导入后保留这边原来的。
+// 私密信息（日历订阅地址、天气 KEY、联想排除的网站，见 SECRETS）相当于密码，只有用户勾选时才导出；备份里没有的那几项，导入后保留这边原来的。
 import { DEFAULT_ITEMS } from '../config';
 import { isCalendarSource } from './calendar/ical';
 import { AppError } from './errors';
@@ -13,15 +13,16 @@ import { isVisits, type Visits } from './visits';
 import { isPlace, isWeatherAccount, type Place } from './weather';
 
 /** 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。 */
-const VERSION = 3;
+const VERSION = 4;
 
-type Secret = { key: StorageKey; label: string; isValid: (v: unknown) => boolean; cache: StorageKey };
+/** cache：替换后要清掉的缓存 */
+type Secret = { key: StorageKey; label: string; isValid: (v: unknown) => boolean; cache?: StorageKey };
 
 /**
  * 私密的数据：相当于密码，所有私密数据都在这里登记，备份时统一处理——只有用户勾选时才导出，
- * 导入时备份里有哪项就替换哪项（并清掉它的缓存 cache），没有的保留这边原来的。
+ * 导入时备份里有哪项就替换哪项（并清掉它的缓存），没有的保留这边原来的。排除的网站也算：列表本身会暴露不想被看到的网站。
  */
-const SECRETS: Record<'calendars' | 'weatherAccount', Secret> = {
+const SECRETS: Record<'calendars' | 'weatherAccount' | 'searchExclude', Secret> = {
   calendars: {
     key: KEYS.calendars,
     label: '日历订阅地址',
@@ -29,6 +30,11 @@ const SECRETS: Record<'calendars' | 'weatherAccount', Secret> = {
     cache: KEYS.calendarCache,
   },
   weatherAccount: { key: KEYS.weatherAccount, label: '天气 KEY', isValid: isWeatherAccount, cache: KEYS.weatherCache },
+  searchExclude: {
+    key: KEYS.searchExclude,
+    label: '联想排除的网站',
+    isValid: (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string'),
+  },
 };
 type SecretName = keyof typeof SECRETS;
 
@@ -49,7 +55,7 @@ export type BackupData = {
   theme: ThemeChoice;
   /** 天气小组件选的城市（第 2 版起） */
   weather: Place | null;
-  /** 勾选时才有的私密数据，按 SECRETS 的名称存（第 3 版起；之前的版本只有日历，放在 data.calendars） */
+  /** 勾选时才有的私密数据，按 SECRETS 的名称存（第 3 版起，第 4 版加了排除的网站；之前的版本只有日历，放在 data.calendars） */
   secrets?: Partial<Record<SecretName, unknown>>;
 };
 
@@ -142,6 +148,6 @@ export function restoreBackup({ data }: Backup) {
   for (const [name, value] of Object.entries(data.secrets ?? {})) {
     const secret = SECRETS[name as SecretName];
     writeJson(secret.key, value);
-    localStorage.removeItem(secret.cache);
+    if (secret.cache) localStorage.removeItem(secret.cache);
   }
 }

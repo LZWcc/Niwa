@@ -187,10 +187,13 @@ html.is-reordering * {
   background: transparent;
 }
 
-/* 设置了图标的快捷方式：图片满铺；文字图标是彩色底白字 */
+/* 设置了图标的快捷方式：图片满铺；文字图标是彩色底白字。
+   图片不要边框和底色：边框是半透明的，会透出下面的底色，深色时就成了图片外面一圈白边。
+   透明的标志在存的时候已经放在白底上了（utils/icons/image.ts），这里不用再垫。 */
 .shortcut-icon.is-image {
   overflow: hidden;
-  background: #fff;
+  border: 0;
+  background: none;
 }
 .shortcut-icon.is-image img {
   width: 100%;

@@ -61,15 +61,17 @@ f.onload = async () => {
 
   log(names() === 'GitHub,WXT,React,MDN', `defaults persisted: ${names()}`);
 
-  // 浅色 / 深色切换（无头模式下系统是浅色）：点一下固定深色，再点回到跟随系统
+  // 浅色 / 深色切换（不假定系统主题，以实际的为准）：点一下固定成另一种，再点回到跟随系统
   const root = d.documentElement, tt = d.querySelector('.theme-toggle');
   const bg = () => w.getComputedStyle(root).getPropertyValue('--bg').trim();
-  const lightBg = bg();
-  log(root.dataset.theme === 'light' && !!tt, `theme follows system: ${root.dataset.theme}`);
+  const sys = w.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const other = sys === 'dark' ? 'light' : 'dark';
+  const sysBg = bg();
+  log(root.dataset.theme === sys && !!tt, `theme follows system: ${root.dataset.theme}`);
   tt.click(); await sleep(50);
-  log(root.dataset.theme === 'dark' && w.localStorage.getItem('niwa:theme') === 'dark' && bg() !== lightBg, `toggled to dark: ${bg()}`);
+  log(root.dataset.theme === other && w.localStorage.getItem('niwa:theme') === other && bg() !== sysBg, `toggled to ${other}: ${bg()}`);
   tt.click(); await sleep(50);
-  log(root.dataset.theme === 'light' && w.localStorage.getItem('niwa:theme') === 'system' && bg() === lightBg, 'toggled back to follow system');
+  log(root.dataset.theme === sys && w.localStorage.getItem('niwa:theme') === 'system' && bg() === sysBg, 'toggled back to follow system');
 
   // 搜索引擎下拉
   const eb = d.querySelector('.engine-button');

@@ -1,0 +1,72 @@
+/* 快捷方式对话框里选图标：候选图、文字图标、上传。放在 dialog.css 之后，才能覆盖 .field input。 */
+.icon-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.icon-option {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.icon-option img {
+  width: 100%;
+  height: 100%;
+}
+.icon-option[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--elevated),
+    0 0 0 4px var(--ink);
+}
+.icon-option.is-upload {
+  border-style: dashed;
+  background: transparent;
+  color: var(--faint);
+}
+.icon-option.is-upload:hover {
+  color: var(--ink);
+}
+.icon-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--faint);
+}
+.icon-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.icon-text input {
+  width: 64px;
+  text-align: center;
+}
+.icon-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.icon-color {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.icon-color[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--elevated),
+    0 0 0 3.5px var(--ink);
+}

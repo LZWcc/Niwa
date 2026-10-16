@@ -1,0 +1,204 @@
+/* 网格、快捷方式、拖拽时的样子。 */
+
+/* ---------- Grid ---------- */
+.grid {
+  /* 单位 80px、间距 20px：12 列正好 1180px，窗口窄了自动减少列数 */
+  width: 100%;
+  margin-top: 36px;
+  display: grid;
+  /* 列数由 Grid.tsx 按宽度算好写在 style 上；每一格用 grid-column / grid-row 指定位置 */
+  grid-template-columns: repeat(auto-fill, 80px);
+  grid-auto-rows: 80px;
+  justify-content: center;
+  gap: 20px;
+  /* 子元素的 offsetLeft/Top 以网格为基准，拖拽时据此计算位置 */
+  position: relative;
+}
+
+.shortcut,
+.grid-add {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+/* 拖拽：被拿起的那块跟着指针、浮在最上层；其余格子用弹簧让位 */
+.is-lifted {
+  z-index: 10;
+  will-change: transform;
+}
+/* 拿起来的那块不再半透明，免得底下的格子透上来 */
+.widget.is-lifted {
+  background: var(--elevated);
+  backdrop-filter: none;
+  box-shadow: 0 28px 56px -22px rgb(20 35 50 / 0.45);
+}
+.shortcut.is-lifted .shortcut-icon,
+.grid-add.is-lifted .shortcut-icon {
+  background: var(--elevated);
+  backdrop-filter: none;
+  box-shadow: 0 18px 32px -14px rgb(20 35 50 / 0.45);
+}
+/* 占位：松手后会落在这里，跟着换位滑动 */
+.grid-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1.5px dashed color-mix(in srgb, var(--muted) 30%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+  pointer-events: none;
+  transition: transform var(--spring-card-duration) var(--spring-card);
+  animation: slot-in 0.2s ease-out;
+}
+.grid-slot.is-widget {
+  border-radius: 22px;
+}
+@keyframes slot-in {
+  from {
+    opacity: 0;
+  }
+}
+html.is-reordering,
+html.is-reordering * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+.grid.is-reordering .widget-more {
+  opacity: 0;
+}
+.shortcut-link,
+.shortcut-link img {
+  -webkit-user-drag: none;
+}
+
+.shortcut-link {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  cursor: pointer;
+}
+
+.shortcut-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--muted);
+  transition:
+    transform var(--spring-button-duration) var(--spring-button),
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+.shortcut-icon img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.shortcut-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.shortcut-link:hover .shortcut-icon {
+  transform: translateY(-2px);
+  background: var(--surface-hover);
+}
+/* 按下时缩一下，松手弹回 */
+.shortcut-link:active .shortcut-icon {
+  transform: scale(0.92);
+  transition-duration: 80ms, 0.2s, 0.2s, 0.2s, 0.2s;
+  transition-timing-function: ease-out;
+}
+.shortcut-link:hover .shortcut-name {
+  color: var(--ink);
+}
+
+/* 编辑按钮贴在图标右上角，悬停或键盘聚焦时出现 */
+.shortcut-edit {
+  position: absolute;
+  top: -5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--elevated);
+  color: var(--muted);
+  fill: currentColor;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    color 0.15s;
+}
+.shortcut:hover .shortcut-edit,
+.shortcut-edit:focus-visible {
+  opacity: 1;
+  transform: none;
+}
+.shortcut-edit:hover {
+  color: var(--ink);
+}
+.grid.is-reordering .shortcut-edit {
+  opacity: 0;
+}
+
+/* 添加：虚线、无阴影，平时淡一些 */
+.shortcut-add .shortcut-icon {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--muted) 35%, transparent);
+  background: transparent;
+  box-shadow: none;
+  color: var(--faint);
+}
+.shortcut-add .shortcut-name {
+  color: var(--faint);
+}
+.shortcut-add:hover .shortcut-icon {
+  border-color: var(--muted);
+  color: var(--muted);
+  background: transparent;
+}
+
+/* 设置了图标的快捷方式：图片满铺；文字图标是彩色底白字 */
+.shortcut-icon.is-image {
+  overflow: hidden;
+  background: #fff;
+}
+.shortcut-icon.is-image img {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.shortcut-icon.is-text {
+  border-color: transparent;
+  font-weight: 600;
+  color: #fff;
+}

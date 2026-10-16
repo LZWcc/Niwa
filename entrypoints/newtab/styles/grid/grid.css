@@ -200,6 +200,10 @@ html.is-reordering * {
   height: 100%;
   border-radius: 0;
 }
+/* 夜庭里调暗一点：透明的标志存的时候垫了白底，原样亮着太刺眼；深色的图标调暗了也看不出来 */
+:where([data-theme='dark']) .shortcut-icon.is-image img {
+  filter: brightness(0.85);
+}
 .shortcut-icon.is-text {
   border-color: transparent;
   font-weight: 600;

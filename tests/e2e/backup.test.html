@@ -43,6 +43,9 @@ f.onload = async () => {
   }
 
   // 拦下导出时生成的文件
+  // 只截下文件内容，不真的下载：否则每跑一次测试，都会往这台电脑的下载文件夹里存两份备份
+  const click = w.HTMLAnchorElement.prototype.click;
+  w.HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
   const blobs = [];
   const create = w.URL.createObjectURL.bind(w.URL);
   w.URL.createObjectURL = (blob) => { blobs.push(blob); return create(blob); };

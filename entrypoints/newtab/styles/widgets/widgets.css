@@ -32,9 +32,50 @@
     background-color 0.2s;
 }
 .widget-title {
+  flex-shrink: 0;
   margin: 0;
   font-size: 13px;
   font-weight: 600;
+}
+/* 标题栏：所有小组件一样。右边给“…”按钮留位置 */
+.widget-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  padding-right: 28px;
+}
+.widget-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.widget-tools {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+/* 画面型的内容（庭、日程的日期）放在内嵌面板里，像一扇小窗；列表型的不加 */
+.widget-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background-color: var(--panel);
+}
+.widget-panel.is-dotted {
+  background-image: radial-gradient(var(--panel-dot) 1px, transparent 1.3px);
+  background-position: 5px 5px;
+  background-size: 10px 10px;
 }
 
 .widget-more {

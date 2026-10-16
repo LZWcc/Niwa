@@ -5,43 +5,25 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
-/* 右边给“…”按钮留位置 */
-.links-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 24px;
-  padding-right: 28px;
-}
-.links-name {
-  flex-shrink: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* 路径太长时从左边省略，留住离当前文件夹最近的几级 */
+/* 标题栏里的文件夹路径：太长时从左边省略，留住离当前文件夹最近的几级 */
 .links-path {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   direction: rtl;
-  font-size: 12px;
-  color: var(--faint);
 }
 .links-back {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  margin-left: -4px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -77,9 +59,6 @@
   background: var(--border);
   color: var(--ink);
 }
-.links-s .links-tabs {
-  margin-left: -6px;
-}
 
 .links-search {
   flex: 1;
@@ -101,14 +80,12 @@
 .links-search:focus {
   border-color: var(--focus);
 }
-/* 放大镜靠右，紧挨着“…”按钮 */
 .links-icon-button {
   flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
-  margin-left: auto;
   padding: 0;
   border: 0;
   border-radius: 7px;
@@ -136,7 +113,7 @@
   align-items: flex-start;
   justify-content: center;
   gap: 10px;
-  height: 100%;
+  flex: 1;
 }
 
 .links-list {

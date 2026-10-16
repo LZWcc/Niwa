@@ -43,6 +43,7 @@ components/
     index.ts               每种小组件对应哪个组件（注册表）
     types.ts               小组件的参数约定（WidgetProps、FrameProps）
     WidgetFrame.tsx        共用外框：卡片、“…”菜单（尺寸、额外项、移除）
+    WidgetHeader.tsx       共用标题栏：标题、元信息、右侧工具（见「小组件的卡片」）
     WidgetError.tsx        小组件出错时顶替它的卡片
     LinkRow.tsx、LinksSearch.tsx、AccessPrompt.tsx   收藏夹、历史共用：一行网站链接、搜索、申请权限的提示
     notes/  calendar/  garden/  bookmarks/  history/
@@ -119,10 +120,17 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - **历史**（`widgets/history/`）：「最近」是浏览记录（每个网址一条），「常去」和浏览器自带新标签页的常去网站是同一份数据（`topSites`），大尺寸多一组「最近关闭」，点了恢复那个标签页或窗口。每分钟和回到这个标签页时重新读，记住选的是哪一组（`niwa:history-tab`）。中、大尺寸点放大镜可以搜索全部浏览记录。
 - 收藏夹和历史都只显示 http(s) 网页（`chrome://`、`javascript:` 从新标签页点不开），没有标题的显示域名；是普通链接，⌘ / Ctrl 点击在新标签页打开；网站图标用浏览器本地缓存的 `_favicon`，不联网。权限在 manifest 的 `optional_permissions` 里，安装时不提示，添加小组件后点一下才申请（最近关闭的网址和标题要 `tabs` 权限）。
 
+### 小组件的卡片
+
+所有小组件长得一样，新的小组件照着做：
+
+- **标题栏**：最上面用 `WidgetHeader`，左边是标题和一行灰色的元信息（「2 条」「今天 2 项」「第 16 日」、收藏夹所在的文件夹），右边放切换、搜索这类工具（`children`）。右侧自动留出“…”按钮的位置。小尺寸也有标题栏。
+- **画面型的内容放进内嵌面板**：庭的砂盘、日程的日期这类以画面为主的，包在 `.widget-panel` 里，加 `is-dotted` 是点阵底纹（颜色是 `--panel`、`--panel-dot`）；像一扇小窗，和列表区分开。列表型的内容（便签、收藏夹、历史）不加面板，保持轻。
+
 ### 新增一种小组件
 
 1. 在 `utils/widgets.ts` 的 `WidgetType` 和 `WIDGETS` 里登记名称、说明、默认尺寸。
-2. 在 `components/widgets/<名字>/` 写组件，参数是 `WidgetProps`（`widget`、`frame`、`now`），内容用 `WidgetFrame` 包起来；要在“…”菜单里加项就传 `menu`。
+2. 在 `components/widgets/<名字>/` 写组件，参数是 `WidgetProps`（`widget`、`frame`、`now`），内容用 `WidgetFrame` 包起来，最上面是 `WidgetHeader`；要在“…”菜单里加项就传 `menu`。
 3. 在 `components/widgets/index.ts` 的 `WIDGET_COMPONENTS` 里对上组件。
 4. 要存数据就在 `utils/storage.ts` 的 `KEYS` 里加一个键，用 `useStoredList` 或 `readJson` / `writeJson` 读写。
 5. 样式加到 `entrypoints/newtab/styles/widgets/`，新文件记得在 `index.css` 里引入。

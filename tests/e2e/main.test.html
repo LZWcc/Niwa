@@ -167,7 +167,8 @@ f.onload = async () => {
   // 今天 9:45 之前跑，今天的每日站会还没结束，会排在前面
   const t = new Date(), beforeStandup = t.getHours() * 60 + t.getMinutes() < 9 * 60 + 45;
   const nearest = beforeStandup ? '全天事项,每日站会,深夜复盘' : '全天事项,深夜复盘,站会（改期）';
-  log(titles().length === 4 && titles().indexOf('站会（改期）') === (beforeStandup ? 3 : 2), `medium rows: ${titles().join(' | ')}`);
+  // 标题栏下面放得下三条
+  log(titles().join(',') === nearest, `medium rows: ${titles().join(' | ')}`);
   const noScroll = (el) => el.scrollHeight <= el.clientHeight + 1;
   const mList = d.querySelector('[data-type="calendar"] .cal-list');
   log(noScroll(mList), `medium has no scrollbar (${mList.scrollHeight}/${mList.clientHeight})`);

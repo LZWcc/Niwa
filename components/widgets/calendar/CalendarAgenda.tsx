@@ -5,6 +5,7 @@ import { dayLabel, placeLabel, shortTime, timeLabel } from '@/utils/calendar/for
 import type { CalendarEvent, CalendarSource } from '@/utils/calendar/ical';
 import { DAY, WEEKDAYS, hm, startOfDay } from '@/utils/date';
 import type { WidgetSize } from '@/utils/widgets';
+import WidgetHeader from '../WidgetHeader';
 import EventDetail from './EventDetail';
 
 // 日程小组件里的内容：按尺寸列出接下来 7 天的日程，能放几条放几条、不出滚动条；点一条看详情。
@@ -118,7 +119,7 @@ export default function CalendarAgenda({ size, now, calendar, onSetup, onOpenMon
   if (sources.length === 0) {
     return (
       <div className={`cal cal-${size} cal-empty`}>
-        <h2 className="widget-title">日程</h2>
+        <WidgetHeader title="日程" />
         <p>{size === 's' ? '连接日历，看接下来的日程。' : '连接 Google 日历，在这里看接下来的日程。只读，不需要登录。'}</p>
         <button type="button" className="btn btn-primary" onClick={onSetup}>
           连接日历
@@ -136,14 +137,14 @@ export default function CalendarAgenda({ size, now, calendar, onSetup, onOpenMon
   const failure = failed.map((f) => `${sources.find((s) => s.id === f.id)?.name || '日历'}：${f.message}`).join('\n');
   const today = events.filter((e) => e.start < todayStart + DAY);
 
-  // 点日期打开月历。
-  const head = (
-    <button type="button" className="cal-date" onClick={onOpenMonth} title="打开月历">
+  const header = <WidgetHeader title="日程" meta={today.length ? `今天 ${today.length} 项` : '今天没有日程'} />;
+  // 日期放在内嵌面板里，点它打开月历。
+  const date = (
+    <button type="button" className="cal-date widget-panel is-dotted" onClick={onOpenMonth} title="打开月历">
       <span className="cal-weekday">{weekday}</span>
       <span className="cal-day">{now.getDate()}</span>
     </button>
   );
-  const count = <span className="cal-count">{today.length ? `今天 ${today.length} 项` : '今天没有日程'}</span>;
   // 底栏：更新状态，和进月历的入口（放不下的日程不另作说明，统一从这里进月历看）。
   const foot = (
     <div className="cal-foot">
@@ -164,7 +165,8 @@ export default function CalendarAgenda({ size, now, calendar, onSetup, onOpenMon
     const next = events[0];
     return (
       <div className="cal cal-s" title={status || undefined}>
-        {head}
+        {header}
+        {date}
         <div className="cal-list" ref={listRef}>
           {next ? row(next, { showDay: next.start >= todayStart + DAY }) : <p className="cal-none">接下来没有日程</p>}
         </div>
@@ -176,15 +178,15 @@ export default function CalendarAgenda({ size, now, calendar, onSetup, onOpenMon
   if (size === 'm') {
     return (
       <div className="cal cal-m">
-        <div className="cal-side">
-          {head}
-          {count}
-        </div>
-        <div className="cal-main">
-          <div className="cal-list" ref={listRef}>
-            {shown.length ? shown.map((e) => row(e, { compact: true })) : <p className="cal-none">接下来 7 天没有日程</p>}
+        {header}
+        <div className="cal-body">
+          {date}
+          <div className="cal-main">
+            <div className="cal-list" ref={listRef}>
+              {shown.length ? shown.map((e) => row(e, { compact: true })) : <p className="cal-none">接下来 7 天没有日程</p>}
+            </div>
+            {foot}
           </div>
-          {foot}
         </div>
         {popover}
       </div>
@@ -199,13 +201,11 @@ export default function CalendarAgenda({ size, now, calendar, onSetup, onOpenMon
   }
   return (
     <div className="cal cal-l">
-      <div className="cal-head">
-        <button type="button" className="cal-date is-inline" onClick={onOpenMonth} title="打开月历">
-          <span className="cal-day">{now.getDate()}</span>
-          <span className="cal-weekday">{weekday}</span>
-        </button>
-        {count}
-      </div>
+      {header}
+      <button type="button" className="cal-date is-inline widget-panel is-dotted" onClick={onOpenMonth} title="打开月历">
+        <span className="cal-day">{now.getDate()}</span>
+        <span className="cal-weekday">{weekday}</span>
+      </button>
       <div className="cal-groups" ref={listRef}>
         {groups.size ? (
           [...groups].map(([label, list]) => (

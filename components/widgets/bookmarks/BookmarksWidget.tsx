@@ -8,6 +8,7 @@ import LinkRow from '../LinkRow';
 import LinksSearch from '../LinksSearch';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
+import WidgetHeader from '../WidgetHeader';
 
 // 收藏夹：在卡片里按文件夹浏览浏览器的收藏，记住上次看到的文件夹；中、大尺寸可以搜索全部收藏。
 
@@ -29,7 +30,14 @@ export default function BookmarksWidget({ widget, frame }: WidgetProps) {
   let content = null;
   if (granted === false) {
     content = (
-      <AccessPrompt text="在这里浏览收藏夹，需要允许读取浏览器的收藏夹。只在这台电脑上显示。" action="允许读取收藏夹" onRequest={request} />
+      <>
+        <WidgetHeader title="收藏夹" />
+        <AccessPrompt
+          text="在这里浏览收藏夹，需要允许读取浏览器的收藏夹。只在这台电脑上显示。"
+          action="允许读取收藏夹"
+          onRequest={request}
+        />
+      </>
     );
   } else if (tree) {
     // 第一次打开，或上次看的文件夹已经删了：从收藏夹栏开始。
@@ -43,38 +51,39 @@ export default function BookmarksWidget({ widget, frame }: WidgetProps) {
 
     content = (
       <>
-        <header className="links-head">
-          {searching ? (
+        {searching ? (
+          <header className="widget-head">
             <LinksSearch label="搜索全部收藏" query={query} onChange={setQuery} />
-          ) : (
-            <>
-              {parent && (
-                <button type="button" className="links-back" aria-label={`返回${folderName(parent)}`} onClick={() => open(parent.id)}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-                    <path
-                      d="M7.5 2.5L4 6l3.5 3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              )}
-              {size !== 's' && path.length > 2 && (
-                <span className="links-path">
-                  {path
-                    .slice(1, -1)
-                    .map((n) => `${folderName(n)} / `)
-                    .join('')}
-                </span>
-              )}
-              <h2 className="widget-title links-name">{folderName(folder)}</h2>
-              {size !== 's' && <LinksSearch label="搜索全部收藏" query={null} onChange={setQuery} />}
-            </>
-          )}
-        </header>
+          </header>
+        ) : (
+          // 元信息是所在的文件夹：‹ 返回上一级，路径太长时从左边省略。在最顶层时不显示。
+          <WidgetHeader
+            title="收藏夹"
+            meta={
+              parent && (
+                <>
+                  <button type="button" className="links-back" aria-label={`返回${folderName(parent)}`} onClick={() => open(parent.id)}>
+                    <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
+                      <path
+                        d="M7.5 2.5L4 6l3.5 3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <span className="links-path">
+                    <bdi>{path.slice(1).map(folderName).join(' / ')}</bdi>
+                  </span>
+                </>
+              )
+            }
+          >
+            {size !== 's' && <LinksSearch label="搜索全部收藏" query={null} onChange={setQuery} />}
+          </WidgetHeader>
+        )}
 
         {items.length === 0 ? (
           <p className="links-empty">{results ? '没有找到' : '这个文件夹是空的'}</p>

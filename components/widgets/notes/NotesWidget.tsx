@@ -4,6 +4,7 @@ import { isNote, type Note } from '@/utils/notes';
 import { KEYS } from '@/utils/storage';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
+import WidgetHeader from '../WidgetHeader';
 
 // 便签：回车保存，点一条复制；焦点不在输入框时，在页面任意处粘贴也会存成一条。
 
@@ -56,10 +57,7 @@ export default function NotesWidget({ widget, frame }: WidgetProps) {
   return (
     <WidgetFrame widget={widget} frame={frame}>
       <div className={`notes notes-${size}`}>
-        <header className="notes-head">
-          <h2 className="widget-title">便签</h2>
-          {notes.length > 0 && <span>{notes.length}</span>}
-        </header>
+        <WidgetHeader title="便签" meta={notes.length > 0 && `${notes.length} 条`} />
 
         {size !== 's' && (
           <>

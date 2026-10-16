@@ -3,6 +3,7 @@ import { almanac, phaseOf } from '@/utils/almanac';
 import { preview } from '@/utils/preview';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
+import WidgetHeader from '../WidgetHeader';
 import Garden, { MILESTONES } from './Garden';
 
 // 庭：累计打开的天数越多，砂盘里的东西越多；随季节换装，随时辰明暗。
@@ -23,11 +24,12 @@ export default function GardenWidget({ widget, frame, now }: WidgetProps) {
   return (
     <WidgetFrame widget={widget} frame={frame}>
       <div className={`garden-widget garden-${size}`} aria-label={`你的庭，第 ${days} 日。${hint(days)}`}>
-        {/* 种子带上日期：同一天里布局稳定，换一天落物的位置会变 */}
-        <Garden days={days} seed={`${visits.first}/${today}`} season={season} phase={phase} />
-        <div className="garden-text">
-          {size === 'm' && <h2 className="widget-title">庭</h2>}
-          <p className="garden-day">第 {days} 日</p>
+        <WidgetHeader title="庭" meta={`第 ${days} 日`} />
+        <div className="garden-body">
+          <div className="garden-panel widget-panel is-dotted">
+            {/* 种子带上日期：同一天里布局稳定，换一天落物的位置会变 */}
+            <Garden days={days} seed={`${visits.first}/${today}`} season={season} phase={phase} />
+          </div>
           {size !== 's' && <p className="garden-hint">{hint(days)}</p>}
         </div>
       </div>

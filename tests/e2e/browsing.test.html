@@ -60,7 +60,7 @@ f.onload = async () => {
   // 收藏夹：从收藏夹栏开始，只列文件夹和网页
   await openAdd('收藏夹');
   const bw = d.querySelector('[data-type="bookmarks"]');
-  log(bw?.querySelector('.links-name')?.textContent === '收藏夹栏', `starts at bookmarks bar: ${bw?.querySelector('.links-name')?.textContent}`);
+  log(bw?.querySelector('.links-path')?.textContent === '收藏夹栏', `starts at bookmarks bar: ${bw?.querySelector('.links-path')?.textContent}`);
   log(JSON.stringify(titles(bw)) === '["工作","'+LONG_BOOKMARK+'"]', `bar lists folder and web pages only: ${titles(bw)}`);
   log(row(bw, LONG_BOOKMARK)?.getAttribute('href') === 'https://github.com/', 'bookmark is a plain link');
   // 标题很长时截断，不撑出横向滚动条
@@ -69,11 +69,11 @@ f.onload = async () => {
 
   // 进出文件夹，记住看到哪里
   row(bw, '工作').click(); await sleep(50);
-  log(JSON.stringify(titles(bw)) === '["Linear"]' && bw.querySelector('.links-path')?.textContent === '收藏夹栏 / ', `open folder shows path: ${bw.querySelector('.links-path')?.textContent}`);
+  log(JSON.stringify(titles(bw)) === '["Linear"]' && bw.querySelector('.links-path')?.textContent === '收藏夹栏 / 工作', `open folder shows path: ${bw.querySelector('.links-path')?.textContent}`);
   log(w.localStorage.getItem('niwa:bookmark-folder') === '10', 'folder remembered');
   bw.querySelector('.links-back').click(); await sleep(50);
   bw.querySelector('.links-back').click(); await sleep(50);
-  log(bw.querySelector('.links-name').textContent === '收藏夹' && !bw.querySelector('.links-back') && JSON.stringify(titles(bw)) === '["收藏夹栏","其他收藏夹"]', `root lists top folders: ${titles(bw)}`);
+  log(!bw.querySelector('.links-path') && !bw.querySelector('.links-back') && JSON.stringify(titles(bw)) === '["收藏夹栏","其他收藏夹"]', `root lists top folders: ${titles(bw)}`);
   row(bw, '收藏夹栏').click(); await sleep(50);
 
   // 在浏览器里加了收藏，立即出现
@@ -86,7 +86,7 @@ f.onload = async () => {
   setVal(bw.querySelector('.links-search'), 'lin'); await sleep(50);
   log(JSON.stringify(titles(bw)) === '["Linear"]', `search finds nested bookmark: ${titles(bw)}`);
   bw.querySelector('.links-search').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(50);
-  log(!bw.querySelector('.links-search') && bw.querySelector('.links-name')?.textContent === '收藏夹栏', 'escape closes search');
+  log(!bw.querySelector('.links-search') && bw.querySelector('.links-path')?.textContent === '收藏夹栏', 'escape closes search');
   await resize(bw, '大');
 
   // 历史：最近，去掉浏览器内部页面；时间写成时刻或“昨天”

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import Dialog from '@/components/common/Dialog';
 import { siteOf } from '@/utils/browsing';
 
@@ -6,6 +6,8 @@ type Props = { open: boolean; sites: string[]; onChange: (sites: string[]) => vo
 
 // 联想里排除的网站：列出来可以移除，也可以手动添加（粘贴网址或域名，统一成域名）。
 export default function ExcludeDialog({ open, sites, onChange, onClose }: Props) {
+  // 搜索框和设置面板各有一份这个对话框，id 不能重复
+  const uid = useId();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
 
@@ -23,7 +25,7 @@ export default function ExcludeDialog({ open, sites, onChange, onClose }: Props)
       open={open}
       onClose={onClose}
       className="dialog"
-      labelledBy="exclude-title"
+      labelledBy={`${uid}-title`}
       onOpen={(el) => {
         setText('');
         setError('');
@@ -31,7 +33,7 @@ export default function ExcludeDialog({ open, sites, onChange, onClose }: Props)
       }}
     >
       <form className="dialog-body" onSubmit={add} noValidate>
-        <h2 id="exclude-title" className="dialog-title">
+        <h2 id={`${uid}-title`} className="dialog-title">
           联想里排除的网站
         </h2>
         <p className="exclude-note">
@@ -61,10 +63,10 @@ export default function ExcludeDialog({ open, sites, onChange, onClose }: Props)
             autoComplete="off"
             spellCheck={false}
             aria-invalid={!!error}
-            aria-describedby={error ? 'exclude-error' : undefined}
+            aria-describedby={error ? `${uid}-error` : undefined}
           />
           {error && (
-            <span className="field-error" id="exclude-error">
+            <span className="field-error" id={`${uid}-error`}>
               {error}
             </span>
           )}

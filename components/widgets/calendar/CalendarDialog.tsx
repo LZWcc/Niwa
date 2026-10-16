@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import Dialog from '@/components/common/Dialog';
 import type { CalendarState } from '@/hooks/useCalendar';
 import { CALENDAR } from '@/config';
@@ -11,6 +11,8 @@ import { requestOrigins } from '@/utils/permissions';
 type Props = { open: boolean; calendar: CalendarState; onClose: () => void };
 
 export default function CalendarDialog({ open, calendar, onClose }: Props) {
+  // 放了几个这种小组件时页面上有几份这个对话框，id 不能重复
+  const uid = useId();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [added, setAdded] = useState<string[]>([]);
@@ -55,7 +57,7 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
       open={open}
       onClose={onClose}
       className="dialog dialog-wide"
-      labelledBy="cal-dialog-title"
+      labelledBy={`${uid}-title`}
       onOpen={(el) => {
         setText('');
         setError('');
@@ -65,7 +67,7 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
       }}
     >
       <form className="dialog-body" onSubmit={add} noValidate>
-        <h2 id="cal-dialog-title" className="dialog-title">
+        <h2 id={`${uid}-title`} className="dialog-title">
           管理日历
         </h2>
 
@@ -112,14 +114,14 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
             autoComplete="off"
             spellCheck={false}
             aria-invalid={!!error}
-            aria-describedby={error ? 'cal-url-error' : 'cal-url-note'}
+            aria-describedby={error ? `${uid}-error` : `${uid}-note`}
           />
           {error ? (
-            <span className="field-error" id="cal-url-error">
+            <span className="field-error" id={`${uid}-error`}>
               {error}
             </span>
           ) : (
-            <span className="field-note" id="cal-url-note">
+            <span className="field-note" id={`${uid}-note`}>
               这些地址相当于密码，只保存在这台电脑上。也支持其他日历的 .ics 订阅地址。
             </span>
           )}

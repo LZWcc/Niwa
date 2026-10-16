@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import Dialog from '@/components/common/Dialog';
 import { WEATHER } from '@/config';
 import type { WeatherState } from '@/hooks/useWeather';
@@ -9,6 +9,8 @@ type Props = { open: boolean; weather: WeatherState; onPick: (place: Place) => v
 
 // 天气设置：先填和风天气的 API Host 和 KEY（保存前试搜一次，确认填对了），再按名称搜城市，点一个就选定。
 export default function WeatherDialog({ open, weather, onPick, onClose }: Props) {
+  // 放了几个这种小组件时页面上有几份这个对话框，id 不能重复
+  const uid = useId();
   const { account, setAccount } = weather;
   const [editing, setEditing] = useState(!account);
   const [host, setHost] = useState('');
@@ -49,7 +51,7 @@ export default function WeatherDialog({ open, weather, onPick, onClose }: Props)
       open={open}
       onClose={onClose}
       className="dialog"
-      labelledBy="weather-dialog-title"
+      labelledBy={`${uid}-title`}
       onOpen={(el) => {
         setEditing(!account);
         setHost(account?.host ?? '');
@@ -61,7 +63,7 @@ export default function WeatherDialog({ open, weather, onPick, onClose }: Props)
       }}
     >
       <form className="dialog-body" onSubmit={submit} noValidate>
-        <h2 id="weather-dialog-title" className="dialog-title">
+        <h2 id={`${uid}-title`} className="dialog-title">
           天气设置
         </h2>
 
@@ -96,14 +98,14 @@ export default function WeatherDialog({ open, weather, onPick, onClose }: Props)
                 autoComplete="off"
                 spellCheck={false}
                 aria-invalid={!!error}
-                aria-describedby={error ? 'weather-error' : 'weather-key-note'}
+                aria-describedby={error ? `${uid}-error` : `${uid}-note`}
               />
               {error ? (
-                <span className="field-error" id="weather-error">
+                <span className="field-error" id={`${uid}-error`}>
                   {error}
                 </span>
               ) : (
-                <span className="field-note" id="weather-key-note">
+                <span className="field-note" id={`${uid}-note`}>
                   KEY 相当于密码，只保存在这台电脑上；导出备份时勾选「包含私密信息」才会带上。
                 </span>
               )}
@@ -128,10 +130,10 @@ export default function WeatherDialog({ open, weather, onPick, onClose }: Props)
                 autoComplete="off"
                 spellCheck={false}
                 aria-invalid={!!error}
-                aria-describedby={error ? 'weather-error' : undefined}
+                aria-describedby={error ? `${uid}-error` : undefined}
               />
               {error && (
-                <span className="field-error" id="weather-error">
+                <span className="field-error" id={`${uid}-error`}>
                   {error}
                 </span>
               )}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SEARCH_ENGINES as engines, type SearchEngine } from '@/config';
-import { useStoredList } from '@/hooks/useStored';
+import { useStoredList, useStoredText } from '@/hooks/useStored';
 import { useSuggestions } from '@/hooks/useSuggestions';
 import { hostOf } from '@/utils/browsing';
 import { requestPermissions } from '@/utils/permissions';
@@ -20,12 +20,11 @@ function Mark({ engine }: { engine: SearchEngine }) {
 }
 
 export default function Search() {
-  // 上次选的引擎；没选过或找不到就用第一个。
-  const [index, setIndex] = useState(() =>
-    Math.max(
-      0,
-      engines.findIndex((e) => e.name === localStorage.getItem(KEYS.engine)),
-    ),
+  // 上次选的引擎；没选过或找不到就用第一个。设置面板里也能换，两边同步。
+  const [engineName, setEngineName] = useStoredText(KEYS.engine);
+  const index = Math.max(
+    0,
+    engines.findIndex((e) => e.name === engineName),
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -37,18 +36,15 @@ export default function Search() {
   const [query, setQuery] = useState('');
   const [suggesting, setSuggesting] = useState(false);
   const [active, setActive] = useState(-1);
-  const [suggestOn, setSuggestOn] = useState(() => localStorage.getItem(KEYS.searchSuggest) !== 'off');
+  const [suggestSetting, setSuggestSetting] = useStoredText(KEYS.searchSuggest);
+  const suggestOn = suggestSetting !== 'off';
   const [excluded, setExcluded] = useStoredList<string>(KEYS.searchExclude, (v): v is string => typeof v === 'string', []);
   const [excludeOpen, setExcludeOpen] = useState(false);
   const { result, refresh } = useSuggestions(suggesting && suggestOn ? query : '', excluded);
   const items = result?.items ?? [];
   const ask = !!result && !result.allowed;
 
-  const turnSuggest = (on: boolean) => {
-    if (on) localStorage.removeItem(KEYS.searchSuggest);
-    else localStorage.setItem(KEYS.searchSuggest, 'off');
-    setSuggestOn(on);
-  };
+  const turnSuggest = (on: boolean) => setSuggestSetting(on ? null : 'off');
   const shown = suggesting && (items.length > 0 || ask);
 
   const onQueryKey = (e: React.KeyboardEvent) => {
@@ -70,9 +66,8 @@ export default function Search() {
   };
 
   const choose = (next: number) => {
-    setIndex(next);
+    setEngineName(engines[next]!.name);
     setMenuOpen(false);
-    localStorage.setItem(KEYS.engine, engines[next]!.name);
     input.current?.focus();
   };
 

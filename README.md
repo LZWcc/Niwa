@@ -1,6 +1,6 @@
 # Niwa
 
-使用 WXT + React + TypeScript 开发的轻量浏览器新标签页：左上角时间与节气，正中搜索框，下面是快捷方式和小组件自由摆放的网格，背景是随季节、时辰变化的山水（深色时是月夜）。右上角可以切换浅色 / 深色（日落月升的过渡，默认跟随系统），也可以把全部数据导出成备份，在另一个浏览器里导入。
+使用 WXT + React + TypeScript 开发的轻量浏览器新标签页：左上角时间与节气，正中搜索框，下面是快捷方式和小组件自由摆放的网格，背景是随季节、时辰变化的山水（深色时是月夜）。右上角可以切换浅色 / 深色（日落月升的过渡，默认跟随系统）；旁边的设置面板集中了各处的设置，也可以在那里把全部数据导出成备份，在另一个浏览器里导入。
 
 ## 开发
 
@@ -38,7 +38,7 @@ entrypoints/newtab/        新标签页入口
     page/  search/  grid/  widgets/          和 components/ 对应
 components/
   common/                  Popover（挂在 body 上、按视口定位的弹出层）、Dialog（原生 <dialog> 的模态对话框）、ErrorBoundary
-  page/                    Scene（背景的景）、Clock（时间、日期、节气）、ThemeToggle（浅色 / 深色）、BackupButton（备份与恢复）
+  page/                    Scene（背景的景）、Clock（时间、日期、节气）、ThemeToggle（浅色 / 深色）、SettingsButton（设置面板，见「设置」）、BackupDialog（备份与恢复）
   search/                  Search（搜索框与搜索引擎菜单）、Suggestions（收藏和浏览记录的联想）
   grid/                    网格：Grid（组装）、AddTile、Shortcut、ShortcutIcon、ShortcutDialog、IconPicker（选图标）
   widgets/                 小组件
@@ -61,8 +61,8 @@ hooks/
   useSuggestions.ts        搜索框的联想：在收藏夹和浏览记录里找
   useWeather.ts            天气数据与缓存
   useHotList.ts            热榜数据与缓存
-  usePermissions.ts        可选权限（收藏夹、历史）是否已有、点击申请
-  useStored.ts             存在 localStorage 里的数据（useStored、useStoredList），多个标签页之间同步
+  usePermissions.ts        可选权限（收藏夹、历史、通知）是否已有、点击申请；别处给了或收回时跟着变
+  useStored.ts             存在 localStorage 里的数据（useStored、useStoredList、useStoredText），多个标签页之间、同一页面里各处之间同步
   useSiteIcons.ts          输入网址后自动获取网站图标
   useTheme.ts              浅色 / 深色：跟随系统或固定一种，写到 <html data-theme>
   useMinute.ts、useVisits.ts
@@ -202,9 +202,17 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - **图片怎么存**：都统一成 128px 的方形 webp data URL（`image.ts`；只是个标志的放在白底上留边），每张几 KB。图片单独存在 `niwa:icons`（快捷方式 id → 图片），快捷方式上只记 `{ kind: 'image' }`：拖动时每挪一格都会重写 `niwa:grid`，图片放进去会拖慢它。删除快捷方式或换成文字图标时，图片一起删掉。
 - 用 localStorage 而不是 IndexedDB：同步读取，第一帧图标就在，不会先闪首字母。图标多到接近容量（约 5MB）时再换。
 
+## 设置
+
+右上角的设置面板（`page/SettingsButton.tsx`）把散在各处的设置集中在一起：外观（跟随系统 / 浅色 / 深色）、搜索（引擎、联想开关、排除的网站）、小组件（背景跟随天气、清除和风天气的 KEY、计时器的系统通知）、数据（备份与恢复）。原来的入口（引擎菜单、各小组件的菜单、右上角的浅色 / 深色按钮）照样能改，存储键也没变。
+
+两边同步靠 `useStored` 这一组 hook：写入时除了存进 localStorage，还在页面里发一个 `niwa:stored` 事件，同一页面里用同一个键的地方跟着更新（别的标签页靠浏览器的 `storage` 事件）；值没变时不写也不通知。权限（通知、收藏夹等）在任何一处给了或收回，`usePermissions` 都跟着变（`onPermissionsChange`）。以后新加的全页面设置用 `useStoredText` / `useStored` 读写，放进设置面板，不要直接读写 localStorage。
+
+同一种小组件可以放多个，它们的对话框也会有多份，所以对话框里的 id 用 `useId` 生成，不写死。
+
 ## 备份与恢复
 
-右上角的按钮导出一个 JSON 文件（`utils/backup.ts`），在另一个浏览器里导入：
+设置面板里的「备份与恢复」导出一个 JSON 文件（`utils/backup.ts`），在另一个浏览器里导入：
 
 ```json
 {
@@ -265,6 +273,7 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `worldclock.test.html`：世界时钟的默认城市、当地时间与时差、昼夜地图、选城市，放两个时各选各的。
   - `timer.test.html`：计时器的时长、开始暂停继续重置、正计时、关掉页面期间到点（打开就是时间到），放两个时各走各的。系统通知要在真实浏览器里试。
   - 网页里的通知卡片（滑进来、往右划掉、拖不够远弹回）要加载真实扩展才能试，页面测试覆盖不到。
+  - `settings.test.html`：设置面板里改的和原来入口改的互相同步（浅色 / 深色、引擎、联想、背景跟随天气、天气 KEY、排除的网站），从设置面板打开备份。
   - `alarm.test.html`：提醒小窗的内容，「知道了」「再计一次」改对了那个计时器。小窗真的弹出来、浮在网页上、提示音要在真实浏览器里试。
   - `hotlist.test.html`：热榜各来源的解析（含知乎 19 位 id 的链接）、换来源、要登录的来源、格式变了、缓存。网络请求转到假数据；真实接口能不能用要加载扩展试。
   - `almanac.test.html`：日期下面这一候的解释（摘录出自完整原文、注明出处），月相写到页面上、夜里显示月亮。

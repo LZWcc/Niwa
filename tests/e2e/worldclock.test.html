@@ -40,7 +40,7 @@ f.onload = async () => {
   // 选城市：移除东京，按中文搜加德满都；搜不到给出提示
   wc.querySelector('.widget-more').click(); await sleep(50);
   [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '选择城市…').click(); await sleep(100);
-  const dlg = d.querySelector('dialog[aria-labelledby="cities-title"]');
+  const dlg = [...d.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('.dialog-title')?.textContent === '世界时钟的城市');
   [...dlg.querySelectorAll('.sources li')].find((li) => li.textContent.includes('东京')).querySelector('button').click(); await sleep(50);
   setVal(dlg.querySelector('input'), 'zzz'); await sleep(50);
   log(dlg.querySelector('.places-empty')?.textContent.includes('没有这个城市'), 'unknown city');

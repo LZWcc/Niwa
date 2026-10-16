@@ -46,7 +46,9 @@ f.onload = async () => {
   // 只截下文件内容，不真的下载：否则每跑一次测试，都会往这台电脑的下载文件夹里存两份备份
   const click = w.HTMLAnchorElement.prototype.click;
   w.HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
-  d.querySelector('[aria-label="备份与恢复"]').click(); await sleep(100);
+  // 备份在设置面板里
+  d.querySelector('[aria-label="设置"]').click(); await sleep(100);
+  [...d.querySelectorAll('.setting')].find((x) => x.textContent.startsWith('备份与恢复')).querySelector('button').click(); await sleep(100);
   const dlg = d.querySelector('dialog[aria-labelledby="backup-title"]');
   const button = (text) => [...dlg.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 

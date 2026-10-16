@@ -1,0 +1,69 @@
+<!doctype html>
+<!-- 页面测试：设置面板——各项设置能改，并且和原来的地方（引擎菜单、右上角的浅色 / 深色、各小组件）同步。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+// 天气小组件选了城市、有新鲜的缓存：菜单里才有“背景跟随天气”，也不会去请求
+const place = { id: '101210101', name: '杭州', region: '浙江省', lat: 30.25, lon: 120.21 };
+localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'w', kind: 'widget', type: 'weather', size: 's', x: 0, y: 0, settings: { place } }]));
+localStorage.setItem('niwa:weather-forecast', JSON.stringify({ '101210101|test.re.qweatherapi.com|k': { fetchedAt: Date.now(), error: null, forecast: { offset: 28800000, current: { temp: 20, feels: 20, humidity: 50, wind: 5, code: 101, text: '多云', day: true }, hours: [], days: [] } } }));
+localStorage.setItem('niwa:theme', 'light');
+localStorage.setItem('niwa:search-exclude', JSON.stringify(['a.example', 'b.example']));
+localStorage.setItem('niwa:weather-account', JSON.stringify({ host: 'test.re.qweatherapi.com', key: 'k' }));
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument, ls = w.localStorage;
+  d.querySelector('[aria-label="设置"]').click(); await sleep(100);
+  const dlg = d.querySelector('dialog[aria-labelledby="settings-title"]');
+  const row = (label) => [...dlg.querySelectorAll('.setting')].find((x) => x.querySelector('.setting-label').firstChild.textContent === label);
+  const radio = (label, name) => [...row(label).querySelectorAll('[role=radio]')].find((b) => b.textContent === name);
+  log(dlg?.open, 'settings open');
+
+  // 外观：选深色，页面马上换（减少动态效果时没有日落月升）
+  radio('浅色 / 深色', '深色').click(); await sleep(100);
+  log(d.documentElement.dataset.theme === 'dark' && ls.getItem('niwa:theme') === 'dark', 'theme set to dark');
+  log(d.querySelector('.theme-toggle')?.getAttribute('aria-label').startsWith('切换到浅色'), 'top-right toggle follows');
+
+  // 搜索引擎：搜索框跟着换
+  radio('搜索引擎', 'Bing').click(); await sleep(50);
+  log(d.querySelector('#search-query').placeholder === '在 Bing 中搜索' && ls.getItem('niwa:engine') === 'Bing', 'search engine follows settings');
+
+  // 联想：在设置里关掉，引擎菜单里的开关也是关的
+  row('联想收藏和历史').querySelector('[role=switch]').click(); await sleep(50);
+  d.querySelector('.engine-button').click(); await sleep(50);
+  log(ls.getItem('niwa:search-suggest') === 'off' && d.querySelector('.engine-menu [role=menuitemcheckbox]')?.getAttribute('aria-checked') === 'false', 'suggest switch synced to engine menu');
+  d.querySelector('.engine-button').click(); await sleep(50);
+
+  // 排除的网站：数出来，点开管理
+  log(row('联想里排除的网站').textContent.includes('2 个'), 'excluded count');
+  row('联想里排除的网站').querySelector('button').click(); await sleep(100);
+  const ex = [...d.querySelectorAll('dialog')].find((x) => x.open && x.textContent.includes('联想里排除的网站'));
+  log(!!ex, 'exclude dialog opens from settings');
+  [...ex.querySelectorAll('button')].find((b) => b.textContent.trim() === '完成').click(); await sleep(50);
+
+  // 背景跟随天气：设置里打开，天气小组件菜单里也是开的
+  row('背景跟随天气').querySelector('[role=switch]').click(); await sleep(50);
+  const ww = d.querySelector('[data-type="weather"]');
+  ww.querySelector('.widget-more').click(); await sleep(50);
+  log(ls.getItem('niwa:scene-weather') === 'on' && d.querySelector('.widget-menu [role=menuitemcheckbox]')?.getAttribute('aria-checked') === 'true', 'scene switch synced to weather menu');
+  ww.querySelector('.widget-more').click(); await sleep(50);
+
+  // 和风天气 KEY：点两次才清除，天气小组件跟着回到“设置天气”
+  const clear = () => row('和风天气 KEY').querySelector('button');
+  clear().click(); await sleep(50);
+  log(clear()?.textContent === '再点一次清除' && ls.getItem('niwa:weather-account') !== 'null', 'asks before clearing key');
+  clear().click(); await sleep(100);
+  log(ls.getItem('niwa:weather-account') === 'null' && !!ww.querySelector('.weather-empty') && row('和风天气 KEY').textContent.includes('还没填'), 'key cleared, weather widget follows');
+
+  // 备份与恢复：从这里打开
+  row('备份与恢复').querySelector('button').click(); await sleep(100);
+  log(d.querySelector('dialog[aria-labelledby="backup-title"]')?.open, 'backup opens from settings');
+};
+</script>

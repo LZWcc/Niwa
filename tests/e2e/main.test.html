@@ -152,7 +152,7 @@ f.onload = async () => {
   const cin = cdlg.querySelector('textarea');
   setVal2(cin, 'not a url'); await sleep(30);
   cdlg.querySelector('form').requestSubmit(); await sleep(50);
-  log(!!cdlg.querySelector('#cal-url-error'), 'invalid calendar url rejected');
+  log(!!cdlg.querySelector('.field-error'), 'invalid calendar url rejected');
   setVal2(cin, location.origin + '/sample.ics'); await sleep(30);
   cdlg.querySelector('form').requestSubmit(); await sleep(150);
   log(cdlg.querySelectorAll('.sources li').length === 1, 'calendar source added');
@@ -197,7 +197,7 @@ f.onload = async () => {
   calW().querySelector('.cal-more').click(); await sleep(400);
   const mdlg = d.querySelector('.month-dialog');
   const nowD = new Date();
-  log(mdlg.open && mdlg.querySelector('#month-title').textContent === `${nowD.getFullYear()}年${nowD.getMonth() + 1}月`, `month view opens on this month: ${mdlg.querySelector('#month-title').textContent}`);
+  log(mdlg.open && mdlg.querySelector('h2').textContent === `${nowD.getFullYear()}年${nowD.getMonth() + 1}月`, `month view opens on this month: ${mdlg.querySelector('h2').textContent}`);
   log(mdlg.querySelectorAll('.month-day').length === 42 && mdlg.querySelectorAll('.month-day.is-today').length === 1, '42 day cells, one today');
   log(mdlg.querySelector('.month-day.is-today').textContent.includes('全天事项'), 'today cell shows chips');
   const sideTitles = () => [...mdlg.querySelectorAll('.month-event-title')].map((e) => e.textContent);
@@ -210,13 +210,13 @@ f.onload = async () => {
   log(sideTitles().length > 0, 'back to day list');
   [...mdlg.querySelectorAll('.month-arrow')][1].click(); await sleep(400);
   const nm = new Date(nowD.getFullYear(), nowD.getMonth() + 1, 1);
-  log(mdlg.querySelector('#month-title').textContent === `${nm.getFullYear()}年${nm.getMonth() + 1}月`, 'next month');
+  log(mdlg.querySelector('h2').textContent === `${nm.getFullYear()}年${nm.getMonth() + 1}月`, 'next month');
   const day15 = [...mdlg.querySelectorAll('.month-day:not(.is-outside)')][14];
   log(day15.textContent.includes('下月例会'), 'next-month event visible (expanded beyond widget range)');
   day15.click(); await sleep(50);
   log(sideTitles().includes('下月例会') && mdlg.querySelector('.month-event .event-place')?.textContent === '二楼会议室', 'selected day shows event with place');
   mdlg.querySelector('.month-today').click(); await sleep(300);
-  log(mdlg.querySelector('#month-title').textContent === `${nowD.getFullYear()}年${nowD.getMonth() + 1}月`, 'today button returns');
+  log(mdlg.querySelector('h2').textContent === `${nowD.getFullYear()}年${nowD.getMonth() + 1}月`, 'today button returns');
   d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
   mdlg.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(80);
   log(!mdlg.open, 'Esc closes month view');

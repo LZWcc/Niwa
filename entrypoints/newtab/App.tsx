@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import Grid from '@/components/grid/Grid';
-import BackupButton from '@/components/page/BackupButton';
+import SettingsButton from '@/components/page/SettingsButton';
 import Clock from '@/components/page/Clock';
 import Scene from '@/components/page/Scene';
 import ThemeToggle from '@/components/page/ThemeToggle';
@@ -24,7 +24,7 @@ export default function App() {
       <Scene />
       <Clock now={now} />
       <div className="page-actions">
-        <BackupButton />
+        <SettingsButton />
         <ThemeToggle />
       </div>
       <main className="newtab">

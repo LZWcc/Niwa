@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import Dialog from '@/components/common/Dialog';
 import { WORLD_CLOCK, type City } from '@/config';
 
@@ -6,6 +6,8 @@ type Props = { open: boolean; cities: City[]; onChange: (ids: string[]) => void;
 
 // 选城市：上面是已经放的（可以移除），下面按中文名或英文名搜，点一个加上。
 export default function CitiesDialog({ open, cities, onChange, onClose }: Props) {
+  // 放了几个这种小组件时页面上有几份这个对话框，id 不能重复
+  const uid = useId();
   const [text, setText] = useState('');
   const q = text.trim().toLowerCase();
   const ids = cities.map((c) => c.id);
@@ -17,14 +19,14 @@ export default function CitiesDialog({ open, cities, onChange, onClose }: Props)
       open={open}
       onClose={onClose}
       className="dialog"
-      labelledBy="cities-title"
+      labelledBy={`${uid}-title`}
       onOpen={(el) => {
         setText('');
         el.querySelector('input')?.focus();
       }}
     >
       <div className="dialog-body">
-        <h2 id="cities-title" className="dialog-title">
+        <h2 id={`${uid}-title`} className="dialog-title">
           世界时钟的城市
         </h2>
 

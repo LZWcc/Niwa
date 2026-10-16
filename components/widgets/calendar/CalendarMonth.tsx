@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useId, useEffect, useState } from 'react';
 import Dialog from '@/components/common/Dialog';
 import { solarTermOn } from '@/utils/almanac';
 import { fullDate, placeLabel } from '@/utils/calendar/format';
@@ -37,6 +37,8 @@ function EventLine({ event, source, now, onOpen }: { event: CalendarEvent; sourc
 }
 
 export default function CalendarMonth({ open, now, sources, onClose }: Props) {
+  // 放了几个这种小组件时页面上有几份这个对话框，id 不能重复
+  const uid = useId();
   const [month, setMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
   const [selected, setSelected] = useState(() => startOfDay(now.getTime()));
   const [detail, setDetail] = useState<CalendarEvent | null>(null);
@@ -92,7 +94,7 @@ export default function CalendarMonth({ open, now, sources, onClose }: Props) {
       open={open}
       onClose={onClose}
       className="dialog month-dialog"
-      labelledBy="month-title"
+      labelledBy={`${uid}-title`}
       onOpen={(el) => {
         // 每次打开都回到今天；焦点放在月历本身，而不是第一个按钮上（否则一打开就有焦点框）。
         goToday();
@@ -119,7 +121,7 @@ export default function CalendarMonth({ open, now, sources, onClose }: Props) {
                 <path d="m5.5 3 4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <h2 id="month-title">
+            <h2 id={`${uid}-title`}>
               {month.getFullYear()}年{month.getMonth() + 1}月
             </h2>
             <button type="button" className="btn month-today" onClick={goToday}>

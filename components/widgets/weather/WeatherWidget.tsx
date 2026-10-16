@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from 'react';
 import { WEATHER } from '@/config';
+import { useStoredText } from '@/hooks/useStored';
 import { useWeather } from '@/hooks/useWeather';
 import { preview } from '@/utils/preview';
 import { KEYS } from '@/utils/storage';
@@ -20,7 +21,8 @@ export default function WeatherWidget({ widget, frame, now, settings, onSettings
   const weather = useWeather(now, settings.place ?? null);
   const { account, place, forecast, error, loading } = weather;
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [sceneOn, setSceneOn] = useState(() => localStorage.getItem(KEYS.sceneWeather) === 'on');
+  const [sceneSetting, setSceneSetting] = useStoredText(KEYS.sceneWeather);
+  const sceneOn = sceneSetting === 'on';
 
   // 在绘制前写好，打开页面时背景不会先晴后雨；小组件移除时背景恢复。
   const fresh = forecast && now.getTime() - weather.fetchedAt < WEATHER.sceneMaxAge;
@@ -47,11 +49,7 @@ export default function WeatherWidget({ widget, frame, now, settings, onSettings
           role="menuitemcheckbox"
           aria-checked={sceneOn}
           className="menu-item"
-          onClick={() => {
-            if (sceneOn) localStorage.removeItem(KEYS.sceneWeather);
-            else localStorage.setItem(KEYS.sceneWeather, 'on');
-            setSceneOn(!sceneOn);
-          }}
+          onClick={() => setSceneSetting(sceneOn ? null : 'on')}
         >
           背景跟随天气
         </button>

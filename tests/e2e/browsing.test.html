@@ -173,7 +173,7 @@ f.onload = async () => {
     [...d.querySelectorAll('.engine-menu button')].find((b) => b.textContent.startsWith(text)).click(); await sleep(100);
   };
   await engineMenu('排除的网站');
-  const ex = d.querySelector('dialog[aria-labelledby="exclude-title"]');
+  const ex = [...d.querySelectorAll('dialog')].find((x) => x.open && x.textContent.includes('联想里排除的网站'));
   log(ex?.open && [...ex.querySelectorAll('.source-name')].map((x) => x.textContent).join() === 'github.com', 'dialog lists excluded sites');
   [...ex.querySelectorAll('button')].find((b) => b.textContent.trim() === '移除').click(); await sleep(50);
   setVal(ex.querySelector('input'), 'not a site'); ex.querySelector('form').requestSubmit(); await sleep(50);

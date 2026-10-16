@@ -70,7 +70,7 @@ f.onload = async () => {
 
   // 填 KEY：保存前先试一次，填错了给出原因；地址带上 https:// 也认
   [...ww.querySelectorAll('button')].find((b) => b.textContent === '设置天气').click(); await sleep(100);
-  const dlg = d.querySelector('dialog[aria-labelledby="weather-dialog-title"]');
+  const dlg = [...d.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('.dialog-title')?.textContent === '天气设置');
   const inputs = () => dlg.querySelectorAll('input');
   const submit = async () => { dlg.querySelector('form').requestSubmit(); await sleep(100); };
   log(dlg?.open && inputs().length === 2, 'dialog asks for host and key');

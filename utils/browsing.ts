@@ -7,6 +7,12 @@ export type BookmarkNode = Browser.bookmarks.BookmarkTreeNode;
 /** 历史小组件的几组：最近、常去、最近关闭 */
 export type HistoryTab = 'recent' | 'top' | 'closed';
 export const HISTORY_TABS: HistoryTab[] = ['recent', 'top', 'closed'];
+/** 每一组的名字和空的时候的提示 */
+export const HISTORY_TAB_TEXT: Record<HistoryTab, { name: string; empty: string }> = {
+  recent: { name: '最近', empty: '还没有浏览记录' },
+  top: { name: '常去', empty: '还没有常去的网站' },
+  closed: { name: '最近关闭', empty: '最近没有关闭的标签页' },
+};
 
 /** 只显示网页：chrome://、edge://、javascript: 这类从新标签页点不开，扩展自己的页面也不算浏览过。 */
 export const isWebUrl = (url: string | undefined): url is string => /^https?:\/\//.test(url ?? '');

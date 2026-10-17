@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 页面测试：天气小组件——填和风天气的 KEY、搜城市、各尺寸显示的内容、缓存、更新失败、背景跟随天气。
+<!-- 页面测试：天气小组件——填和风天气的 KEY、搜城市、各尺寸显示的内容、缓存、更新失败、大面板、背景跟随天气。
      和风天气的请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
@@ -22,6 +22,9 @@ const next = new Date(); next.setMinutes(0, 0, 0); next.setHours(next.getHours()
 const now = { temp: '23', feelsLike: '25', humidity: '75', windSpeed: '10', icon: '501', text: '雾' };
 const hourly = Array.from({ length: 24 }, (_, i) => ({ fxTime: iso(new Date(next.getTime() + i * 3600e3)), temp: String(20 + (i % 5)), icon: i % 2 ? '305' : '151' }));
 const daily = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return { fxDate: day(d), tempMax: String([25, 30, 24, 12, 20, 18, 19][i]), tempMin: String([20, 22, 14, 3, 12, 11, 13][i]), iconDay: ['305', '101', '100', '400', '302', '501', '104'][i] }; });
+// 大面板才用的几项：只给头一条，别的没有（像加上它们之前的缓存一样，没有就不显示）
+Object.assign(hourly[0], { pop: '60' });
+Object.assign(daily[0], { textDay: '小雨', sunrise: '06:26', sunset: '17:32' });
 const places = { code: '200', location: [
   { id: '101210101', name: '杭州', lat: '30.24603', lon: '120.21079', adm2: '杭州', adm1: '浙江省', country: '中国' },
   { id: '101210113', name: '西湖', lat: '30.27293', lon: '120.14738', adm2: '杭州', adm1: '浙江省', country: '中国' },
@@ -116,6 +119,19 @@ f.onload = async () => {
   down = false;
   await menu(ww, '立即刷新');
   log(ww.querySelector('.weather-place')?.textContent === '杭州', 'recovered after refresh');
+
+  // 大面板：点标题打开；现在的天气和日出日落、24 小时（降水概率）、7 天
+  ww.querySelector('.widget-title-open').click(); await sleep(100);
+  const wp = d.querySelector('.weather-dialog');
+  const facts = [...wp.querySelectorAll('.wp-facts div')].map((x) => x.textContent);
+  log(wp.open && wp.querySelector('h2')?.textContent === '杭州的天气' && wp.querySelector('.wp-temp')?.textContent === '23°', 'weather panel opens');
+  log(JSON.stringify(facts) === '["体感25°","湿度75%","风速10 km/h","日出06:26","日落17:32"]', `facts: ${facts}`);
+  const wh = [...wp.querySelectorAll('.wp-hours li')];
+  log(wh.length === 25 && wh[0].querySelector('.wp-hour').textContent === '现在' && wh[1].querySelector('.wp-pop').textContent === '60%' && wh[2].querySelector('.wp-pop').textContent === '', `24 hours with rain chance: ${wh.length}`);
+  const wd = [...wp.querySelectorAll('.wp-days li')];
+  log(wd.length === 7 && wd[0].querySelector('.wp-text').textContent === '小雨' && wd[1].querySelector('.wp-text').textContent === '' && !wp.textContent.includes('undefined'), `7 days, missing fields left blank: ${wd.length}`);
+  wp.querySelector('[aria-label="关闭杭州的天气"]').click(); await sleep(50);
+  log(!wp.open, 'weather panel closes');
 
   // 背景跟随天气：默认不跟随；打开后下雨时写上 data-weather，少云不变；关掉、移除小组件后恢复
   const html = d.documentElement;

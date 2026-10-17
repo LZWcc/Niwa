@@ -220,6 +220,10 @@ f.onload = async () => {
   d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
   mdlg.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(80);
   log(!mdlg.open, 'Esc closes month view');
+  // 点标题这一行也打开月历
+  calW().querySelector('.widget-head').click(); await sleep(100);
+  log(mdlg.open, 'clicking calendar title row opens month view');
+  mdlg.querySelector('.month-close').click(); await sleep(50);
   const groups = [...calW().querySelectorAll('.cal-group h3')].map((h) => h.textContent);
   log(groups[0] === '今天' && groups[1] === '明天', `day groups: ${groups.join(',')}`);
   const tomorrow = [...calW().querySelectorAll('.cal-group')][1];

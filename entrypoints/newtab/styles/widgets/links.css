@@ -186,3 +186,129 @@
   color: var(--faint);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 大面板 ---------- */
+/* 列表在面板里不再自己滚动，由面板滚 */
+.panel-dialog .links-list {
+  flex: none;
+  overflow: visible;
+  margin: 0;
+}
+
+/* 收藏夹：左边文件夹树、右边内容，各自滚动 */
+.bookmarks-dialog .panel-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+.bm-tree {
+  min-height: 0;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.bm-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bm-folder {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding-right: 6px;
+  border-radius: 8px;
+}
+.bm-folder:hover {
+  background: var(--border);
+}
+.bm-folder.is-selected {
+  background: var(--border);
+  font-weight: 600;
+}
+.bm-twisty {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+.bm-twisty svg {
+  transition: transform 0.15s var(--ease-snap);
+}
+.bm-twisty.is-open svg {
+  transform: rotate(90deg);
+}
+.bm-folder-name {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bm-content {
+  min-height: 0;
+  padding: 12px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.bm-content > .links-empty {
+  padding: 8px;
+}
+.bm-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.bm-crumbs > * + *::before {
+  content: '/';
+  margin: 0 6px 0 4px;
+  color: var(--faint);
+}
+.bm-crumbs button {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.bm-crumbs button:hover {
+  color: var(--ink);
+}
+.bm-crumbs span {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .bookmarks-dialog .panel-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bm-tree {
+    display: none;
+  }
+}

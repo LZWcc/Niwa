@@ -1,25 +1,20 @@
 import { useState } from 'react';
 import { useBrowsingHistory } from '@/hooks/useBrowsingHistory';
 import { usePermissions } from '@/hooks/usePermissions';
-import { hostOf, visitLabel, type HistoryTab } from '@/utils/browsing';
+import { HISTORY_TABS, HISTORY_TAB_TEXT as TABS, hostOf, visitLabel, type HistoryTab } from '@/utils/browsing';
 import AccessPrompt from '../AccessPrompt';
 import LinkRow from '../LinkRow';
 import LinksSearch from '../LinksSearch';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
+import HistoryPanel from './HistoryPanel';
 
 // 历史：最近看过的、常去的网站，大尺寸再加最近关闭的标签页（点了恢复）。记住上次看的是哪一组（settings.tab，放了几个时各记各的）。
-// 中、大尺寸可以搜索全部浏览记录。
+// 中、大尺寸可以搜索全部浏览记录。点标题这一行打开大面板（HistoryPanel）。
 
 // 最近关闭的网址和标题要有 tabs 权限才拿得到。
 const PERMISSIONS = ['history', 'topSites', 'sessions', 'tabs'];
-
-const TABS: Record<HistoryTab, { name: string; empty: string }> = {
-  recent: { name: '最近', empty: '还没有浏览记录' },
-  top: { name: '常去', empty: '还没有常去的网站' },
-  closed: { name: '最近关闭', empty: '最近没有关闭的标签页' },
-};
 
 export default function HistoryWidget({ widget, frame, now, settings, onSettings }: WidgetProps) {
   const { size } = widget;
@@ -27,11 +22,12 @@ export default function HistoryWidget({ widget, frame, now, settings, onSettings
   // null：没在搜索
   const [query, setQuery] = useState<string | null>(null);
   const searching = size !== 's' && query !== null;
-  const tabs = (Object.keys(TABS) as HistoryTab[]).filter((t) => t !== 'closed' || size === 'l');
+  const tabs = HISTORY_TABS.filter((t) => t !== 'closed' || size === 'l');
   const tab = tabs.find((t) => t === settings.tab) ?? 'recent';
   const { pages, restore } = useBrowsingHistory(granted ? tab : null, searching ? query : '', now);
 
   const choose = (t: HistoryTab) => onSettings(() => ({ tab: t }));
+  const [panelOpen, setPanelOpen] = useState(false);
 
   return (
     <WidgetFrame widget={widget} frame={frame}>
@@ -52,7 +48,7 @@ export default function HistoryWidget({ widget, frame, now, settings, onSettings
                 <LinksSearch label="搜索浏览记录" query={query} onChange={setQuery} />
               </header>
             ) : (
-              <WidgetHeader title="历史">
+              <WidgetHeader title="历史" onOpen={() => setPanelOpen(true)}>
                 <div className="links-tabs" role="group" aria-label="显示哪一组">
                   {tabs.map((t) => (
                     <button key={t} type="button" className="links-tab" aria-pressed={t === tab} onClick={() => choose(t)}>
@@ -84,6 +80,7 @@ export default function HistoryWidget({ widget, frame, now, settings, onSettings
           </>
         )}
       </div>
+      {granted && <HistoryPanel open={panelOpen} now={now} tab={tab} onClose={() => setPanelOpen(false)} />}
     </WidgetFrame>
   );
 }

@@ -137,7 +137,8 @@ export default function CalendarAgenda({ size, now, calendar, onSetup, onOpenMon
   const failure = failed.map((f) => `${sources.find((s) => s.id === f.id)?.name || '日历'}：${f.message}`).join('\n');
   const today = events.filter((e) => e.start < todayStart + DAY);
 
-  const header = <WidgetHeader title="日程" meta={today.length ? `今天 ${today.length} 项` : '今天没有日程'} />;
+  // 点标题这一行打开月历
+  const header = <WidgetHeader title="日程" meta={today.length ? `今天 ${today.length} 项` : '今天没有日程'} onOpen={onOpenMonth} />;
   // 日期放在内嵌面板里，点它打开月历。
   const date = (
     <button type="button" className="cal-date widget-panel is-dotted" onClick={onOpenMonth} title="打开月历">

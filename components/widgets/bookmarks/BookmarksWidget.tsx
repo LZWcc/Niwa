@@ -8,8 +8,10 @@ import LinksSearch from '../LinksSearch';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
+import BookmarksPanel from './BookmarksPanel';
 
 // 收藏夹：在卡片里按文件夹浏览浏览器的收藏，记住上次看到的文件夹（settings.folder，放了几个时各记各的）；中、大尺寸可以搜索全部收藏。
+// 点标题这一行打开大面板（BookmarksPanel）。
 
 const PERMISSIONS = ['bookmarks'];
 
@@ -20,10 +22,12 @@ export default function BookmarksWidget({ widget, frame, settings, onSettings }:
   const folderId = settings.folder ?? null;
   // null：没在搜索
   const [query, setQuery] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const open = (folder: string) => onSettings(() => ({ folder }));
 
   let content = null;
+  let panel = null;
   if (granted === false) {
     content = (
       <>
@@ -55,6 +59,7 @@ export default function BookmarksWidget({ widget, frame, settings, onSettings }:
           // 元信息是所在的文件夹：‹ 返回上一级，路径太长时从左边省略。在最顶层时不显示。
           <WidgetHeader
             title="收藏夹"
+            onOpen={() => setPanelOpen(true)}
             meta={
               parent && (
                 <>
@@ -115,11 +120,13 @@ export default function BookmarksWidget({ widget, frame, settings, onSettings }:
         )}
       </>
     );
+    panel = <BookmarksPanel open={panelOpen} tree={tree} folder={folder.id} onClose={() => setPanelOpen(false)} />;
   }
 
   return (
     <WidgetFrame widget={widget} frame={frame}>
       <div className={`links links-${size}`}>{content}</div>
+      {panel}
     </WidgetFrame>
   );
 }

@@ -10,10 +10,12 @@ import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
 import WeatherDialog from './WeatherDialog';
 import WeatherIcon from './WeatherIcon';
+import WeatherPanel from './WeatherPanel';
 
 // 天气：点阵面板里是现在的温度和天气；中尺寸加接下来几小时，大尺寸再加体感、湿度、风和接下来几天。
 // 数据来自和风天气，用户自己填 API Host 和 KEY。数据钩子只在这个小组件存在时挂载，没填 KEY、没选城市时不联网。
 // 每个天气小组件各选各的城市（settings.place），和风的 KEY 共用。
+// 有数据时点标题这一行打开大面板（WeatherPanel）：24 小时和 7 天预报。
 // 菜单里可以打开「背景跟随天气」：阴、雾、雨、雪时背景跟着变（只有天气小组件在时才跟随，放了几个时跟最靠左上的那个）。
 
 export default function WeatherWidget({ widget, frame, now, settings, onSettings, first }: WidgetProps) {
@@ -21,6 +23,7 @@ export default function WeatherWidget({ widget, frame, now, settings, onSettings
   const weather = useWeather(now, settings.place ?? null);
   const { account, place, forecast, error, loading } = weather;
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [sceneSetting, setSceneSetting] = useStoredText(KEYS.sceneWeather);
   const sceneOn = sceneSetting === 'on';
 
@@ -137,6 +140,7 @@ export default function WeatherWidget({ widget, frame, now, settings, onSettings
         <div className={`weather weather-${size}`}>
           <WidgetHeader
             title="天气"
+            onOpen={forecast ? () => setPanelOpen(true) : undefined}
             meta={
               place && (
                 <span className="weather-place" title={error ?? '天气数据来自和风天气'}>
@@ -155,6 +159,7 @@ export default function WeatherWidget({ widget, frame, now, settings, onSettings
         onPick={(place) => onSettings(() => ({ place }))}
         onClose={() => setDialogOpen(false)}
       />
+      <WeatherPanel open={panelOpen} now={now} weather={weather} onClose={() => setPanelOpen(false)} />
     </>
   );
 }

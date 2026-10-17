@@ -14,12 +14,15 @@ export type Place = { id: string; name: string; region: string; lat: number; lon
 export const isPlace = (v: unknown): v is Place =>
   hasStrings('id', 'name', 'region')(v) && typeof (v as Place).lat === 'number' && typeof (v as Place).lon === 'number';
 
-/** 时间都是时间戳（毫秒）；offset 是城市所在时区的 UTC 偏移（毫秒），按城市当地时间写钟点和星期。code 是和风的图标代码 */
+/**
+ * 时间都是时间戳（毫秒）；offset 是城市所在时区的 UTC 偏移（毫秒），按城市当地时间写钟点和星期。code 是和风的图标代码。
+ * 大面板才用的几项是可选的：加上它们之前存的缓存里没有。pop：降水概率（%）；text：白天的天气；sunrise / sunset：当地的“06:26”，极昼极夜时没有。
+ */
 export type Forecast = {
   offset: number;
   current: { temp: number; feels: number; humidity: number; wind: number; code: number; text: string; day: boolean };
-  hours: { time: number; temp: number; code: number; day: boolean }[];
-  days: { time: number; code: number; max: number; min: number }[];
+  hours: { time: number; temp: number; code: number; day: boolean; pop?: number }[];
+  days: { time: number; code: number; max: number; min: number; text?: string; sunrise?: string; sunset?: string }[];
 };
 
 export type WeatherKind = 'clear' | 'partly' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder';
@@ -99,8 +102,8 @@ export async function searchPlaces(account: WeatherAccount, name: string): Promi
 }
 
 type RawNow = { temp: string; feelsLike: string; humidity: string; windSpeed: string; icon: string; text: string };
-type RawHour = { fxTime: string; temp: string; icon: string };
-type RawDay = { fxDate: string; tempMax: string; tempMin: string; iconDay: string };
+type RawHour = { fxTime: string; temp: string; icon: string; pop?: string };
+type RawDay = { fxDate: string; tempMax: string; tempMin: string; iconDay: string; textDay?: string; sunrise?: string; sunset?: string };
 
 /** 实况、接下来 24 小时和 7 天。 */
 export async function fetchForecast(account: WeatherAccount, place: Place): Promise<Forecast> {
@@ -129,12 +132,21 @@ export async function fetchForecast(account: WeatherAccount, place: Place): Prom
       text: n.text,
       day: !isNight(code),
     },
-    hours: hours.map((h) => ({ time: Date.parse(h.fxTime), temp: Number(h.temp), code: Number(h.icon), day: !isNight(Number(h.icon)) })),
+    hours: hours.map((h) => ({
+      time: Date.parse(h.fxTime),
+      temp: Number(h.temp),
+      code: Number(h.icon),
+      day: !isNight(Number(h.icon)),
+      pop: h.pop ? Number(h.pop) : undefined,
+    })),
     days: days.map((d) => ({
       time: Date.parse(`${d.fxDate}T00:00${zone}`),
       code: Number(d.iconDay),
       max: Number(d.tempMax),
       min: Number(d.tempMin),
+      text: d.textDay || undefined,
+      sunrise: d.sunrise || undefined,
+      sunset: d.sunset || undefined,
     })),
   };
 }
@@ -143,6 +155,12 @@ export const deg = (t: number) => `${Math.round(t)}°`;
 
 /** 城市当地的第几天，用来比较是不是同一天 */
 const localDay = (t: number, offset: number) => Math.floor((t + offset) / DAY);
+
+/** 每日预报的日期（城市当地）：10/17 */
+export const dateLabel = (t: number, offset: number) => {
+  const d = new Date(t + offset);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+};
 
 /** 逐小时预报的钟点（城市当地时间） */
 export const hourLabel = (t: number, offset: number) => `${new Date(t + offset).getUTCHours()}时`;

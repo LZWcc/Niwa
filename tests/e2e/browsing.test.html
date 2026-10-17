@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 页面测试：收藏夹、历史小组件。浏览器的扩展接口在测试页里换成假的。由 tests/e2e/run.mjs 运行。 -->
+<!-- 页面测试：收藏夹、历史小组件和它们的大面板。浏览器的扩展接口在测试页里换成假的。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
 <script>
@@ -27,13 +27,14 @@ f.onload = async () => {
   // 页面测试不在扩展里，扩展接口换成假的（新标签页里用到的 browser 就是 window.chrome）。
   const event = () => { const fs = new Set(); return { addListener: (fn) => fs.add(fn), removeListener: (fn) => fs.delete(fn), fire: () => fs.forEach((fn) => fn()) }; };
   const LONG_BOOKMARK = 'GitHub · Build and ship software on a single, collaborative platform, from planning to deployment', LONG_PAGE = 'React – The library for web and native user interfaces, learn reference community blog';
-  const bar = { id: '1', title: '收藏夹栏', children: [
-    { id: '10', title: '工作', children: [{ id: '11', title: 'Linear', url: 'https://linear.app/' }] },
-    { id: '12', title: LONG_BOOKMARK, url: 'https://github.com/' },
-    { id: '13', title: '小工具', url: 'javascript:void(0)' },
-    { id: '15', title: '实验功能', url: 'chrome://flags/' },
+  // 和真实接口一样，除了根，每个节点都有 parentId
+  const bar = { id: '1', parentId: '0', title: '收藏夹栏', children: [
+    { id: '10', parentId: '1', title: '工作', children: [{ id: '11', parentId: '10', title: 'Linear', url: 'https://linear.app/' }] },
+    { id: '12', parentId: '1', title: LONG_BOOKMARK, url: 'https://github.com/' },
+    { id: '13', parentId: '1', title: '小工具', url: 'javascript:void(0)' },
+    { id: '15', parentId: '1', title: '实验功能', url: 'chrome://flags/' },
   ] };
-  const tree = { id: '0', title: '', children: [bar, { id: '2', title: '其他收藏夹', children: [] }] };
+  const tree = { id: '0', title: '', children: [bar, { id: '2', parentId: '0', title: '其他收藏夹', children: [] }] };
   const onCreated = event();
   const DAY = 86400000;
   let closed = [
@@ -77,7 +78,7 @@ f.onload = async () => {
   row(bw, '收藏夹栏').click(); await sleep(50);
 
   // 在浏览器里加了收藏，立即出现
-  bar.children.push({ id: '14', title: '', url: 'https://vercel.com/' });
+  bar.children.push({ id: '14', parentId: '1', title: '', url: 'https://vercel.com/' });
   onCreated.fire(); await sleep(50);
   log(titles(bw).includes('vercel.com'), 'new bookmark appears, untitled shows host');
 
@@ -88,6 +89,29 @@ f.onload = async () => {
   bw.querySelector('.links-search').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(50);
   log(!bw.querySelector('.links-search') && bw.querySelector('.links-path')?.textContent === '收藏夹栏', 'escape closes search');
   await resize(bw, '大');
+
+  // 收藏夹的大面板：点标题打开，从卡片所在的文件夹开始；左边是文件夹树，右边是内容，网页右侧写域名
+  bw.querySelector('.widget-title-open').click(); await sleep(100);
+  const bp = bw.querySelector('.bookmarks-dialog');
+  const treeNames = () => [...bp.querySelectorAll('.bm-folder-name')].map((b) => b.textContent);
+  log(bp.open && JSON.stringify(treeNames()) === '["收藏夹栏","工作","其他收藏夹"]' && bp.querySelector('.bm-folder.is-selected')?.textContent === '收藏夹栏', `bookmarks panel tree: ${treeNames()}`);
+  log(JSON.stringify(titles(bp)) === '["工作","'+LONG_BOOKMARK+'","vercel.com"]' && row(bp, LONG_BOOKMARK).querySelector('.link-meta')?.textContent === 'github.com', `bookmarks panel content: ${titles(bp)}`);
+  log(d.activeElement === bp.querySelector('.panel-search'), 'search box focused on open');
+  // 在左边选文件夹，路径跟着变；卡片还在原来的文件夹
+  [...bp.querySelectorAll('.bm-folder-name')].find((b) => b.textContent === '工作').click(); await sleep(50);
+  log(JSON.stringify(titles(bp)) === '["Linear"]' && bp.querySelector('.bm-crumbs')?.textContent === '收藏夹栏工作' && bw.querySelector('.links-path')?.textContent === '收藏夹栏', `panel folder independent of card: ${bp.querySelector('.bm-crumbs')?.textContent}`);
+  // 搜索全部收藏：右侧写所在的文件夹
+  setVal(bp.querySelector('.panel-search'), 'lin'); await sleep(50);
+  log(JSON.stringify(titles(bp)) === '["Linear"]' && bp.querySelector('.link-meta')?.textContent === '工作' && bp.querySelector('.panel-status')?.textContent === '找到 1 个', `panel search shows folder: ${titles(bp)} / ${bp.querySelector('.link-meta')?.textContent} / ${bp.querySelector('.panel-status')?.textContent}`);
+  // 收起文件夹
+  setVal(bp.querySelector('.panel-search'), ''); await sleep(50);
+  bp.querySelector('.bm-twisty[aria-label="收起收藏夹栏"]').click(); await sleep(50);
+  log(JSON.stringify(treeNames()) === '["收藏夹栏","其他收藏夹"]', `folder collapsed: ${treeNames()}`);
+  // 关掉再打开：回到卡片的文件夹
+  bp.querySelector('[aria-label="关闭收藏夹"]').click(); await sleep(50);
+  bw.querySelector('.widget-head').click(); await sleep(100);
+  log(bp.open && bp.querySelector('.bm-folder.is-selected')?.textContent === '收藏夹栏' && titles(bp).length === 3, 'reopen starts at card folder');
+  bp.querySelector('[aria-label="关闭收藏夹"]').click(); await sleep(50);
 
   // 历史：最近，去掉浏览器内部页面；时间写成时刻或“昨天”
   await openAdd('历史');
@@ -119,6 +143,27 @@ f.onload = async () => {
   log(JSON.stringify(titles(hw)) === '["关掉的页面","2 个标签页 · 窗口里的页面"]', `recently closed: ${titles(hw)}`);
   row(hw, '关掉的页面').click(); await sleep(50);
   log(restored.join() === 's1' && JSON.stringify(titles(hw)) === '["2 个标签页 · 窗口里的页面"]', `restore closed tab: ${restored}`);
+
+  // 历史的大面板：从卡片正在看的那一组开始，三组都在
+  hw.querySelector('.widget-title-open').click(); await sleep(100);
+  const hp = hw.querySelector('.history-dialog');
+  const pressed = () => hp.querySelector('.panel-tabs [aria-pressed="true"]')?.textContent;
+  log(hp.open && pressed() === '最近关闭' && JSON.stringify(titles(hp)) === '["2 个标签页 · 窗口里的页面"]', `history panel starts at card tab: ${pressed()}`);
+  // 浏览记录按天分组，每条写时刻；条数比卡片多
+  let asked = 0;
+  const search = w.chrome.history.search;
+  w.chrome.history.search = (q) => { asked = q.maxResults; return search(q); };
+  [...hp.querySelectorAll('.panel-tabs button')].find((b) => b.textContent === '最近').click(); await sleep(50);
+  const heads = [...hp.querySelectorAll('.panel-group h3')].map((h) => h.textContent);
+  log(JSON.stringify(heads) === '["今天","昨天"]' && JSON.stringify(titles(hp)) === '["'+LONG_PAGE+'","wxt.dev"]', `grouped by day: ${heads}`);
+  log(asked === 2000 && [...hp.querySelectorAll('.link-meta')].every((m) => /^\d\d:\d\d$/.test(m.textContent)), `panel asks for more, rows show time: ${asked}`);
+  // 搜索全部浏览记录
+  setVal(hp.querySelector('.panel-search'), 'wxt'); await sleep(50);
+  log(JSON.stringify(titles(hp)) === '["wxt.dev"]' && !pressed() && hp.querySelector('.panel-status')?.textContent === '找到 1 条', 'history panel search');
+  // 在面板里换组不改卡片的
+  hp.querySelector('[aria-label="关闭历史"]').click(); await sleep(50);
+  w.chrome.history.search = search;
+  log(!hp.open && hw.querySelector('.links-tab[aria-pressed="true"]')?.textContent === '最近关闭', 'card tab unchanged');
   // 搜索框联想：收藏在前，浏览记录按访问次数排，同一个网址只留一条
   w.chrome.bookmarks.search = async (q) => {
     const found = [];

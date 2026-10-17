@@ -13,6 +13,7 @@
 @import './page/backup.css';
 @import './page/settings.css';
 @import './widgets/month.css';
+@import './widgets/panel.css';
 @import './widgets/garden.css';
 @import './widgets/links.css';
 @import './widgets/weather.css';

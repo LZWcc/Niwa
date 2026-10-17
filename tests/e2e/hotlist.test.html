@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 页面测试：热榜——各来源的解析、换来源、要登录的来源、格式变了。网络请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
+<!-- 页面测试：热榜——各来源的解析、换来源、要登录的来源、格式变了、大面板。网络请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
 <script>
@@ -9,9 +9,11 @@ window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.rea
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
+// 加上摘要（note）之前存下的缓存：条目里没有 note
+localStorage.setItem('niwa:hotlist-cache', JSON.stringify({ toutiao: { fetchedAt: Date.now(), items: [{ title: '头条旧缓存', url: 'https://www.toutiao.com/a1/', hot: '5万' }], error: null } }));
 // 假数据：知乎的问题 id 有 19 位（超出 JS 数字的精度），只能从链接字符串里取
-const zhihu = `{"data":[{"detail_text":"681 万热度","target":{"id":2094093125488566874,"title":"知乎第一","url":"https://api.zhihu.com/questions/2094093125488566874"}},{"detail_text":"3 万热度","target":{"id":1,"title":"知乎第二","url":"https://api.zhihu.com/questions/592258573"}}]}`;
-const bilibili = JSON.stringify({ code: 0, data: { list: [{ title: 'B 站第一', bvid: 'BV1xx', stat: { view: 1616401 } }] } });
+const zhihu = `{"data":[{"detail_text":"681 万热度","target":{"id":2094093125488566874,"title":"知乎第一","url":"https://api.zhihu.com/questions/2094093125488566874","excerpt":" 第一的摘要 "}},{"detail_text":"3 万热度","target":{"id":1,"title":"知乎第二","url":"https://api.zhihu.com/questions/592258573"}}]}`;
+const bilibili = JSON.stringify({ code: 0, data: { list: [{ title: 'B 站第一', bvid: 'BV1xx', stat: { view: 1616401 }, owner: { name: 'UP 主' } }] } });
 const f = document.getElementById('f');
 f.src = '/newtab.html';
 f.onload = async () => {
@@ -62,5 +64,34 @@ f.onload = async () => {
   const before = requests.length;
   await pick('知乎');
   log(titles()[0] === '知乎第一' && requests.length === before, 'cached source not refetched');
+
+  // 大面板：点标题打开，列出全部条目，标题下面是摘要
+  const dialog = hw.querySelector('.hot-dialog');
+  const entries = () => [...dialog.querySelectorAll('.hot-entry')].map((a) => [a.querySelector('.hot-entry-title').textContent, a.querySelector('.hot-entry-note')?.textContent ?? '']);
+  hw.querySelector('.widget-title-open').click(); await sleep(100);
+  log(dialog.open && JSON.stringify(entries()) === '[["知乎第一","第一的摘要"],["知乎第二",""]]', `panel lists all with notes: ${JSON.stringify(entries())}`);
+  log(dialog.querySelector('.panel-tabs [aria-checked="true"]')?.textContent === '知乎', 'panel shows current source');
+
+  // 在面板里换来源：和卡片是同一个设置
+  const tab = async (name) => {
+    [...dialog.querySelectorAll('.panel-tabs button')].find((b) => b.textContent === name).click(); await sleep(200);
+  };
+  await tab('B 站');
+  log(JSON.stringify(entries()) === '[["B 站第一","UP 主"]]' && titles()[0] === 'B 站第一', `panel switch updates card: ${JSON.stringify(entries())} / ${titles()}`);
+
+  // 旧缓存里没有摘要：照样显示，只是没有那一行
+  await tab('头条');
+  log(JSON.stringify(entries()) === '[["头条旧缓存",""]]' && !dialog.querySelector('.hot-entry-note'), `old cache without note: ${JSON.stringify(entries())}`);
+
+  // 关闭后，点标题这一行的空白处也能打开；点来源按钮、点链接不打开
+  dialog.querySelector('[aria-label="关闭热榜"]').click(); await sleep(50);
+  log(!dialog.open, 'panel closes');
+  hw.querySelector('.hot-source').click(); await sleep(50);
+  hw.querySelector('.hot-source').click(); await sleep(50);
+  hw.querySelector('.hot-row').addEventListener('click', (e) => e.preventDefault(), { once: true });
+  hw.querySelector('.hot-row').click(); await sleep(50);
+  log(!dialog.open, 'source button and rows do not open panel');
+  hw.querySelector('.widget-head').click(); await sleep(50);
+  log(dialog.open, 'clicking the title row opens panel');
 };
 </script>

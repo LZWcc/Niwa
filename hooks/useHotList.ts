@@ -66,5 +66,5 @@ export function useHotList(source: HotSource | null, now: Date) {
   }, [now, key]);
 
   const current = key ? cache[key] : undefined;
-  return { items: current?.items ?? null, error: current?.error ?? null, loading, refresh };
+  return { items: current?.items ?? null, error: current?.error ?? null, fetchedAt: current?.fetchedAt ?? null, loading, refresh };
 }

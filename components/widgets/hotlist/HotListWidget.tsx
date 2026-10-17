@@ -8,9 +8,11 @@ import AccessPrompt from '../AccessPrompt';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
+import HotListPanel from './HotListPanel';
 
 // 热榜：知乎、微博、B 站等的热门，标题栏右边换来源（存在自己的 settings.hotSource，放几个热榜就各看各的）。
 // 这些接口不允许跨域，要有访问那个网站的权限：换来源时申请（在点击里），没给时卡片里问。
+// 点标题这一行打开大面板看全部条目。
 
 export default function HotListWidget({ widget, frame, now, settings, onSettings }: WidgetProps) {
   const { size } = widget;
@@ -21,7 +23,8 @@ export default function HotListWidget({ widget, frame, now, settings, onSettings
     void hasOrigins([originOf(source)]).then((ok) => setAccess({ id: source.id, ok }));
   }, [source]);
   const allowed = access?.id === source.id ? access.ok : null;
-  const { items, error, loading, refresh } = useHotList(allowed ? source : null, now);
+  const { items, error, fetchedAt, loading, refresh } = useHotList(allowed ? source : null, now);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
@@ -74,7 +77,7 @@ export default function HotListWidget({ widget, frame, now, settings, onSettings
       }
     >
       <div className={`hot hot-${size}`}>
-        <WidgetHeader title="热榜" meta={status && <span title={error ?? undefined}>{status}</span>}>
+        <WidgetHeader title="热榜" meta={status && <span title={error ?? undefined}>{status}</span>} onOpen={() => setPanelOpen(true)}>
           <button
             ref={anchor}
             type="button"
@@ -109,6 +112,19 @@ export default function HotListWidget({ widget, frame, now, settings, onSettings
           ))}
         </Popover>
       )}
+      <HotListPanel
+        open={panelOpen}
+        source={source}
+        allowed={allowed}
+        items={items}
+        error={error}
+        loading={loading}
+        fetchedAt={fetchedAt}
+        onChoose={choose}
+        onRequest={() => request(source)}
+        onRefresh={() => void refresh()}
+        onClose={() => setPanelOpen(false)}
+      />
     </WidgetFrame>
   );
 }

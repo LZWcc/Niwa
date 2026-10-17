@@ -37,6 +37,30 @@
   font-size: 13px;
   font-weight: 600;
 }
+/* 能打开大面板的标题栏（热榜）：整行可点，标题后面带 › */
+.widget-head.is-openable {
+  cursor: pointer;
+}
+.widget-title-open {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.widget-title-open span {
+  font-weight: 400;
+  color: var(--faint);
+  transition: transform 0.15s var(--ease-snap);
+}
+.widget-head.is-openable:hover .widget-title-open span {
+  color: var(--muted);
+  transform: translateX(2px);
+}
 /* 标题栏：所有小组件一样。右边给“…”按钮留位置 */
 .widget-head {
   flex-shrink: 0;

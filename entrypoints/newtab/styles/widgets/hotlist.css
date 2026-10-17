@@ -96,3 +96,48 @@
   color: var(--faint);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 大面板 ---------- */
+.hot-panel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hot-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+.hot-entry:hover,
+.hot-entry:focus-visible {
+  background: var(--border);
+  outline: 0;
+}
+.hot-entry .hot-rank {
+  width: 18px;
+  font-size: 13px;
+}
+.hot-entry-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hot-entry-title {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.hot-entry-note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--faint);
+}

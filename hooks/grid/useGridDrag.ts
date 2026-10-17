@@ -20,7 +20,8 @@ const COOLDOWN = 90; // 两次换位之间至少间隔（毫秒），让上一�
 const FAST = 0.6;
 const PAUSE = 60; // 指针停这么久（毫秒）就算停住了
 // 在这些元素上按下不触发拖动：输入框里要能选字，按钮要能点。快捷方式本身是链接、「添加」本身是按钮，都可以拖。
-const BLOCKED = 'input, textarea, select, button:not(.shortcut-add), [contenteditable], a:not(.shortcut-link)';
+// 小组件打开的对话框（月历、热榜）在 DOM 里也在卡片下面，在里面按下不拖动卡片。
+const BLOCKED = 'input, textarea, select, button:not(.shortcut-add), [contenteditable], a:not(.shortcut-link), dialog';
 
 type Options = {
   /** 当前的摆放和列数（取值函数：网格先调用这个钩子，摆放算好后才有值） */

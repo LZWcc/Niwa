@@ -1,0 +1,138 @@
+<!doctype html>
+<!-- 页面测试：订阅（RSS / Atom）——添加（订阅地址、http 换成 https、网站首页、别的网站上的订阅地址）、各种格式和编码、合在一起排序、只看一个、大面板、更新失败、移除。
+     网络请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+
+const ago = (ms) => new Date(Date.now() - ms);
+// RSS 2.0：摘要是 CDATA 里的 HTML，有相对链接，有 javascript: 链接和没写链接的（都不要）
+const rss2 = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>网络日志</title><link>https://a.example/</link>
+<item><title>第一篇</title><link>https://a.example/1</link><pubDate>${ago(3600e3).toUTCString()}</pubDate><description><![CDATA[<p>摘要 <b>一</b></p>]]></description></item>
+<item><title>相对链接</title><link>/2</link><pubDate>${ago(2 * 86400e3).toUTCString()}</pubDate></item>
+<item><title>坏链接</title><link>javascript:alert(1)</link></item>
+<item><title>没有链接</title></item>
+</channel></rss>`;
+// Atom：标题里带 HTML，有好几个链接时取 alternate（没写 rel 的就是）
+const atom = `<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Atom 博客</title>
+<entry><title type="html">&lt;b&gt;Atom&lt;/b&gt; 第一</title><link rel="replies" href="https://b.example/c"/><link href="https://b.example/p1"/><updated>${ago(1800e3).toISOString()}</updated><summary>Atom 摘要</summary></entry>
+</feed>`;
+// RSS 1.0（RDF），GBK 编码，只在 XML 开头写了编码：「中文」是 D6D0 CEC4
+const gbk = (s) => s.split('中文').flatMap((part, i) => [...(i ? [0xd6, 0xd0, 0xce, 0xc4] : []), ...new TextEncoder().encode(part)]);
+const rdf = new Uint8Array(gbk(`<?xml version="1.0" encoding="gbk"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel rdf:about="https://feeds.cdn.example/rss"><title>GBK 中文</title></channel>
+<item rdf:about="https://feeds.cdn.example/a"><title>中文 RSS</title><link>https://feeds.cdn.example/a</link><dc:date>${ago(3 * 3600e3).toISOString()}</dc:date></item>
+</rdf:RDF>`));
+
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  const requests = [];
+  let down = false;
+  w.fetch = (input) => {
+    const url = String(input);
+    requests.push(url);
+    const body = (b, type = 'application/xml') => Promise.resolve(new w.Response(b, { headers: { 'content-type': type } }));
+    if (url === 'https://a.example/feed.xml') return down ? Promise.reject(new TypeError('Failed to fetch')) : body(rss2);
+    // 网站首页：b 声明的订阅地址在自己网站上，c 的在别的网站上，d 没有声明
+    if (url === 'https://b.example/') return body('<html><head><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head></html>', 'text/html; charset=utf-8');
+    if (url === 'https://b.example/atom.xml') return body(atom);
+    if (url === 'https://c.example/') return body('<html><head><link rel="alternate" type="application/rss+xml" href="http://feeds.cdn.example/rss"></head></html>', 'text/html');
+    if (url === 'https://feeds.cdn.example/rss') return body(rdf, 'application/rdf+xml');
+    if (url === 'https://d.example/') return body('<html><head><title>没有订阅</title></head></html>', 'text/html');
+    return Promise.resolve(new w.Response('', { status: 404 }));
+  };
+
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('订阅')).click(); await sleep(200);
+  const fw = d.querySelector('[data-type="feeds"]');
+  const titles = () => [...fw.querySelectorAll('.feeds-title')].map((x) => x.textContent);
+  const settings = () => JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'feeds')?.settings ?? {};
+
+  // 还没有订阅：不联网，标题点了不打开大面板
+  log(!!fw.querySelector('.feeds-empty') && requests.length === 0 && !fw.querySelector('.widget-head.is-openable'), 'empty state, no requests');
+  [...fw.querySelectorAll('button')].find((b) => b.textContent === '添加订阅').click(); await sleep(100);
+  const dlg = [...fw.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('.dialog-title')?.textContent === '管理订阅');
+  const input = dlg.querySelector('input');
+  const submit = async (text) => { setVal(input, text); dlg.querySelector('form').requestSubmit(); await sleep(150); };
+  const fieldError = () => dlg.querySelector('.field-error')?.textContent ?? '';
+  log(dlg?.open && d.activeElement === input, 'manage dialog opens, input focused');
+
+  await submit('不是网址');
+  log(fieldError() === '这不像一个网址', `bad url rejected: ${fieldError()}`);
+
+  // 订阅地址：先取一次，存下名字和内容；http 的换成 https 读（feedburner 这类老订阅还写着 http）
+  await submit('http://a.example/feed.xml');
+  const listed = () => [...dlg.querySelectorAll('.source-name')].map((x) => x.textContent);
+  log(JSON.stringify(listed()) === '["网络日志"]' && !!dlg.querySelector('.source-new') && input.value === '', `feed added: ${listed()}`);
+  log(settings().feeds?.[0]?.url === 'https://a.example/feed.xml' && requests.every((u) => u.startsWith('https:')), 'http upgraded to https, saved in widget settings');
+  // 网站首页：用网页里声明的订阅地址
+  await submit('https://b.example/');
+  log(JSON.stringify(listed()) === '["网络日志","Atom 博客"]' && settings().feeds[1].url === 'https://b.example/atom.xml', `discovered same-site feed: ${listed()}`);
+  // 订阅地址在别的网站上（网页里写的是 http，也换成 https）：再点一次申请那个网站
+  await submit('https://c.example/');
+  log(dlg.querySelector('.feeds-pending')?.textContent.includes('feeds.cdn.example'), 'other-site feed asks again');
+  dlg.querySelector('.feeds-pending button').click(); await sleep(150);
+  log(JSON.stringify(listed()) === '["网络日志","Atom 博客","GBK 中文"]' && !dlg.querySelector('.feeds-pending'), `GBK feed decoded: ${listed()}`);
+  await submit('https://d.example/');
+  log(fieldError() === '这个网址不是 RSS / Atom 订阅，网页里也没有找到订阅地址', `no feed found: ${fieldError()}`);
+  // 不写 https:// 也认，和已有的重复
+  await submit('a.example/feed.xml');
+  log(fieldError() === '这个订阅已经添加过了', `duplicate rejected: ${fieldError()}`);
+  [...dlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(100);
+
+  // 卡片：几个订阅合在一起，新的在前；HTML 标签去掉，相对链接补全，javascript: 链接和没写链接的不要
+  log(JSON.stringify(titles()) === '["Atom 第一","第一篇","中文 RSS","相对链接"]', `merged newest first: ${titles()}`);
+  const href = (t) => [...fw.querySelectorAll('.feeds-row')].find((a) => a.textContent.startsWith(t))?.getAttribute('href');
+  log(href('Atom 第一') === 'https://b.example/p1' && href('相对链接') === 'https://a.example/2', `links resolved: ${href('Atom 第一')} ${href('相对链接')}`);
+  const times = [...fw.querySelectorAll('.feeds-time')].map((x) => x.textContent);
+  log(/^\d\d:\d\d$/.test(times[0]) && times.length === 4 && /月/.test(times[3]), `times: ${times}`);
+  log(Object.keys(JSON.parse(w.localStorage.getItem('niwa:feed-cache'))).length === 3, 'contents cached per feed');
+
+  // 只看一个：存在自己的 settings 里
+  const pick = async (name) => {
+    fw.querySelector('.feeds-pick').click(); await sleep(50);
+    [...d.querySelectorAll('.feeds-menu .menu-item')].find((b) => b.textContent === name).click(); await sleep(100);
+  };
+  await pick('Atom 博客');
+  log(JSON.stringify(titles()) === '["Atom 第一"]' && settings().feed === settings().feeds[1].id, `only one feed: ${titles()}`);
+
+  // 大面板：从卡片看的那个开始；左边是全部和每个订阅的篇数，右边带来自哪个订阅、摘要
+  fw.querySelector('.widget-title-open').click(); await sleep(100);
+  const panel = fw.querySelector('.feeds-dialog');
+  const nav = () => [...panel.querySelectorAll('.feeds-nav-item')].map((b) => b.textContent);
+  log(panel.open && panel.querySelector('.feeds-nav-item.is-selected')?.textContent.startsWith('Atom 博客'), 'panel starts at card feed');
+  log(JSON.stringify(nav()) === '["全部4","网络日志2","Atom 博客1","GBK 中文1"]', `panel nav: ${nav()}`);
+  [...panel.querySelectorAll('.feeds-nav-item')][0].click(); await sleep(50);
+  const entry = [...panel.querySelectorAll('.feeds-entry')].find((a) => a.textContent.startsWith('第一篇'));
+  log(/^网络日志 · \d\d:\d\d$/.test(entry?.querySelector('.feeds-entry-meta')?.textContent) && entry.querySelector('.feeds-entry-summary')?.textContent === '摘要 一', `entry meta and summary: ${entry?.querySelector('.feeds-entry-meta')?.textContent}`);
+  log(settings().feed === settings().feeds[1].id, 'panel choice does not change card');
+
+  // 更新失败：保留上一次的文章，左边标出来
+  down = true;
+  panel.querySelector('[aria-label="立即刷新"]').click(); await sleep(200);
+  const bad = [...panel.querySelectorAll('.feeds-nav-item')][1];
+  log(bad.querySelector('.feeds-nav-error')?.title === '连不上 a.example，检查网络或代理' && panel.querySelector('.panel-status')?.textContent === '1 个订阅更新失败' && !!entry.isConnected, 'failure keeps items, marks feed');
+  down = false;
+
+  // 移除正在看的那个：卡片回到全部
+  panel.querySelector('.feeds-manage').click(); await sleep(100);
+  const remove = [...dlg.querySelectorAll('.sources li')].find((li) => li.textContent.includes('Atom 博客')).querySelector('button');
+  remove.click(); await sleep(100);
+  log(settings().feeds.length === 2 && settings().feed === undefined, 'removing selected feed falls back to all');
+  [...dlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(50);
+  panel.querySelector('[aria-label="关闭订阅"]').click(); await sleep(100);
+  log(!panel.open && JSON.stringify(titles()) === '["第一篇","中文 RSS","相对链接"]', `card after removal: ${titles()}`);
+};
+</script>

@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import type { WidgetType } from '@/utils/widgets';
 import BookmarksWidget from './bookmarks/BookmarksWidget';
 import CalendarWidget from './calendar/CalendarWidget';
+import FeedsWidget from './feeds/FeedsWidget';
 import GardenWidget from './garden/GardenWidget';
 import HistoryWidget from './history/HistoryWidget';
 import HotListWidget from './hotlist/HotListWidget';
@@ -23,6 +24,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<WidgetProps>> =
   worldclock: WorldClockWidget,
   timer: TimerWidget,
   hotlist: HotListWidget,
+  feeds: FeedsWidget,
 };
 
 export type { FrameProps, WidgetProps } from './types';

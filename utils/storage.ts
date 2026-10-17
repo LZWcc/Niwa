@@ -28,6 +28,8 @@ export const KEYS = {
   weatherCache: 'niwa:weather-forecast',
   /** 热榜的上一次结果（按来源分开），打开页面时先显示它 */
   hotlistCache: 'niwa:hotlist-cache',
+  /** 订阅的上一次结果（按订阅地址分开），打开页面时先显示它 */
+  feedCache: 'niwa:feed-cache',
   /** 计时器第一次开始倒计时时问过要不要发通知了：yes。只问一次，之后在菜单里开关 */
   timerNotifyAsked: 'niwa:timer-notify-asked',
   /** 背景是否跟随天气：on 表示跟随（天气小组件菜单里的开关，默认不跟随） */

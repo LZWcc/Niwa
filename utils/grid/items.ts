@@ -1,6 +1,7 @@
 // 网格里的每一项：网站快捷方式和小组件放在同一个列表里（niwa:grid），自由摆放。
 // 每一项记自己左上角的列 x、行 y（可以留空）；没有位置的由 layout.ts 的 resolve 补上。
 import { HISTORY_TABS, type HistoryTab } from '../browsing';
+import { isFeed, type Feed } from '../feeds';
 import { isLinkIcon, type LinkIcon } from '../icons/model';
 import { isNote, type Note } from '../notes';
 import { isTimerState, type TimerState } from '../timer';
@@ -12,7 +13,7 @@ type Pos = { x?: number; y?: number };
 /** icon 没有时用浏览器缓存的网站图标或首字母（默认项、更早添加的） */
 export type LinkItem = { id: string; kind: 'link'; name: string; url: string; icon?: LinkIcon } & Pos;
 /**
- * 小组件各自的设置和数据：同一种可以放多个，各管各的。便签的内容、天气的城市、收藏夹看到的文件夹、历史看的哪一组、世界时钟的城市（WORLD_CLOCK 里的 id）、计时器的状态、热榜看的哪个来源（HOTLIST 里的 id）。
+ * 小组件各自的设置和数据：同一种可以放多个，各管各的。便签的内容、天气的城市、收藏夹看到的文件夹、历史看的哪一组、世界时钟的城市（WORLD_CLOCK 里的 id）、计时器的状态、热榜看的哪个来源（HOTLIST 里的 id）、订阅的地址和看的哪一个（feed：Feed 的 id，没有是全部）。
  * 放在网格这一项里，只有网格一个地方读写（不会两个小组件互相覆盖），备份、移除都跟着这一项走。
  */
 export type WidgetSettings = {
@@ -23,6 +24,8 @@ export type WidgetSettings = {
   cities?: string[];
   timer?: TimerState;
   hotSource?: string;
+  feeds?: Feed[];
+  feed?: string;
 };
 export type WidgetItem = { id: string; kind: 'widget'; type: WidgetType; size: WidgetSize; settings?: WidgetSettings } & Pos;
 export type GridItem = LinkItem | WidgetItem;
@@ -48,7 +51,9 @@ const isSettings = (v: unknown) => {
     (s.tab === undefined || HISTORY_TABS.includes(s.tab)) &&
     (s.cities === undefined || (Array.isArray(s.cities) && s.cities.every((c) => typeof c === 'string'))) &&
     (s.timer === undefined || isTimerState(s.timer)) &&
-    (s.hotSource === undefined || typeof s.hotSource === 'string')
+    (s.hotSource === undefined || typeof s.hotSource === 'string') &&
+    (s.feeds === undefined || (Array.isArray(s.feeds) && s.feeds.every(isFeed))) &&
+    (s.feed === undefined || typeof s.feed === 'string')
   );
 };
 

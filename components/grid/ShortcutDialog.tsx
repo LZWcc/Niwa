@@ -15,10 +15,12 @@ type Props = {
   icon?: IconSpec;
   onSave: (link: LinkDraft) => void;
   onDelete: () => void;
+  /** 在文件夹里的才有：放回桌面 */
+  onMoveOut?: () => void;
   onClose: () => void;
 };
 
-export default function ShortcutDialog({ target, icon: currentIcon, onSave, onDelete, onClose }: Props) {
+export default function ShortcutDialog({ target, icon: currentIcon, onSave, onDelete, onMoveOut, onClose }: Props) {
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [touched, setTouched] = useState(false);
@@ -96,6 +98,11 @@ export default function ShortcutDialog({ target, icon: currentIcon, onSave, onDe
           {target && (
             <button type="button" className="btn btn-danger" onClick={onDelete}>
               删除
+            </button>
+          )}
+          {onMoveOut && (
+            <button type="button" className="btn" onClick={onMoveOut}>
+              移出文件夹
             </button>
           )}
           <button type="button" className="btn" onClick={onClose}>

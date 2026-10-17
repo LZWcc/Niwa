@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import Dialog from '@/components/common/Dialog';
 import { SECRET_LABELS, createBackup, parseBackup, restoreBackup, secretsIn, type Backup } from '@/utils/backup';
+import { allLinks } from '@/utils/grid/items';
 import { dayKey } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
 
 /** 导入前给用户看的摘要：里面有什么、什么时候导出的 */
 function summary({ data, exportedAt }: Backup) {
-  const links = data.grid.filter((item) => item.kind === 'link').length;
+  const folders = data.grid.filter((item) => item.kind === 'folder').length;
   const parts = [
-    `${links} 个快捷方式`,
-    `${data.grid.length - links} 个小组件`,
+    `${allLinks(data.grid).length} 个快捷方式`,
+    ...(folders ? [`${folders} 个文件夹`] : []),
+    `${data.grid.filter((item) => item.kind === 'widget').length} 个小组件`,
     `${data.grid.reduce((n, item) => n + (item.kind === 'widget' ? (item.settings?.notes?.length ?? 0) : 0), 0)} 条便签`,
   ];
   return `${parts.join('、')}，导出于 ${new Date(exportedAt).toLocaleString()}`;

@@ -4,15 +4,18 @@
 import { DEFAULT_ITEMS } from '../config';
 import { isCalendarSource } from './calendar/ical';
 import { AppError } from './errors';
-import { isGridItem, isPoint, type GridItem, type Point, type WidgetItem } from './grid/items';
+import { allLinks, isGridItem, isPoint, type GridItem, type Point, type WidgetItem } from './grid/items';
 import { isIconStore, type IconStore } from './icons/model';
 import { KEYS, readJson, readList, writeJson, type StorageKey } from './storage';
 import { isThemeChoice, readThemeChoice, type ThemeChoice } from './theme';
 import { isVisits, type Visits } from './visits';
 import { isWeatherAccount, type Place } from './weather';
 
-/** 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。 */
-const VERSION = 5;
+/**
+ * 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。
+ * 第 6 版网格里多了收纳文件夹（旧版本不用迁移；旧版本的 Niwa 读到第 6 版会提示先更新，而不是说数据不对）。
+ */
+const VERSION = 6;
 
 /** cache：替换后要清掉的缓存 */
 type Secret = { key: StorageKey; label: string; isValid: (v: unknown) => boolean; cache?: StorageKey };
@@ -77,11 +80,12 @@ export function createBackup(includeSecrets: boolean): Backup {
 /** 整份数据哪里不对；没问题返回 null。 */
 function findProblem(d: BackupData): string | null {
   if (!Array.isArray(d.grid) || !d.grid.every(isGridItem)) return '快捷方式或小组件的数据不对';
-  const ids = d.grid.map((item) => item.id);
+  // 文件夹里的快捷方式也算：图标图片按 id 存
+  const ids = [...d.grid, ...allLinks(d.grid).filter((link) => !d.grid.includes(link))].map((item) => item.id);
   if (new Set(ids).size !== ids.length) return '有重复的格子';
   if (d.addTile !== null && !isPoint(d.addTile)) return '「添加」的位置不对';
   if (!isIconStore(d.icons)) return '图标的数据不对';
-  if (d.grid.some((item) => item.kind === 'link' && item.icon?.kind === 'image' && !d.icons[item.id])) return '缺少图标图片';
+  if (allLinks(d.grid).some((link) => link.icon?.kind === 'image' && !d.icons[link.id])) return '缺少图标图片';
   if (d.visits !== null && !isVisits(d.visits)) return '庭的数据不对';
   if (d.engine !== null && typeof d.engine !== 'string') return '搜索引擎的设置不对';
   if (!isThemeChoice(d.theme)) return '浅色 / 深色的设置不对';

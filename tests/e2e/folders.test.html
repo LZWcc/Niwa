@@ -1,0 +1,132 @@
+<!doctype html>
+<!-- 页面测试：收纳文件夹——拖到另一个上停一下合成、没停够照常互换、拖进已有的文件夹、改名、在里面换顺序、
+     拖出文件夹放回桌面、移出、删掉剩一个时换回快捷方式、解散、刷新后还在。开始前写入升级前的数据（只有快捷方式）。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+// 升级前的布局：只有快捷方式；e 的图标是图片（按 id 存在 niwa:icons）
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const link = (id, x, icon) => ({ id, kind: 'link', name: id.toUpperCase(), url: `https://${id}.example/`, icon: icon ?? { kind: 'text', text: id.toUpperCase(), color: '#4f86c6' }, x, y: 0 });
+localStorage.setItem('niwa:grid', JSON.stringify([link('a', 0), link('b', 1), link('c', 2), link('d', 3), link('e', 4, { kind: 'image' })]));
+localStorage.setItem('niwa:icons', JSON.stringify({ e: PNG }));
+localStorage.setItem('niwa:add', JSON.stringify({ x: 0, y: 3 }));
+
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+let reloaded = false;
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const grid = () => JSON.parse(w.localStorage.getItem('niwa:grid'));
+  const folders = () => grid().filter((i) => i.kind === 'folder');
+  const tile = (id) => d.querySelector(`.grid > [data-key="${id}"]`);
+  const at = (id) => { const i = grid().find((x) => x.id === id); return i ? `${i.x},${i.y}` : null; };
+  if (reloaded) {
+    // 刷新后：文件夹还在，名字、顺序不变
+    const kept = folders()[0];
+    log(!!kept && !!tile(kept.id)?.classList.contains('is-folder') && tile(kept.id).querySelector('.shortcut-name').textContent === kept.name, `folder survives reload: ${kept?.name}`);
+    log(true, 'folders done');
+    return;
+  }
+  const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  const center = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const pe = (type, x, y) => new w.PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerType: 'mouse', isPrimary: true });
+  // 拖到 (x1, y1)：dwell 是在那里停多久再松手；无头模式没有动画帧，停完补一次移动，让它重新判断
+  const drag = async (from, [x1, y1], { dwell = 150, steps = 8, before } = {}) => {
+    const [x0, y0] = center(from);
+    from.dispatchEvent(pe('pointerdown', x0, y0));
+    for (let i = 1; i <= steps; i++) { w.dispatchEvent(pe('pointermove', x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps)); await sleep(25); }
+    await sleep(dwell); w.dispatchEvent(pe('pointermove', x1, y1)); await sleep(30);
+    const seen = before?.();
+    w.dispatchEvent(pe('pointerup', x1, y1));
+    await sleep(80);
+    return seen;
+  };
+  const iconCenter = (id) => center(tile(id).querySelector('.shortcut-icon'));
+  const panel = d.querySelector('.folder-dialog');
+  const panelIds = () => [...panel.querySelectorAll('.folder-grid > [data-key]')].map((e) => e.dataset.key);
+
+  log(d.querySelectorAll('.grid > .shortcut').length === 5 && !d.querySelector('.is-folder'), 'old layout without folders loads');
+
+  // 没停够就松手：照常互换，不合成
+  await drag(tile('c').querySelector('.shortcut-link'), iconCenter('d'));
+  log(at('c') === '3,0' && at('d') === '2,0' && !folders().length, `quick drop swaps: c ${at('c')} d ${at('d')}`);
+
+  // 拖到 b 的正中停一下：b 高亮，松手合成文件夹（在 b 的位置，b 在前），打开并选中名字
+  const highlighted = await drag(tile('a').querySelector('.shortcut-link'), iconCenter('b'), { dwell: 500, before: () => tile('b').classList.contains('is-merge-target') });
+  const fd = folders()[0];
+  log(highlighted, 'target highlighted while hovering');
+  log(!!fd && `${fd.x},${fd.y}` === '1,0' && fd.links.map((l) => l.id).join() === 'b,a' && !tile('a') && !tile('b'), `merged into folder at b: ${JSON.stringify(fd?.links.map((l) => l.id))}`);
+  log(fd.links.every((l) => l.x === undefined && l.y === undefined), 'links in folder have no position');
+  const nameInput = panel.querySelector('.folder-name');
+  log(panel.open && d.activeElement === nameInput && nameInput.selectionEnd - nameInput.selectionStart === nameInput.value.length && nameInput.value === '文件夹', `new folder opens with name selected: ${nameInput.value} ${nameInput.selectionStart}-${nameInput.selectionEnd}`);
+  setVal(nameInput, '常用'); nameInput.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); nameInput.blur(); await sleep(50);
+  log(folders()[0].name === '常用', 'folder renamed');
+  panel.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(80);
+  log(!panel.open && tile(fd.id).querySelector('.shortcut-name').textContent === '常用', 'Esc closes folder, tile shows name');
+
+  // 拖进已有的文件夹：加在最后，不打开；图片图标还在
+  await drag(tile('e').querySelector('.shortcut-link'), iconCenter(fd.id), { dwell: 500 });
+  log(folders()[0].links.map((l) => l.id).join() === 'b,a,e' && !panel.open && !tile('e'), `added to folder: ${folders()[0].links.map((l) => l.id)}`);
+  log(JSON.parse(w.localStorage.getItem('niwa:icons')).e === PNG && tile(fd.id).querySelectorAll('.folder-icon .shortcut-icon').length === 3, 'image icon kept, three thumbnails');
+
+  // 点一下打开（不选中名字）；在里面拖动换顺序
+  tile(fd.id).querySelector('.shortcut-link').click(); await sleep(100);
+  log(panel.open && d.activeElement !== nameInput && panelIds().join() === 'b,a,e', 'click opens folder');
+  const ptile = (id) => panel.querySelector(`.folder-grid > [data-key="${id}"]`);
+  await drag(ptile('e').querySelector('.shortcut-link'), center(ptile('b')));
+  log(folders()[0].links.map((l) => l.id).join() === 'e,b,a' && panelIds().join() === 'e,b,a', `reordered in folder: ${folders()[0].links.map((l) => l.id)}`);
+  // 点里面的快捷方式照常打开网站（拖过的那次不算）
+  let opened = null;
+  d.addEventListener('click', (e) => { const a = e.target.closest?.('.folder-grid a'); if (a) { opened = a.getAttribute('href'); e.preventDefault(); } }, { once: true });
+  ptile('a').querySelector('.shortcut-link').click(); await sleep(30);
+  log(opened === 'https://a.example/', 'link in folder opens');
+
+  // 拖出文件夹：面板关上，在网格上接着拖，放到空格子里
+  const g = d.querySelector('.grid'), cols = getComputedStyle(g).gridTemplateColumns.split(' ').length;
+  const cell = (x, y) => { const gr = g.getBoundingClientRect(), ox = (g.clientWidth - (cols * 100 - 20)) / 2; return [gr.left + ox + x * 100 + 40, gr.top + y * 100 + 40]; };
+  await drag(ptile('a').querySelector('.shortcut-link'), cell(cols - 2, 0), { steps: 12 });
+  log(!panel.open && at('a') === `${cols - 2},0` && folders()[0].links.map((l) => l.id).join() === 'e,b' && !d.querySelector('.is-lifted'), `dragged out to grid: a ${at('a')}`);
+
+  // 右键编辑里面的快捷方式：「移出文件夹」放到文件夹后面；只剩一个时文件夹换回那个快捷方式，在文件夹的位置
+  tile(fd.id).querySelector('.shortcut-link').click(); await sleep(100);
+  ptile('b').dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(100);
+  const editor = [...d.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('#dialog-title')?.textContent === '编辑快捷方式');
+  [...editor.querySelectorAll('button')].find((b) => b.textContent === '移出文件夹').click(); await sleep(100);
+  log(!folders().length && at('e') === '1,0' && !!tile('e') && at('b') !== null && !panel.open, `last one replaces folder: e ${at('e')} b ${at('b')}`);
+  log(JSON.parse(w.localStorage.getItem('niwa:icons')).e === PNG, 'image icon survives');
+
+  // 再合成一个，删掉里面的一个：也换回剩下的那个
+  await drag(tile('c').querySelector('.shortcut-link'), iconCenter('d'), { dwell: 500 });
+  const f2 = folders()[0];
+  panel.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(50);
+  tile(f2.id).querySelector('.shortcut-link').click(); await sleep(100);
+  ptile('c').dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(100);
+  const editor2 = [...d.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('#dialog-title')?.textContent === '编辑快捷方式');
+  [...editor2.querySelectorAll('button')].find((b) => b.textContent === '删除').click(); await sleep(100);
+  log(!folders().length && !grid().some((i) => i.id === 'c') && at('d') === `${f2.x},${f2.y}`, `delete leaves single link: d ${at('d')}`);
+
+  // 解散：第一个放在文件夹的位置，其余依次放进后面的空格子
+  await drag(tile('d').querySelector('.shortcut-link'), iconCenter('e'), { dwell: 500 });
+  const f3 = folders()[0];
+  await drag(tile('b').querySelector('.shortcut-link'), iconCenter(f3.id), { dwell: 500 });
+  panel.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(50);
+  tile(f3.id).querySelector('.shortcut-link').click(); await sleep(100);
+  [...panel.querySelectorAll('button')].find((b) => b.textContent === '解散文件夹').click(); await sleep(100);
+  const spots = ['e', 'd', 'b'].map(at);
+  log(!folders().length && spots[0] === `${f3.x},${f3.y}` && new Set(spots).size === 3 && !panel.open, `dissolved: ${spots}`);
+  const taken = grid().filter((i) => i.x !== undefined).map((i) => `${i.x},${i.y}`);
+  log(new Set(taken).size === taken.length, 'no overlapping after dissolve');
+
+  // 留一个文件夹，刷新后看还在不在
+  await drag(tile('e').querySelector('.shortcut-link'), iconCenter('d'), { dwell: 500 });
+  panel.dispatchEvent(new w.Event('cancel', { cancelable: true })); await sleep(50);
+  reloaded = true;
+  w.location.reload();
+};
+</script>

@@ -6,36 +6,69 @@ import { useFlip } from '@/hooks/grid/useFlip';
 import { useGrid } from '@/hooks/grid/useGrid';
 import { useGridDrag } from '@/hooks/grid/useGridDrag';
 import { UNIT, useGridLayout } from '@/hooks/grid/useGridLayout';
-import type { LinkItem } from '@/utils/grid/items';
+import type { FolderItem, LinkItem } from '@/utils/grid/items';
 import type { Layout, Rect } from '@/utils/grid/layout';
 import { WIDGETS, WIDGET_SIZES } from '@/utils/widgets';
 import AddTile from './AddTile';
+import Folder from './Folder';
+import FolderPanel from './FolderPanel';
 import Shortcut from './Shortcut';
 import ShortcutDialog from './ShortcutDialog';
 
 // 搜索框下方的网格：快捷方式、小组件和「添加」自由摆放在一起。
 // 数据 useGrid → 摆放 useGridLayout → 拖动 useGridDrag，增删改都经过 useFlip 的 animate 做动画。
+// 快捷方式可以收进文件夹：拖到另一个快捷方式或文件夹正中停一下再松手（useGridDrag 的 onMerge），打开后在 FolderPanel 里管理。
 
 /** 网格线从 1 开始 */
 const area = (r: Rect): CSSProperties => ({ gridColumn: `${r.x + 1} / span ${r.w}`, gridRow: `${r.y + 1} / span ${r.h}` });
 
 export default function Grid({ now }: { now: Date }) {
-  const { items, iconOf, addLink, updateLink, addWidget, configure, resize, remove, place } = useGrid();
+  const {
+    items,
+    iconOf,
+    addLink,
+    updateLink,
+    addWidget,
+    configure,
+    resize,
+    remove,
+    place,
+    merge,
+    moveOut,
+    reorder,
+    renameFolder,
+    dissolve,
+  } = useGrid();
   // undefined：对话框关闭；null：新建；对象：编辑
   const [editing, setEditing] = useState<LinkItem | null | undefined>(undefined);
   const closeDialog = () => setEditing(undefined);
+  // 打开的文件夹；fresh：刚合成的，一打开就改名字
+  const [opened, setOpened] = useState<{ id: string; fresh: boolean } | null>(null);
+  const folderOf = (linkId: string) => items.find((i): i is FolderItem => i.kind === 'folder' && i.links.some((l) => l.id === linkId));
 
   const gridRef = useRef<HTMLElement>(null);
   const animate = useFlip(gridRef);
   // 拖动钩子要先调用（摆放需要知道是否在拖），它在拖动时通过 view 读取下面算好的摆放。
   const view = useRef<{ layout: Layout; cols: number; apply: (layout: Layout) => void }>(null);
-  const dragId = useGridDrag(gridRef, {
+  const { dragId, start } = useGridDrag(gridRef, {
     layout: () => view.current!.layout,
     cols: () => view.current!.cols,
     place: (next) => view.current!.apply(next),
     animate,
+    mergeable: (id, target) => byId.get(id)?.kind === 'link' && ['link', 'folder'].includes(byId.get(target)?.kind ?? ''),
+    onMerge: (id, target) =>
+      animate(() => {
+        const created = merge(id, target);
+        if (created) setOpened({ id: created, fresh: true });
+      }),
   });
-  const { cols, layout, apply, spotForNew, resized } = useGridLayout(gridRef, { items, place, dragging: dragId !== null });
+  const { cols, layout, apply, spotForNew, spotAfter, spotAt, resized } = useGridLayout(gridRef, {
+    items,
+    place,
+    dragging: dragId !== null,
+  });
+  const folder = items.find((i): i is FolderItem => i.kind === 'folder' && i.id === opened?.id) ?? null;
+  const holder = editing ? folderOf(editing.id) : undefined;
   view.current = { layout, cols, apply };
 
   // 页面打开期间不移动 DOM 节点：已有的格子留在原处，新加的接在后面，位置全靠 grid-column / grid-row。
@@ -70,6 +103,18 @@ export default function Grid({ now }: { now: Date }) {
           if (item.kind === 'link') {
             return (
               <Shortcut key={id} item={item} icon={iconOf(item)} style={style} lifted={dragId === id} onEdit={() => setEditing(item)} />
+            );
+          }
+          if (item.kind === 'folder') {
+            return (
+              <Folder
+                key={id}
+                item={item}
+                iconOf={iconOf}
+                style={style}
+                lifted={dragId === id}
+                onOpen={() => setOpened({ id, fresh: false })}
+              />
             );
           }
           const Widget = WIDGET_COMPONENTS[item.type];
@@ -118,7 +163,43 @@ export default function Grid({ now }: { now: Date }) {
           if (editing) animate(() => remove(editing.id));
           closeDialog();
         }}
+        onMoveOut={
+          holder &&
+          (() => {
+            animate(() => moveOut(editing!.id, spotAfter(layout.get(holder.id)!)));
+            closeDialog();
+          })
+        }
         onClose={closeDialog}
+      />
+
+      <FolderPanel
+        folder={folder}
+        fresh={!!opened?.fresh}
+        iconOf={iconOf}
+        onRename={(name) => folder && renameFolder(folder.id, name)}
+        onReorder={(ids) => folder && reorder(folder.id, ids)}
+        onEdit={setEditing}
+        onDragOut={(id, x, y) => {
+          // 放到指针下的格子、关上文件夹，网格接着拖
+          animate(() => {
+            moveOut(id, spotAt(x, y));
+            setOpened(null);
+          });
+          start(id, x, y);
+        }}
+        onDissolve={() => {
+          if (!folder) return;
+          // 第一个放在文件夹的位置，其余的依次往后放进空格子
+          const at = layout.get(folder.id)!;
+          const spots = [{ x: at.x, y: at.y }];
+          for (let i = 1; i < folder.links.length; i++) spots.push(spotAfter(at, spots.slice(1)));
+          animate(() => {
+            dissolve(folder.id, spots);
+            setOpened(null);
+          });
+        }}
+        onClose={() => setOpened(null)}
       />
     </>
   );

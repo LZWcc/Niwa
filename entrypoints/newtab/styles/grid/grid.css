@@ -209,3 +209,107 @@ html.is-reordering * {
   font-weight: 600;
   color: #fff;
 }
+
+/* ---------- 收纳文件夹 ---------- */
+/* 文件夹的图标：里面是前四个的缩略图，2×2 */
+.folder-icon {
+  grid-template-columns: repeat(2, 20px);
+  grid-auto-rows: 20px;
+  gap: 4px;
+  place-content: center;
+}
+.folder-icon .shortcut-icon {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-hover);
+  box-shadow: none;
+  backdrop-filter: none;
+  font-size: 10px;
+  transition: none;
+}
+.folder-icon .shortcut-icon img {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+.folder-icon .shortcut-icon.is-image img {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+}
+.shortcut-link:hover .folder-icon .shortcut-icon,
+.shortcut-link:active .folder-icon .shortcut-icon {
+  transform: none;
+}
+
+/* 拖着快捷方式停在另一个上：目标放大、底色变深，表示松手就放进去；拖着的那个缩小一点 */
+.shortcut.is-merge-target .shortcut-icon:not(.folder-icon .shortcut-icon) {
+  transform: scale(1.14);
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--term) 45%, transparent);
+}
+.shortcut.is-merging .shortcut-link {
+  opacity: 0.85;
+  scale: 0.88;
+}
+
+/* 打开的文件夹：浮在页面中间，背景更虚。宽度跟着里面的格子走（.dialog 默认的宽度在 dialog.css 里，它引入得晚，这里要写两个类才盖得住） */
+.dialog.folder-dialog {
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  border-radius: 28px;
+}
+.dialog.folder-dialog::backdrop {
+  backdrop-filter: blur(10px);
+}
+.folder-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 28px 18px;
+  outline: 0;
+}
+.folder-name {
+  width: 100%;
+  min-width: 200px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+.folder-name:hover {
+  background: var(--border);
+}
+.folder-name:focus {
+  border-color: var(--focus);
+  background: transparent;
+}
+.folder-grid {
+  position: relative;
+  display: grid;
+  grid-auto-rows: 80px;
+  gap: 20px;
+  max-height: calc(100svh - 220px);
+  overflow-y: auto;
+}
+.folder-foot {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--faint);
+}

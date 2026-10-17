@@ -28,10 +28,19 @@ export type WidgetSettings = {
   feed?: string;
 };
 export type WidgetItem = { id: string; kind: 'widget'; type: WidgetType; size: WidgetSize; settings?: WidgetSettings } & Pos;
-export type GridItem = LinkItem | WidgetItem;
+/**
+ * 收纳文件夹：占一格，里面按顺序放几个快捷方式（不记位置；还是原来的 id，图标图片不用搬）。
+ * 至少两个：只剩一个时由 useGrid 把它换回那个快捷方式。
+ */
+export type FolderItem = { id: string; kind: 'folder'; name: string; links: LinkItem[] } & Pos;
+export type GridItem = LinkItem | WidgetItem | FolderItem;
 
-/** 占几格：快捷方式 1×1，小组件按尺寸 */
-export const sizeOf = (item: GridItem): Size => (item.kind === 'link' ? { w: 1, h: 1 } : WIDGET_SIZES[item.size]);
+/** 占几格：快捷方式、文件夹 1×1，小组件按尺寸 */
+export const sizeOf = (item: GridItem): Size => (item.kind === 'widget' ? WIDGET_SIZES[item.size] : { w: 1, h: 1 });
+
+/** 网格里所有的快捷方式，包括文件夹里的 */
+export const allLinks = (items: GridItem[]): LinkItem[] =>
+  items.flatMap((item) => (item.kind === 'link' ? [item] : item.kind === 'folder' ? item.links : []));
 
 /** 网格里的一个格子位置（「添加」格子的位置用它） */
 export type Point = { x: number; y: number };
@@ -57,11 +66,22 @@ const isSettings = (v: unknown) => {
   );
 };
 
+const isLink = (v: unknown): v is LinkItem => {
+  const item = v as LinkItem;
+  return (
+    typeof item?.id === 'string' &&
+    item.kind === 'link' &&
+    typeof item.name === 'string' &&
+    typeof item.url === 'string' &&
+    (item.icon === undefined || isLinkIcon(item.icon))
+  );
+};
+
 export const isGridItem = (v: unknown): v is GridItem => {
   const item = v as GridItem;
   if (typeof item?.id !== 'string' || !isPos(item.x) || !isPos(item.y)) return false;
-  if (item.kind === 'link') {
-    return typeof item.name === 'string' && typeof item.url === 'string' && (item.icon === undefined || isLinkIcon(item.icon));
-  }
+  if (item.kind === 'link') return isLink(item);
+  if (item.kind === 'folder')
+    return typeof item.name === 'string' && Array.isArray(item.links) && item.links.length > 0 && item.links.every(isLink);
   return item.kind === 'widget' && item.type in WIDGETS && item.size in SIZE_NAMES && isSettings(item.settings);
 };

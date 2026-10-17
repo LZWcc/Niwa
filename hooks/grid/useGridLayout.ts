@@ -80,6 +80,26 @@ export function useGridLayout(grid: RefObject<HTMLElement | null>, { items, plac
       return pick(spot);
     },
 
+    /** 从 from 起按阅读顺序第一个空着的格子（文件夹里拿出来的快捷方式放这里）；taken 里是另外要避开的 */
+    spotAfter(from: Point, taken: Point[] = []): Point {
+      const all = new Map(layout);
+      taken.forEach((p, i) => all.set(`taken-${i}`, { ...p, w: 1, h: 1 }));
+      return pick(findSpot(all, { w: 1, h: 1 }, cols, from));
+    },
+
+    /** 指针 (x, y) 下面的格子；有东西就往后找第一个空的（从文件夹里拖出来时先放这里） */
+    spotAt(x: number, y: number): Point {
+      const g = grid.current!;
+      const base = g.getBoundingClientRect();
+      const pitch = UNIT + GAP;
+      const left = base.left + (g.clientWidth - (cols * pitch - GAP)) / 2; // 列是居中的
+      const cell = {
+        x: Math.max(0, Math.min(cols - 1, Math.floor((x - left) / pitch))),
+        y: Math.max(0, Math.floor((y - base.top) / pitch)),
+      };
+      return pick(findSpot(layout, { w: 1, h: 1 }, cols, cell));
+    },
+
     /** 改尺寸后的摆放：变大时压到的格子竖直往下让；右边放不下就往左挪进网格里。 */
     resized(id: string, size: WidgetSize): Layout {
       const r = layout.get(id)!;

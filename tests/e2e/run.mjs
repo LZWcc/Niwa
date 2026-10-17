@@ -29,6 +29,7 @@ const suites = [
   { file: 'worldclock.test.html', flags: ['--force-prefers-reduced-motion'], done: 'second world clock has its own cities' },
   { file: 'timer.test.html', flags: ['--force-prefers-reduced-motion'], done: 'stopwatch counting' },
   { file: 'alarm.test.html', flags: [], done: 'restart runs the same duration again' },
+  { file: 'folders.test.html', flags: ['--force-prefers-reduced-motion'], done: 'folders done' },
   { file: 'feeds.test.html', flags: ['--force-prefers-reduced-motion'], done: 'card after removal' },
   { file: 'hotlist.test.html', flags: ['--force-prefers-reduced-motion'], done: 'clicking the title row opens panel' },
   { file: 'settings.test.html', flags: ['--force-prefers-reduced-motion'], done: 'backup opens from settings' },

@@ -54,7 +54,7 @@ f.onload = async () => {
 
   button('导出备份').click(); await sleep(100);
   const plain = JSON.parse(await blobs[0].text());
-  log(plain.app === 'niwa' && plain.version === 5 && plain.data.grid.length === 3, 'export has layout');
+  log(plain.app === 'niwa' && plain.version === 6 && plain.data.grid.length === 3, 'export has layout');
   log(plain.data.icons.a === 'data:image/webp;base64,AAAA' && plain.data.grid[2].settings.notes[0].text === 'hello' && plain.data.theme === 'dark' && plain.data.engine === 'Bing' && plain.data.visits?.days === 1, 'export has icons, notes, prefs and visits');
   log(!('secrets' in plain.data) && !JSON.stringify(plain).includes('cal.example') && !JSON.stringify(plain).includes('qweatherapi') && !JSON.stringify(plain).includes('secret.example'), 'secrets not exported by default');
   dlg.querySelector('input[type=checkbox]').click(); await sleep(50);
@@ -84,6 +84,20 @@ f.onload = async () => {
   const noImage = structuredClone(plain); noImage.data.icons = {};
   await pick(JSON.stringify(noImage));
   log(error().includes('缺少图标图片'), `missing image rejected: ${error()}`);
+
+  // 收纳文件夹：里面的快捷方式也要有图标图片、id 不能和别的重复；摘要里写几个文件夹
+  const withFolder = structuredClone(plain);
+  const [first, ...rest] = withFolder.data.grid.filter((i) => i.kind === 'link');
+  withFolder.data.grid = [...withFolder.data.grid.filter((i) => i.kind !== 'link'), { id: 'f1', kind: 'folder', name: '常用', links: [first, ...rest].map(({ x, y, ...l }) => l), x: 0, y: 0 }];
+  await pick(JSON.stringify(withFolder));
+  const folderText = dlg.querySelector('.backup-pending')?.textContent ?? '';
+  log(!error() && folderText.includes(`${rest.length + 1} 个快捷方式、1 个文件夹`), `backup with folder accepted: ${error() || folderText}`);
+  const folderNoImage = structuredClone(withFolder); folderNoImage.data.icons = {};
+  await pick(JSON.stringify(folderNoImage));
+  log(error().includes('缺少图标图片'), `missing image inside folder rejected: ${error()}`);
+  const folderDup = structuredClone(withFolder); folderDup.data.grid[folderDup.data.grid.length - 1].links.push({ ...folderDup.data.grid[folderDup.data.grid.length - 1].links[0] });
+  await pick(JSON.stringify(folderDup));
+  log(error().includes('有重复的格子'), `duplicate id inside folder rejected: ${error()}`);
 
   // 第 1 版的备份（还没有天气）照样能导入
   const v1 = structuredClone(plain); v1.version = 1; delete v1.data.weather;

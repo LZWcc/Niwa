@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 页面测试：收纳文件夹——拖到远处插进去（中间的顺移一格）、经过图标边上再到正中停一下合成、没停够照常互换、拖进已有的文件夹、改名、在里面换顺序、
+<!-- 页面测试：收纳文件夹——拖到远处插进去（中间的顺移一格）、经过图标边上再到正中停一下合成、没停够照常互换、在里面停稳才换顺序、拖进已有的文件夹、改名、在里面换顺序、
      拖出文件夹放回桌面、移出、删掉剩一个时换回快捷方式、解散、刷新后还在。开始前写入升级前的数据（只有快捷方式）。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
@@ -97,8 +97,12 @@ f.onload = async () => {
   tile(fd.id).querySelector('.shortcut-link').click(); await sleep(100);
   log(panel.open && d.activeElement !== nameInput && panelIds().join() === 'b,a,e', 'click opens folder');
   const ptile = (id) => panel.querySelector(`.folder-grid > [data-key="${id}"]`);
-  await drag(ptile('e').querySelector('.shortcut-link'), center(ptile('b')));
-  log(folders()[0].links.map((l) => l.id).join() === 'e,b,a' && panelIds().join() === 'e,b,a', `reordered in folder: ${folders()[0].links.map((l) => l.id)}`);
+  // 没停稳就松手：拖着的时候还没换，松手时插到指针所在的格子
+  const unmoved = await drag(ptile('e').querySelector('.shortcut-link'), center(ptile('b')), { dwell: 50, before: () => panelIds().join() === 'b,a,e' });
+  log(unmoved && folders()[0].links.map((l) => l.id).join() === 'e,b,a' && panelIds().join() === 'e,b,a', `reordered in folder on drop: ${folders()[0].links.map((l) => l.id)}`);
+  // 停稳了：松手前就已经插进去
+  const settled = await drag(ptile('a').querySelector('.shortcut-link'), center(ptile('e')), { dwell: 400, before: () => panelIds().join() === 'a,e,b' });
+  log(settled && folders()[0].links.map((l) => l.id).join() === 'a,e,b', `reordered in folder after settling: ${folders()[0].links.map((l) => l.id)}`);
   // 点里面的快捷方式照常打开网站（拖过的那次不算）
   let opened = null;
   d.addEventListener('click', (e) => { const a = e.target.closest?.('.folder-grid a'); if (a) { opened = a.getAttribute('href'); e.preventDefault(); } }, { once: true });

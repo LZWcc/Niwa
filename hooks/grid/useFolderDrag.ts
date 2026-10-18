@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { layoutRect, suppressNextClick } from '@/utils/grid/dom';
 import { SPRINGS, prefersReducedMotion, springEasing } from '@/utils/spring';
+import { SETTLE, SLOW } from './useGridDrag';
 
-// 打开的文件夹里的拖动：按顺序排的一格格快捷方式，拖到哪一格就插到哪（其余的用 useFlip 滑过去）；
+// 打开的文件夹里的拖动：按顺序排的一格格快捷方式，拖到哪一格就插到哪（其余的用 useFlip 滑过去）。
+// 和网格一样停稳才换：在同一格里慢于 SLOW 持续 SETTLE 才插进去，没停稳就松手，照常插到指针所在的格子。
 // 拖出面板就交给 onDragOut，由网格接着拖（useGridDrag 的 start）。按 Esc 恢复拖动前的顺序。
 
 const THRESHOLD = 4; // 按下后移动超过这么多像素才算拖动，否则就是点击
@@ -32,6 +34,10 @@ type Drag = {
   grabY: number;
   x: number;
   y: number;
+  /** 上次移动的时间；指针下是第几格、停稳后插进去的计时 */
+  movedAt: number;
+  target: number;
+  timer: ReturnType<typeof setTimeout> | undefined;
   active: boolean;
   original: string[];
 };
@@ -62,13 +68,25 @@ export function useFolderDrag(grid: RefObject<HTMLElement | null>, panel: RefObj
       return Math.min(opts.current.ids().length - 1, row * cols + col);
     };
 
+    /** 把 d 插到第 to 格 */
+    const move = (d: Drag, to: number) => {
+      const ids = opts.current.ids();
+      if (ids[to] === d.id) return;
+      const next = ids.filter((id) => id !== d.id);
+      next.splice(to, 0, d.id);
+      opts.current.animate(() => opts.current.reorder(next));
+      stick(d);
+    };
+
     const stop = (d: Drag, { dropped }: { dropped: boolean }) => {
       s = null;
+      clearTimeout(d.timer);
       removeEventListener('pointermove', onMove);
       removeEventListener('pointerup', onUp);
       removeEventListener('pointercancel', onCancel);
       removeEventListener('keydown', onKey, true);
       if (!d.active) return;
+      if (dropped) move(d, indexAt(d.x, d.y));
       setDragId(null);
       document.documentElement.classList.remove('is-reordering');
       const from = d.el.style.transform;
@@ -82,6 +100,9 @@ export function useFolderDrag(grid: RefObject<HTMLElement | null>, panel: RefObj
 
     const onMove = (e: PointerEvent) => {
       if (!s) return;
+      const now = performance.now();
+      const fast = Math.hypot(e.clientX - s.x, e.clientY - s.y) / Math.max(1, now - s.movedAt) > SLOW;
+      s.movedAt = now;
       s.x = e.clientX;
       s.y = e.clientY;
       if (!s.active && Math.hypot(s.x - s.startX, s.y - s.startY) > THRESHOLD) {
@@ -104,13 +125,14 @@ export function useFolderDrag(grid: RefObject<HTMLElement | null>, panel: RefObj
         opts.current.onDragOut(d.id, d.x, d.y);
         return;
       }
-      const ids = opts.current.ids();
+      // 换了格子、或者还在快速移动：从头等它停稳
       const to = indexAt(s.x, s.y);
-      if (ids[to] === s.id) return;
-      const next = ids.filter((id) => id !== s!.id);
-      next.splice(to, 0, s.id);
-      opts.current.animate(() => opts.current.reorder(next));
-      stick(s);
+      if (to !== s.target || fast) {
+        const d = s;
+        d.target = to;
+        clearTimeout(d.timer);
+        d.timer = setTimeout(() => s === d && move(d, to), SETTLE);
+      }
     };
     const onUp = () => s && stop(s, { dropped: true });
     const onCancel = () => s && stop(s, { dropped: false });
@@ -139,6 +161,9 @@ export function useFolderDrag(grid: RefObject<HTMLElement | null>, panel: RefObj
         grabY: 0,
         x: e.clientX,
         y: e.clientY,
+        movedAt: performance.now(),
+        target: -1,
+        timer: undefined,
         active: false,
         original: opts.current.ids(),
       };

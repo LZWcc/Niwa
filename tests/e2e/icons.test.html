@@ -81,7 +81,7 @@ f.onload = async () => {
   log(tile('Plain')?.querySelector('.shortcut-icon.is-text')?.textContent === '朴', 'shortcut shows text icon');
 
   // 编辑时上传：不是图片的文件给出提示；图片替换原来的图标
-  tile('Site').querySelector('.shortcut-edit').click(); await sleep(100);
+  tile('Site').dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(100);
   const before = icons()[site.id];
   log(checked()?.querySelector('img')?.src === before, 'edit dialog selects current image');
   await upload(new w.File(['hello'], 'a.txt', { type: 'text/plain' }), () => dlg.querySelector('.field-error'));
@@ -93,7 +93,7 @@ f.onload = async () => {
   log(icons()[site.id] === uploaded, 'uploaded image saved');
 
   // 删除快捷方式：它的图片一起删掉
-  tile('Site').querySelector('.shortcut-edit').click(); await sleep(100);
+  tile('Site').dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(100);
   [...dlg.querySelectorAll('button')].find((b) => b.textContent.trim() === '删除').click(); await sleep(200);
   log(!links().some((l) => l.name === 'Site') && !(site.id in icons()), 'deleting shortcut removes its image');
 };

@@ -133,40 +133,6 @@ html.is-reordering * {
 }
 
 /* 编辑按钮贴在图标右上角，悬停或键盘聚焦时出现 */
-.shortcut-edit {
-  position: absolute;
-  top: -5px;
-  right: 5px;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: var(--elevated);
-  color: var(--muted);
-  fill: currentColor;
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.8);
-  transition:
-    opacity 0.15s,
-    transform 0.15s,
-    color 0.15s;
-}
-.shortcut:hover .shortcut-edit,
-.shortcut-edit:focus-visible {
-  opacity: 1;
-  transform: none;
-}
-.shortcut-edit:hover {
-  color: var(--ink);
-}
-.grid.is-reordering .shortcut-edit {
-  opacity: 0;
-}
-
 /* 添加：虚线、无阴影，平时淡一些 */
 .shortcut-add .shortcut-icon {
   border-style: dashed;

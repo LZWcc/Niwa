@@ -62,7 +62,7 @@ f.onload = async () => {
     return;
   }
   if (mode === 'shot-edit') {
-    d.querySelectorAll('.shortcut-edit')[0].click(); await sleep(300);
+    d.querySelectorAll('.shortcut-link[href]')[0].dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(300);
     return;
   }
 
@@ -324,15 +324,16 @@ f.onload = async () => {
   log(added.name === 'Bilibili' && added.url === 'https://bilibili.com/', `added: ${JSON.stringify(added)}`);
   log(d.querySelectorAll('.shortcut-link[href]').length === 5, 'rendered 5 links');
 
-  // 编辑
-  d.querySelectorAll('.shortcut-edit')[0].click(); await sleep(50);
+  // 编辑：右键打开（没有悬停出现的编辑按钮）
+  log(!d.querySelector('.shortcut-edit'), 'no edit button on shortcuts');
+  d.querySelectorAll('.shortcut-link[href]')[0].dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(50);
   log(inputs()[0].value === 'https://github.com/' && inputs()[1].value === 'GitHub', 'edit dialog prefilled');
   setVal(inputs()[1], 'GH'); await sleep(50);
   dialog().querySelector('.dialog-body').requestSubmit(); await sleep(50);
   log(stored()[0].name === 'GH', `edited (Enter submits): ${names()}`);
 
   // 取消不保存
-  d.querySelectorAll('.shortcut-edit')[0].click(); await sleep(50);
+  d.querySelectorAll('.shortcut-link[href]')[0].dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true })); await sleep(50);
   setVal(inputs()[1], 'XXX'); await sleep(50);
   btn('取消').click(); await sleep(50);
   log(!dialog().open && stored()[0].name === 'GH', 'cancel discards changes');

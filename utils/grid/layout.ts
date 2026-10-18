@@ -5,6 +5,7 @@
 //    大的压到几个小的：这几个保持相互位置，整组搬进它腾出来的地方（也是互换）；
 // 3. 搬不进去时，被压的小格子竖直往下推到它下面，下面再碰到的也依次往下推——只竖直移动，从不横向绕行；
 // 4. 小的压到大的：这个位置不接受（返回 null），留在上一个有效位置。
+// 以上是拖小组件时的规则。拖 1×1 的格子（快捷方式、文件夹、「添加」）参照手机桌面，用 insertIcon：插进去、其余顺移一格。
 // 这里都是纯函数。
 
 export type Size = { w: number; h: number };
@@ -154,6 +155,38 @@ export function stepDrag(base: Layout, id: string, from: { x: number; y: number 
     shown = result.layout;
   }
   return { base, layout: shown };
+}
+
+/**
+ * 拖 1×1 的 id 到 target 格子，总是从拖动开始时的摆放 layout 算（不累积，拖回原处就复原）：
+ * - 空格子（含它自己腾出来的）：直接放下；
+ * - 有别的 1×1：插到这里，从 target 往 id 原来的格子那边，按阅读顺序一个个顺移一格，
+ *   碰到第一个空格子就停（空位吸收这次挪动，远处的不动）；被组件盖住的格子跳过；
+ * - 组件盖住的格子：不接受，返回 null。
+ */
+export function insertIcon(layout: Layout, id: string, target: { x: number; y: number }, cols: number): Layout | null {
+  const self = layout.get(id)!;
+  const index = (x: number, y: number) => y * cols + x;
+  const icons = new Map<number, string>(); // 格子序号 → 占着它的 1×1
+  const covered = new Set<number>(); // 组件盖住的格子
+  for (const [key, r] of layout) {
+    if (key === id) continue;
+    if (r.w === 1 && r.h === 1) icons.set(index(r.x, r.y), key);
+    else for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) covered.add(index(x, y));
+  }
+  const t = index(target.x, target.y);
+  if (covered.has(t)) return null;
+  const next: Layout = new Map(layout).set(id, { ...self, ...target });
+  // 一直往原来的格子那边走：它已经腾空了，最远走到那里就停。
+  const dir = Math.sign(index(self.x, self.y) - t);
+  for (let i = t, key = icons.get(t); key;) {
+    let j = i + dir;
+    while (covered.has(j)) j += dir;
+    next.set(key, { ...layout.get(key)!, x: j % cols, y: Math.floor(j / cols) });
+    key = icons.get(j);
+    i = j;
+  }
+  return next;
 }
 
 /** 新加的格子放在 after 里最后一格后面（按阅读顺序），并避开 taken 里所有格子。 */

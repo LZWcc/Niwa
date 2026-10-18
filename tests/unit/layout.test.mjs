@@ -1,6 +1,6 @@
 // 布局算法（utils/layout.ts）的单元测试：pnpm test:unit
 // 用字母画出网格，每个检查都写明期望的摆放。
-import { moveItem, stepDrag, pushDown, resolve, appendSpot, findSpot, lastKey } from '../../utils/grid/layout.ts';
+import { moveItem, stepDrag, insertIcon, pushDown, resolve, appendSpot, findSpot, lastKey } from '../../utils/grid/layout.ts';
 let pass = 0,
   fail = 0;
 const ok = (c, m) => {
@@ -100,6 +100,29 @@ ok(moveItem(l, 'a', { x: 1, y: 0 }, 8) === null, 'icon onto widget rejected');
   }
   ok(seen.join(' | ') === 'B A C D | B C A D | B C D A', `drag across a row shifts one step each: ${seen.join(' | ')}`);
 }
+// 拖 1×1：插进去，中间的各顺移一格，像手机桌面
+l = L({ A: [0, 0], B: [1, 0], C: [2, 0], D: [3, 0], E: [4, 0] });
+n = insertIcon(l, 'A', { x: 3, y: 0 }, 5);
+ok(draw(n, 5, 1) === 'B C D A E', `insert forward: in-between shift back one: ${draw(n, 5, 1)}`);
+n = insertIcon(l, 'E', { x: 1, y: 0 }, 5);
+ok(draw(n, 5, 1) === 'A E B C D', `insert backward: in-between shift on one: ${draw(n, 5, 1)}`);
+ok(draw(insertIcon(n, 'E', { x: 4, y: 0 }, 5), 5, 1) === 'A B C D E', 'insert back restores order');
+ok(draw(insertIcon(l, 'A', { x: 0, y: 0 }, 5), 5, 1) === draw(l, 5, 1), 'insert at home: unchanged');
+// 中间有空位：挪到空位就停，远处的不动，也不会有谁被换到很远
+l = L({ A: [0, 0], B: [1, 0], C: [3, 0], D: [4, 0] });
+n = insertIcon(l, 'A', { x: 3, y: 0 }, 5);
+ok(draw(n, 5, 1) === '. B C A D', `gap absorbs the shift: ${draw(n, 5, 1)}`);
+n = insertIcon(l, 'D', { x: 1, y: 0 }, 5);
+ok(draw(n, 5, 1) === 'A D B C .', `gap absorbs the shift (backward): ${draw(n, 5, 1)}`);
+ok(draw(insertIcon(l, 'A', { x: 2, y: 0 }, 5), 5, 1) === '. B A C D', 'empty cell: just put it there');
+// 跨行顺移，跳过组件盖住的格子
+l = L({ A: [0, 0], B: [1, 0], C: [2, 0], D: [0, 1] });
+n = insertIcon(l, 'D', { x: 0, y: 0 }, 3);
+ok(draw(n, 3, 2) === 'D A B / C . .', `shift wraps to next row: ${draw(n, 3, 2)}`);
+l = L({ W: [0, 0, 2, 2], a: [2, 0], b: [3, 0], c: [2, 1], d: [3, 1], e: [0, 2] });
+n = insertIcon(l, 'e', { x: 2, y: 0 }, 4);
+ok(draw(n, 4, 3) === 'W W e a / W W b c / d . . .', `shift skips widget cells: ${draw(n, 4, 3)}`);
+ok(insertIcon(l, 'e', { x: 1, y: 1 }, 4) === null, 'icon onto widget cell rejected');
 // 竖着放两个图标（自由摆放）
 l = L({ a: [0, 0], b: [1, 0] });
 n = moveItem(l, 'b', { x: 0, y: 1 }, 4).layout;

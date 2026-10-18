@@ -1,32 +1,35 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { layoutRect, suppressNextClick, tiles } from '@/utils/grid/dom';
-import { sameLayout, stepDrag, type Layout } from '@/utils/grid/layout';
+import { insertIcon, sameLayout, stepDrag, type Layout } from '@/utils/grid/layout';
 import { SPRINGS, prefersReducedMotion, springEasing } from '@/utils/spring';
 
 // 网格拖拽：不用浏览器原生拖放（半透明残影、其他格子瞬间跳位），
 // 而是让被拖的那块跟着指针走，其余格子由 useFlip 用弹簧滑到新位置。
 //
-// 一次拖动：按下（onDown）→ 移动超过 4px 才算开始（begin）→ 每次移动和每一帧都 update：
-//   贴着指针（stick）、算出吸附到的格子（snapCell）、一格一格走过去决定摆放（stepDrag）
+// 一次拖动：按下（onDown）→ 移动超过 4px 才算开始（begin）→ 每次移动和每一帧都 update：贴着指针（stick），再按大小分两种
 // → 松手或取消（finish）。按 Esc 恢复拖动前的摆放。
 // 摆放规则全在 utils/layout.ts，这里只管指针和页面。
 //
-// 收纳文件夹（参照 Launchpad）：拖着快捷方式经过另一个快捷方式或文件夹的图标时先不换位（hold）；
-// 在图标正中停够 MERGE_DWELL 就是要放进去（目标高亮），这时松手交给 onMerge；没停够就松手，照常互换。
-// 停在图标边上 SWAP_DWELL 也照常换位，方便只想挪位置的时候。
+// 1×1 的格子（快捷方式、文件夹、「添加」，参照手机桌面，settle）：落点是指针所在的格子，插进去、其余顺移一格（insertIcon）。
+// 指针停稳（慢于 SLOW 持续 SETTLE）才让位，划过、减速经过的格子都不动。
+// 拖着快捷方式停在另一个快捷方式或文件夹的图标正中（MERGE_ZONE）时永远不让位；停够 MERGE_DWELL 就是要放进去（目标高亮），
+// 这时松手交给 onMerge。没停够、或停稳前就松手，都照常插到指针所在的格子。
 // 从打开的文件夹里拖出来的，由文件夹面板交给 start，接着在网格上拖。
+//
+// 小组件（relayout）：落点是左上角吸附到的格子（snapCell），一格一格走过去决定摆放（stepDrag）。
 
 const THRESHOLD = 4; // 按下后移动超过这么多像素才算拖动，否则就是点击
 const LIFT = 1.04; // 被拿起的那块放大一点
 const EDGE = 72; // 指针离窗口上下边缘这么近时自动滚动
-const COOLDOWN = 90; // 两次换位之间至少间隔（毫秒），让上一次的让位动画先开始
-// 指针移动得快（像素/毫秒）时先不换位，等它慢下来再定位置：
+const COOLDOWN = 90; // 小组件两次换位之间至少间隔（毫秒），让上一次的让位动画先开始
+// 拖小组件时指针移动得快（像素/毫秒）就先不换位，等它慢下来再定位置：
 // 快速划过几格时，中途经过的位置会引起大范围挤让，紧接着又复原，看起来就是闪一下。
 const FAST = 0.6;
 const PAUSE = 60; // 指针停这么久（毫秒）就算停住了
+const SLOW = 0.15; // 拖 1×1 时指针慢于这个速度（像素/毫秒）才算在停
+const SETTLE = 200; // 拖 1×1 时在同一格里停稳这么久（毫秒）才让位
 const MERGE_DWELL = 400; // 在别的图标正中停这么久（毫秒）就是要放进文件夹
-const SWAP_DWELL = 200; // 停在别的图标边上这么久（毫秒）就照常换位
-const MERGE_ZONE = 22; // 离图标中心这么近（像素）算“正中”
+const MERGE_ZONE = 26; // 离图标中心这么近（像素）算“正中”，差不多是整个图标（58px）
 // 在这些元素上按下不触发拖动：输入框里要能选字，按钮要能点。快捷方式本身是链接、「添加」和文件夹本身是按钮，都可以拖。
 // 小组件打开的对话框（月历、热榜）在 DOM 里也在卡片下面，在里面按下不拖动卡片。
 const BLOCKED = 'input, textarea, select, button:not(.shortcut-add, .shortcut-link), [contenteditable], a:not(.shortcut-link), dialog';
@@ -56,12 +59,15 @@ type Drag = {
   grabY: number;
   x: number;
   y: number;
-  /** 指针速度（平滑后，像素/毫秒）和上次移动的时间 */
+  /** 指针速度（平滑后，像素/毫秒）、上次移动的时间、上次快于 SLOW 的时间 */
   speed: number;
   pointerAt: number;
+  calmAt: number;
+  /** 拖的是 1×1 的格子（按 settle 处理），否则是小组件（按 relayout 处理） */
+  small: boolean;
   /** 移动超过阈值后才算真正开始拖 */
   active: boolean;
-  /** 上次处理过的格子（"列,行"），没变就不重算；上次换位的时间 */
+  /** 上次摆过去的格子（"列,行"），没变就不重算；上次换位的时间 */
   cell: string;
   movedAt: number;
   /** 拖动开始时的摆放（按 Esc 恢复它）和列数（拖动中不变） */
@@ -74,24 +80,39 @@ type Drag = {
   frame: number;
   /** 虚线占位：标出松手后会落在哪里 */
   slot: HTMLDivElement | null;
-  /** 指针停在哪个能放进去的图标上（先不换位）、从什么时候开始、在不在正中；停够了 ready，目标高亮 */
-  hold: { id: string; el: HTMLElement; since: number; center: boolean; ready: boolean } | null;
+  /** 拖 1×1 时指针在哪（"列,行"，在图标正中时再带上它的 id）、从什么时候开始 */
+  zone: string;
+  zoneAt: number;
+  /** 停在哪个能放进去的图标正中（不让位）；停够了 ready，目标高亮 */
+  hold: { id: string; el: HTMLElement; ready: boolean } | null;
 };
+
+/** 格子的间距、第一格左上角在视口里的位置（列是居中的），以及最多拖到哪一行（所有格子下面一行）。 */
+function gridOrigin(grid: HTMLElement, s: Drag) {
+  const style = getComputedStyle(grid);
+  const gap = parseFloat(style.columnGap);
+  const pitch = parseFloat(style.gridAutoRows) + gap;
+  const base = grid.getBoundingClientRect();
+  const bottom = Math.max(0, ...[...s.original].filter(([key]) => key !== s.id).map(([, r]) => r.y + r.h));
+  return { gap, pitch, left: base.left + (grid.clientWidth - (s.cols * pitch - gap)) / 2, top: base.top, bottom };
+}
 
 /** 被拖那块的左上角吸附到哪个格子（挪过半格就算到了下一格）。 */
 function snapCell(grid: HTMLElement, s: Drag) {
-  const style = getComputedStyle(grid);
-  const size = parseFloat(style.gridAutoRows);
-  const gap = parseFloat(style.columnGap);
-  const pitch = size + gap;
-  const base = grid.getBoundingClientRect();
-  const originX = base.left + (grid.clientWidth - (s.cols * pitch - gap)) / 2; // 列是居中的
+  const o = gridOrigin(grid, s);
   const self = s.original.get(s.id)!;
-  // 最多拖到所有格子下面一行。
-  const bottom = Math.max(0, ...[...s.original].filter(([key]) => key !== s.id).map(([, r]) => r.y + r.h));
   return {
-    x: Math.max(0, Math.min(s.cols - self.w, Math.round((s.x - s.grabX - originX) / pitch))),
-    y: Math.max(0, Math.min(bottom, Math.round((s.y - s.grabY - base.top) / pitch))),
+    x: Math.max(0, Math.min(s.cols - self.w, Math.round((s.x - s.grabX - o.left) / o.pitch))),
+    y: Math.max(0, Math.min(o.bottom, Math.round((s.y - s.grabY - o.top) / o.pitch))),
+  };
+}
+
+/** 指针所在的格子（格子之间的缝一边一半）。 */
+function pointerCell(grid: HTMLElement, s: Drag) {
+  const o = gridOrigin(grid, s);
+  return {
+    x: Math.max(0, Math.min(s.cols - 1, Math.floor((s.x - o.left + o.gap / 2) / o.pitch))),
+    y: Math.max(0, Math.min(o.bottom, Math.floor((s.y - o.top + o.gap / 2) / o.pitch))),
   };
 }
 
@@ -123,6 +144,7 @@ function trackPointer(s: Drag, e: PointerEvent) {
   const dt = Math.max(1, now - s.pointerAt);
   const v = Math.hypot(e.clientX - s.x, e.clientY - s.y) / dt;
   s.speed = dt > PAUSE ? v : s.speed * 0.5 + v * 0.5;
+  if (s.speed > SLOW) s.calmAt = now;
   s.pointerAt = now;
   s.x = e.clientX;
   s.y = e.clientY;
@@ -163,34 +185,51 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
       if (!s?.active || !g) return;
       stick(g, s);
       const now = performance.now();
-
-      // 停在能放进去的图标上：先不换位
-      const over = hovered(g, s, opts.current.mergeable);
-      if (over && (s.hold?.id !== over.id || s.hold.center !== over.center)) {
-        release(s);
-        s.hold = { ...over, since: now, ready: false };
-      } else if (!over) release(s);
-      if (s.hold) {
-        const waited = now - s.hold.since;
-        if (s.hold.center) {
-          if (!s.hold.ready && waited >= MERGE_DWELL) {
-            s.hold.ready = true;
-            s.hold.el.classList.add('is-merge-target');
-            s.el.classList.add('is-merging');
-          }
-          return;
-        }
-        if (waited < SWAP_DWELL) return;
-      }
-      relayout(s, g, now);
+      if (s.small) settle(s, g, now);
+      else relayout(s, g, now);
     };
 
-    /** 按指针现在的位置换位。force：松手时不管冷却和速度，把还没换的换掉 */
-    const relayout = (s: Drag, g: HTMLElement, now: number, force = false) => {
+    /** 1×1：在图标正中就等着放进去，否则在同一格停稳了再插进去。 */
+    const settle = (s: Drag, g: HTMLElement, now: number) => {
+      const cell = pointerCell(g, s);
+      const over = hovered(g, s, opts.current.mergeable);
+      const center = over?.center ? over : null;
+      const zone = `${cell.x},${cell.y}${center ? `:${center.id}` : ''}`;
+      if (zone !== s.zone) {
+        release(s);
+        s.zone = zone;
+        s.zoneAt = now;
+        if (center) s.hold = { id: center.id, el: center.el, ready: false };
+      }
+      if (s.hold) {
+        if (!s.hold.ready && now - s.zoneAt >= MERGE_DWELL) {
+          s.hold.ready = true;
+          s.hold.el.classList.add('is-merge-target');
+          s.el.classList.add('is-merging');
+        }
+        return;
+      }
+      if (now - Math.max(s.zoneAt, s.calmAt) >= SETTLE) insert(s, g, cell);
+    };
+
+    /** 1×1 插到 cell（组件盖住的格子不接受，留在上一个位置） */
+    const insert = (s: Drag, g: HTMLElement, cell: { x: number; y: number }) => {
+      const key = `${cell.x},${cell.y}`;
+      if (key === s.cell) return;
+      const next = insertIcon(s.original, s.id, cell, s.cols);
+      if (!next) return;
+      s.cell = key;
+      if (sameLayout(next, opts.current.layout())) return;
+      opts.current.animate(() => opts.current.place(next));
+      stick(g, s);
+    };
+
+    /** 小组件：按左上角吸附到的格子换位 */
+    const relayout = (s: Drag, g: HTMLElement, now: number) => {
       const target = snapCell(g, s);
       const cell = `${target.x},${target.y}`;
       if (now - s.pointerAt > PAUSE) s.speed = 0;
-      if (cell === s.cell || (!force && (now - s.movedAt < COOLDOWN || s.speed > FAST))) return;
+      if (cell === s.cell || now - s.movedAt < COOLDOWN || s.speed > FAST) return;
       s.cell = cell;
 
       // 从上一次的格子一格一格走到这里；全程都不接受时保持上一个有效摆放。
@@ -238,12 +277,9 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
       document.documentElement.classList.remove('is-reordering');
       setDragId(null);
       const merge = dropped && s.hold?.ready ? s.hold.id : null;
-      // 停在图标上还没换位就松手了：照常换过去
-      if (dropped && s.hold && !merge && grid.current) {
-        s.hold = null;
-        relayout(s, grid.current, performance.now(), true);
-      }
       release(s);
+      // 1×1 还没停稳、或停在图标正中没停够就松手了：照常插到指针所在的格子
+      if (dropped && !merge && s.small && grid.current) insert(s, grid.current, pointerCell(grid.current, s));
       if (merge) {
         s.el.style.transform = '';
         opts.current.onMerge(s.id, merge);
@@ -312,6 +348,8 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
         y,
         speed: 0,
         pointerAt: performance.now(),
+        calmAt: 0,
+        small: self.w === 1 && self.h === 1,
         active: false,
         cell: '',
         movedAt: 0,
@@ -321,6 +359,8 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
         at: { x: self.x, y: self.y },
         frame: 0,
         slot: null,
+        zone: '',
+        zoneAt: 0,
         hold: null,
       };
     };

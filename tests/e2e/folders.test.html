@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 页面测试：收纳文件夹——拖到另一个上停一下合成、没停够照常互换、拖进已有的文件夹、改名、在里面换顺序、
+<!-- 页面测试：收纳文件夹——拖到远处插进去（中间的顺移一格）、经过图标边上再到正中停一下合成、没停够照常互换、拖进已有的文件夹、改名、在里面换顺序、
      拖出文件夹放回桌面、移出、删掉剩一个时换回快捷方式、解散、刷新后还在。开始前写入升级前的数据（只有快捷方式）。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
@@ -37,9 +37,15 @@ f.onload = async () => {
   const center = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
   const pe = (type, x, y) => new w.PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerType: 'mouse', isPrimary: true });
   // 拖到 (x1, y1)：dwell 是在那里停多久再松手；无头模式没有动画帧，停完补一次移动，让它重新判断
-  const drag = async (from, [x1, y1], { dwell = 150, steps = 8, before } = {}) => {
-    const [x0, y0] = center(from);
+  // via：先到这里停 pause 毫秒（经过目标的边上），再接着拖到 (x1, y1)
+  const drag = async (from, [x1, y1], { dwell = 150, steps = 8, before, via, pause = 100 } = {}) => {
+    let [x0, y0] = center(from);
     from.dispatchEvent(pe('pointerdown', x0, y0));
+    if (via) {
+      for (let i = 1; i <= steps; i++) { w.dispatchEvent(pe('pointermove', x0 + (via[0] - x0) * i / steps, y0 + (via[1] - y0) * i / steps)); await sleep(25); }
+      await sleep(pause); w.dispatchEvent(pe('pointermove', ...via)); await sleep(30);
+      [x0, y0] = via;
+    }
     for (let i = 1; i <= steps; i++) { w.dispatchEvent(pe('pointermove', x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps)); await sleep(25); }
     await sleep(dwell); w.dispatchEvent(pe('pointermove', x1, y1)); await sleep(30);
     const seen = before?.();
@@ -52,13 +58,25 @@ f.onload = async () => {
   const panelIds = () => [...panel.querySelectorAll('.folder-grid > [data-key]')].map((e) => e.dataset.key);
 
   log(d.querySelectorAll('.grid > .shortcut').length === 5 && !d.querySelector('.is-folder'), 'old layout without folders loads');
+  const row = () => ['a', 'b', 'c', 'd', 'e'].map(at).join(' ');
+  const edgeOf = (id) => { const [x, y] = iconCenter(id); return [x - 36, y]; };
+
+  // 拖到远处插进去：中间的各往回顺移一格，不会有谁被换到很远；拖回去复原
+  await drag(tile('a').querySelector('.shortcut-link'), iconCenter('d'));
+  log(row() === '3,0 0,0 1,0 2,0 4,0' && !folders().length, `insert far: others shift one step: ${row()}`);
+  await drag(tile('a').querySelector('.shortcut-link'), iconCenter('b'));
+  log(row() === '0,0 1,0 2,0 3,0 4,0', `insert back restores: ${row()}`);
+  // 停在图标边上：停稳了才让位（松手前就已经挪好）
+  const shifted = await drag(tile('a').querySelector('.shortcut-link'), edgeOf('c'), { dwell: 300, before: () => tile('b').offsetLeft === 0 && tile('a').offsetLeft === 200 });
+  log(shifted && row() === '2,0 0,0 1,0 3,0 4,0', `settled on an icon's edge: makes way: ${row()}`);
+  await drag(tile('a').querySelector('.shortcut-link'), iconCenter('b'));
 
   // 没停够就松手：照常互换，不合成
   await drag(tile('c').querySelector('.shortcut-link'), iconCenter('d'));
   log(at('c') === '3,0' && at('d') === '2,0' && !folders().length, `quick drop swaps: c ${at('c')} d ${at('d')}`);
 
-  // 拖到 b 的正中停一下：b 高亮，松手合成文件夹（在 b 的位置，b 在前），打开并选中名字
-  const highlighted = await drag(tile('a').querySelector('.shortcut-link'), iconCenter('b'), { dwell: 500, before: () => tile('b').classList.contains('is-merge-target') });
+  // 经过 b 的边上（没停稳，不让位）再到正中停一下：b 高亮，松手合成文件夹（在 b 的位置，b 在前），打开并选中名字
+  const highlighted = await drag(tile('a').querySelector('.shortcut-link'), iconCenter('b'), { via: edgeOf('b'), dwell: 500, before: () => tile('b').classList.contains('is-merge-target') });
   const fd = folders()[0];
   log(highlighted, 'target highlighted while hovering');
   log(!!fd && `${fd.x},${fd.y}` === '1,0' && fd.links.map((l) => l.id).join() === 'b,a' && !tile('a') && !tile('b'), `merged into folder at b: ${JSON.stringify(fd?.links.map((l) => l.id))}`);

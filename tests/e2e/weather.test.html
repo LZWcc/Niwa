@@ -8,6 +8,13 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
+const toggleMenu = (widget) => {
+  const doc = widget.ownerDocument, win = doc.defaultView;
+  if (doc.querySelector('.widget-menu')) return doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const r = widget.getBoundingClientRect();
+  widget.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 }));
+};
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
 // 升级前留下的旧格式缓存（只存一个城市：{ key, fetchedAt, forecast, error }）：不能让它卡住新的读取
@@ -38,12 +45,12 @@ f.onload = async () => {
   const w = f.contentWindow, d = f.contentDocument;
   const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
   const resize = async (el, size) => {
-    el.querySelector('.widget-more').click(); await sleep(50);
+    toggleMenu(el); await sleep(50);
     [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === size).click(); await sleep(80);
-    el.querySelector('.widget-more').click(); await sleep(100);
+    toggleMenu(el); await sleep(100);
   };
   const menu = async (el, text) => {
-    el.querySelector('.widget-more').click(); await sleep(50);
+    toggleMenu(el); await sleep(50);
     [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === text).click(); await sleep(100);
   };
 
@@ -146,9 +153,9 @@ f.onload = async () => {
   now.icon = '501'; now.text = '雾';
   await menu(ww, '立即刷新');
   log(html.dataset.weather === 'fog', `scene follows fog: ${html.dataset.weather}`);
-  ww.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(ww); await sleep(50);
   log(d.querySelector('.widget-menu [role=menuitemcheckbox]')?.getAttribute('aria-checked') === 'true', 'menu shows switch on');
-  ww.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(ww); await sleep(50);
   await menu(ww, '背景跟随天气');
   log(html.dataset.weather === undefined && w.localStorage.getItem('niwa:scene-weather') === null, 'switch off restores scene');
   await menu(ww, '背景跟随天气');

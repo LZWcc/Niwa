@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import Popover from '@/components/common/Popover';
 import type { WidgetItem } from '@/utils/grid/items';
-import { SIZE_NAMES, SIZE_ORDER, WIDGETS } from '@/utils/widgets';
+import { SIZE_NAMES, SIZE_ORDER } from '@/utils/widgets';
 import type { FrameProps } from './types';
 
 type Props = {
@@ -14,44 +14,44 @@ type Props = {
   children: ReactNode;
 };
 
-// 所有小组件共用的外框：毛玻璃卡片、右上角的“…”菜单（尺寸、额外项、移除）。
+// 链接、输入框上保留浏览器自己的右键菜单（在新标签页打开、复制粘贴）
+const NATIVE = 'a[href], input, textarea, select, [contenteditable]';
+
+// 所有小组件共用的外框：毛玻璃卡片、右键菜单（尺寸、额外项、移除），菜单出现在指针的位置。
 // 从空白处按住就能拖动（由网格的 useGridDrag 处理）；输入框、按钮上不会触发。
 export default function WidgetFrame({ widget, frame, menu, losing, children }: Props) {
   const { style, lifted, onResize, onRemove } = frame;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const more = useRef<HTMLButtonElement>(null);
+  // 菜单出现在哪（右键的位置）；null：关着
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const self = useRef<HTMLDivElement>(null);
   // 第一次点“移除小组件”时先问一句；关掉菜单就算了
   const [confirming, setConfirming] = useState(false);
   const closeMenu = useCallback(() => {
-    setMenuOpen(false);
+    setMenuAt(null);
     setConfirming(false);
   }, []);
 
   return (
     <div
-      className={`widget size-${widget.size}${lifted ? ' is-lifted' : ''}${menuOpen ? ' has-menu' : ''}`}
+      ref={self}
+      className={`widget size-${widget.size}${lifted ? ' is-lifted' : ''}`}
       data-type={widget.type}
       data-key={widget.id}
       style={style}
+      onContextMenu={(e) => {
+        // 卡片里弹出的菜单、对话框挂在别处（portal），右键事件也会冒泡上来，不算
+        const target = e.target as Element;
+        if (!e.currentTarget.contains(target) || target.closest(NATIVE) || target.closest('dialog')) return;
+        e.preventDefault();
+        setConfirming(false);
+        // 键盘（菜单键、Shift+F10）打开时没有指针位置，放在卡片右上角
+        const box = e.currentTarget.getBoundingClientRect();
+        setMenuAt(e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : { x: box.right - 12, y: box.top + 12 });
+      }}
     >
       {children}
-      <button
-        ref={more}
-        type="button"
-        className="widget-more"
-        aria-label={`${WIDGETS[widget.type].name}小组件设置`}
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        onClick={() => (menuOpen ? closeMenu() : setMenuOpen(true))}
-      >
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <circle cx="2.5" cy="6" r="1.1" />
-          <circle cx="6" cy="6" r="1.1" />
-          <circle cx="9.5" cy="6" r="1.1" />
-        </svg>
-      </button>
-      {menuOpen && (
-        <Popover anchor={more.current} placement="bottom-end" onClose={closeMenu} role="menu" label="小组件设置" className="widget-menu">
+      {menuAt && (
+        <Popover anchor={self.current} placement={menuAt} onClose={closeMenu} role="menu" label="小组件设置" className="widget-menu">
           <div
             className="segmented"
             role="group"

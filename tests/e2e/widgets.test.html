@@ -7,6 +7,13 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
+const toggleMenu = (widget) => {
+  const doc = widget.ownerDocument, win = doc.defaultView;
+  if (doc.querySelector('.widget-menu')) return doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const r = widget.getBoundingClientRect();
+  widget.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 }));
+};
 localStorage.clear();
 // 旧版本的数据：便签、收藏夹的文件夹单独存；没有历史、天气小组件，它们的旧数据没处去
 localStorage.setItem('niwa:grid', JSON.stringify([
@@ -55,11 +62,11 @@ f.onload = async () => {
 
   // 移除有内容的便签要点两次：第一次只是问一句，关掉菜单就算了
   const removeItem = () => d.querySelector('.widget-menu .menu-item.is-danger');
-  second.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(second); await sleep(50);
   removeItem().click(); await sleep(50);
   log(grid().some((i) => i.id === id2) && removeItem()?.textContent === '再点一次，连同 1 条便签一起删掉', `asks before removing notes: ${removeItem()?.textContent}`);
-  second.querySelector('.widget-more').click(); await sleep(50);
-  second.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(second); await sleep(50);
+  toggleMenu(second); await sleep(50);
   log(removeItem()?.textContent === '移除小组件', 'closing the menu cancels');
 
   // 再点一次才移除：它的便签跟着没了，另一个不受影响

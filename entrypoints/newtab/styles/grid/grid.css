@@ -64,9 +64,6 @@ html.is-reordering * {
   cursor: grabbing !important;
   user-select: none;
 }
-.grid.is-reordering .widget-more {
-  opacity: 0;
-}
 .shortcut-link,
 .shortcut-link img {
   -webkit-user-drag: none;

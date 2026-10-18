@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom';
 
 type Props = {
   anchor: HTMLElement | null;
-  /** side：放在锚点所在小组件的右侧，放不下就左侧，再不行放下方；bottom-end：锚点下方右对齐 */
-  placement: 'side' | 'bottom-end';
+  /**
+   * side：放在锚点所在小组件的右侧，放不下就左侧，再不行放下方；bottom-end：锚点下方右对齐；
+   * 一个点（右键菜单）：放在这一点的右下方，放不下就翻到左边、上边。锚点只用来按 Esc 后放回焦点，点锚点里面也会关上
+   */
+  placement: 'side' | 'bottom-end' | { x: number; y: number };
   onClose: () => void;
   role?: string;
   label?: string;
@@ -29,7 +32,10 @@ export default function Popover({ anchor, placement, onClose, role = 'dialog', l
     const { width: w, height: h } = ref.current.getBoundingClientRect();
     let left: number;
     let top: number;
-    if (placement === 'side') {
+    if (typeof placement === 'object') {
+      left = placement.x + w > innerWidth - MARGIN ? placement.x - w : placement.x;
+      top = placement.y + h > innerHeight - MARGIN ? placement.y - h : placement.y;
+    } else if (placement === 'side') {
       // 横向避开整个小组件，纵向对齐被点的那一行。
       const box = (anchor.closest('.widget') ?? anchor).getBoundingClientRect();
       top = a.top - 10;
@@ -51,7 +57,8 @@ export default function Popover({ anchor, placement, onClose, role = 'dialog', l
 
   // 点外面、按 Esc、滚动或改变窗口大小时关闭（锚点自己负责开关）。
   useEffect(() => {
-    const inside = (t: EventTarget | null) => !!t && (ref.current?.contains(t as Node) || anchor?.contains(t as Node));
+    const inside = (t: EventTarget | null) =>
+      !!t && (ref.current?.contains(t as Node) || (typeof placement === 'string' && anchor?.contains(t as Node)));
     const onPointer = (e: PointerEvent) => !inside(e.target) && onClose();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -69,7 +76,7 @@ export default function Popover({ anchor, placement, onClose, role = 'dialog', l
       document.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onClose);
     };
-  }, [anchor, onClose]);
+  }, [anchor, placement, onClose]);
 
   return createPortal(
     <div

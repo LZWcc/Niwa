@@ -44,7 +44,7 @@ components/
   widgets/                 小组件
     index.ts               每种小组件对应哪个组件（注册表）
     types.ts               小组件的参数约定（WidgetProps、FrameProps）
-    WidgetFrame.tsx        共用外框：卡片、“…”菜单（尺寸、额外项、移除）
+    WidgetFrame.tsx        共用外框：卡片、右键菜单（尺寸、额外项、移除）
     WidgetHeader.tsx       共用标题栏：标题、元信息、右侧工具，点标题打开大面板（见「小组件的卡片」）
     PanelDialog.tsx        共用的大面板外壳：标题、工具、状态、关闭，下面是能滚动的内容
     WidgetError.tsx        小组件出错时顶替它的卡片
@@ -177,14 +177,14 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 
 所有小组件长得一样，新的小组件照着做：
 
-- **标题栏**：最上面用 `WidgetHeader`，左边是标题和一行灰色的元信息（「2 条」「今天 2 项」「第 16 日」、收藏夹所在的文件夹），右边放切换、搜索这类工具（`children`）。右侧自动留出“…”按钮的位置。小尺寸也有标题栏。
+- **标题栏**：最上面用 `WidgetHeader`，左边是标题和一行灰色的元信息（「2 条」「今天 2 项」「第 16 日」、收藏夹所在的文件夹），右边放切换、搜索这类工具（`children`），一直贴着右边。小尺寸也有标题栏。
 - **大面板**：卡片放不下的（全部条目、更多分组、完整预报）放进点标题打开的大面板：`WidgetHeader` 传 `onOpen`（标题后面出现 ›，点这一行里别的按钮不打开），面板用 `PanelDialog` 包起来，放在卡片内容的外面（不然会套上小尺寸卡片的样式）。关着时不渲染内容；数据能和卡片共用就共用（天气），要另外读的（历史，热榜在面板里换了来源时）只在打开时读。在面板里切换看哪一组（来源、文件夹、订阅）都不改卡片，每次打开从卡片的那一组开始。
 - **画面型的内容放进内嵌面板**：庭的砂盘、日程的日期这类以画面为主的，包在 `.widget-panel` 里，加 `is-dotted` 是点阵底纹（颜色是 `--panel`、`--panel-dot`）；像一扇小窗，和列表区分开。列表型的内容（便签、收藏夹、历史）不加面板，保持轻。
 
 ### 新增一种小组件
 
 1. 在 `utils/widgets.ts` 的 `WidgetType` 和 `WIDGETS` 里登记名称、说明、默认尺寸。
-2. 在 `components/widgets/<名字>/` 写组件，参数是 `WidgetProps`（`widget`、`frame`、`now`），内容用 `WidgetFrame` 包起来，最上面是 `WidgetHeader`；要在“…”菜单里加项就传 `menu`。
+2. 在 `components/widgets/<名字>/` 写组件，参数是 `WidgetProps`（`widget`、`frame`、`now`），内容用 `WidgetFrame` 包起来，最上面是 `WidgetHeader`；要在右键菜单里加项就传 `menu`（在卡片上右键，链接和输入框上是浏览器自己的菜单；键盘用菜单键或 Shift+F10）。
 3. 在 `components/widgets/index.ts` 的 `WIDGET_COMPONENTS` 里对上组件。
 4. 每个小组件自己的设置和数据（同一种放了几个时各管各的）放在 `settings` 里：在 `utils/grid/items.ts` 的 `WidgetSettings` 加字段并补上校验，组件里读 `settings`、用 `onSettings` 改。几个小组件共用的数据（比如日程的日历）才在 `utils/storage.ts` 的 `KEYS` 里加一个键，用 `useStoredList` 或 `readJson` / `writeJson` 读写。
 5. 样式加到 `entrypoints/newtab/styles/widgets/`，新文件记得在 `index.css` 里引入。

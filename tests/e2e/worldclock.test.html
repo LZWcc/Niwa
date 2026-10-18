@@ -7,6 +7,13 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
+const toggleMenu = (widget) => {
+  const doc = widget.ownerDocument, win = doc.defaultView;
+  if (doc.querySelector('.widget-menu')) return doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const r = widget.getBoundingClientRect();
+  widget.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 }));
+};
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
 const f = document.getElementById('f');
@@ -38,7 +45,7 @@ f.onload = async () => {
   log(map.querySelectorAll('.wc-city').length === 3, 'a marker for each city');
 
   // 选城市：移除东京，按中文搜加德满都；搜不到给出提示
-  wc.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(wc); await sleep(50);
   [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '选择城市…').click(); await sleep(100);
   const dlg = [...d.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('.dialog-title')?.textContent === '世界时钟的城市');
   [...dlg.querySelectorAll('.sources li')].find((li) => li.textContent.includes('东京')).querySelector('button').click(); await sleep(50);

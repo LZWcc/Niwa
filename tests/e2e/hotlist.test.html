@@ -108,5 +108,19 @@ f.onload = async () => {
   log(!dialog.open, 'source button and rows do not open panel');
   hw.querySelector('.widget-head').click(); await sleep(50);
   log(dialog.open, 'clicking the title row opens panel');
+  dialog.querySelector('[aria-label="关闭热榜"]').click(); await sleep(50);
+
+  // 小组件的菜单是右键菜单：没有“…”按钮，来源按钮贴着右边；链接上保留浏览器自己的菜单
+  const right = (el, x, y) => el.dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+  const hr = hw.getBoundingClientRect(), sr = hw.querySelector('.hot-source').getBoundingClientRect();
+  log(!hw.querySelector('.widget-more') && hr.right - sr.right < 24, `no more button, source button at the edge (${Math.round(hr.right - sr.right)}px)`);
+  const rr = hw.querySelector('.hot-row').getBoundingClientRect();
+  const native = right(hw.querySelector('.hot-row'), rr.left + 30, rr.top + 5); await sleep(50);
+  log(native && !d.querySelector('.widget-menu'), 'right-click on a link keeps the browser menu');
+  const prevented = !right(hw.querySelector('.widget-head'), hr.left + 60, hr.top + 20); await sleep(50);
+  const mr = d.querySelector('.widget-menu')?.getBoundingClientRect();
+  log(prevented && !!mr && Math.round(mr.left) === Math.round(hr.left + 60) && Math.round(mr.top) === Math.round(hr.top + 20), `right-click on the card opens the menu at the pointer (${mr && Math.round(mr.left)},${mr && Math.round(mr.top)})`);
+  hw.querySelector('.widget-head').dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true })); await sleep(50);
+  log(!d.querySelector('.widget-menu'), 'clicking on the card closes the menu');
 };
 </script>

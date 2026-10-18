@@ -7,6 +7,13 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
+const toggleMenu = (widget) => {
+  const doc = widget.ownerDocument, win = doc.defaultView;
+  if (doc.querySelector('.widget-menu')) return doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const r = widget.getBoundingClientRect();
+  widget.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 }));
+};
 localStorage.clear();
 // 天气小组件选了城市、有新鲜的缓存：菜单里才有“背景跟随天气”，也不会去请求
 const place = { id: '101210101', name: '杭州', region: '浙江省', lat: 30.25, lon: 120.21 };
@@ -51,9 +58,9 @@ f.onload = async () => {
   // 背景跟随天气：设置里打开，天气小组件菜单里也是开的
   row('背景跟随天气').querySelector('[role=switch]').click(); await sleep(50);
   const ww = d.querySelector('[data-type="weather"]');
-  ww.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(ww); await sleep(50);
   log(ls.getItem('niwa:scene-weather') === 'on' && d.querySelector('.widget-menu [role=menuitemcheckbox]')?.getAttribute('aria-checked') === 'true', 'scene switch synced to weather menu');
-  ww.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(ww); await sleep(50);
 
   // 和风天气 KEY：点两次才清除，天气小组件跟着回到“设置天气”
   const clear = () => row('和风天气 KEY').querySelector('button');

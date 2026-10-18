@@ -10,6 +10,13 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
+const toggleMenu = (widget) => {
+  const doc = widget.ownerDocument, win = doc.defaultView;
+  if (doc.querySelector('.widget-menu')) return doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const r = widget.getBoundingClientRect();
+  widget.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 }));
+};
 localStorage.clear();
 const f = document.getElementById('f');
 f.src = '/newtab.html';
@@ -159,9 +166,9 @@ f.onload = async () => {
   [...cdlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(2500);
   const calW0 = d.querySelector('[data-type="calendar"]');
   log(calW0.querySelector('.event-title')?.textContent === '全天事项', 'small shows next event');
-  calW0.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(calW0); await sleep(50);
   [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '中').click(); await sleep(80);
-  calW0.querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(calW0); await sleep(50);
   log([...calW0.querySelectorAll('.event')].find((e) => e.textContent.includes('深夜复盘'))?.querySelector('.event-place')?.textContent.includes('会议室 A'), 'medium row shows location');
   const titles = () => [...d.querySelectorAll('[data-type="calendar"] .event-title')].map((e) => e.textContent);
   // 今天 9:45 之前跑，今天的每日站会还没结束，会排在前面
@@ -178,11 +185,11 @@ f.onload = async () => {
   log(JSON.parse(w.localStorage.getItem('niwa:calendars'))[0].name === '测试日历', 'calendar name from X-WR-CALNAME');
   // 改成大尺寸
   const calW = () => d.querySelector('[data-type="calendar"]');
-  calW().querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(calW()); await sleep(50);
   log(d.querySelector('.widget-menu')?.parentElement === d.body, 'widget menu rendered at page level');
   [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '大').click(); await sleep(80);
   log(calW().classList.contains('size-l'), 'resize to large');
-  calW().querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(calW()); await sleep(50);
   log(!d.querySelector('.widget-menu'), 'menu toggles closed');
   const all = titles();
   log(all.length >= 6 && all.slice(0, 3).join() === nearest, `large shows nearest events: ${all.join(' | ')}`);
@@ -252,16 +259,16 @@ f.onload = async () => {
   log(!d.querySelector('.detail-popover'), 'clicking same row closes detail');
 
   // 小尺寸：菜单不被裁切
-  calW().querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(calW()); await sleep(50);
   [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '小').click(); await sleep(80);
-  calW().querySelector('.widget-more').click(); await sleep(50);
-  calW().querySelector('.widget-more').click(); await sleep(80);
+  toggleMenu(calW()); await sleep(50);
+  toggleMenu(calW()); await sleep(80);
   const mr = d.querySelector('.widget-menu').getBoundingClientRect();
   log(mr.left >= 0 && mr.right <= w.innerWidth && mr.bottom <= w.innerHeight && mr.width >= 160, `small widget menu fully visible (${Math.round(mr.left)}..${Math.round(mr.right)})`);
   [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === '大').click(); await sleep(80);
-  calW().querySelector('.widget-more').click(); await sleep(50);
+  toggleMenu(calW()); await sleep(50);
   // 移除庭
-  d.querySelector('[data-type="garden"] .widget-more').click(); await sleep(50);
+  toggleMenu(d.querySelector('[data-type="garden"]')); await sleep(50);
   [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '移除小组件').click(); await sleep(80);
   log(types() === 'notes:m,calendar:l', `garden removed: ${types()}`);
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);

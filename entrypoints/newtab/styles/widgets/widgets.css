@@ -61,14 +61,13 @@
   color: var(--muted);
   transform: translateX(2px);
 }
-/* 标题栏：所有小组件一样。右边给“…”按钮留位置 */
+/* 标题栏：所有小组件一样 */
 .widget-head {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 24px;
-  padding-right: 28px;
 }
 .widget-meta {
   min-width: 0;
@@ -100,31 +99,6 @@
   background-image: radial-gradient(var(--panel-dot) 1px, transparent 1.3px);
   background-position: 5px 5px;
   background-size: 10px 10px;
-}
-
-.widget-more {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--border);
-  color: var(--muted);
-  fill: currentColor;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.widget:hover .widget-more,
-.widget-more:focus-visible,
-.widget-more[aria-expanded='true'] {
-  opacity: 1;
 }
 
 .popover {

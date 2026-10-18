@@ -3,8 +3,7 @@
 import { HOTLIST, type HotSource } from '../config';
 import { AppError } from './errors';
 
-/** note：大面板里标题下面的一行（知乎的问题摘要、B 站的 UP 主、掘金的作者），没有就不显示 */
-export type HotItem = { title: string; url: string; hot?: string; note?: string };
+export type HotItem = { title: string; url: string; hot?: string };
 export type HotSourceId = HotSource['id'];
 
 export const HOT_SOURCES = new Map<HotSourceId, HotSource>(HOTLIST.sources.map((s) => [s.id, s]));
@@ -14,7 +13,6 @@ const wan = (n: number) => (n >= 10_000 ? `${Math.round(n / 10_000)}万` : Strin
 
 type Json = Record<string, unknown>;
 const list = (v: unknown) => (Array.isArray(v) ? (v as Json[]) : null);
-const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
 // 每个来源怎么从返回的数据里拿出条目；格式不对时返回 null
 const PARSERS: Record<HotSourceId, (data: Json) => HotItem[] | null> = {
@@ -29,7 +27,6 @@ const PARSERS: Record<HotSourceId, (data: Json) => HotItem[] | null> = {
         hot: String(x.detail_text ?? '')
           .replace(/\s*热度$/, '')
           .replace(' ', ''),
-        note: text(t.excerpt),
       };
     }) ?? null,
   weibo: (d) =>
@@ -43,7 +40,6 @@ const PARSERS: Record<HotSourceId, (data: Json) => HotItem[] | null> = {
       title: String(x.title),
       url: `https://www.bilibili.com/video/${String(x.bvid)}`,
       hot: `${wan(Number((x.stat as Json).view))}播放`,
-      note: text((x.owner as Json | undefined)?.name),
     })) ?? null,
   baidu: (d) => {
     const card = list((d.data as Json | undefined)?.cards)?.[0];
@@ -71,7 +67,6 @@ const PARSERS: Record<HotSourceId, (data: Json) => HotItem[] | null> = {
         title: String(c.title),
         url: `https://juejin.cn/post/${String(c.content_id)}`,
         hot: String((x.content_counter as Json).hot_rank),
-        note: text((x.author as Json | undefined)?.name),
       };
     }) ?? null,
 };

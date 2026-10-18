@@ -9,8 +9,8 @@ window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.rea
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
-// 加上摘要（note）之前存下的缓存：条目里没有 note
-localStorage.setItem('niwa:hotlist-cache', JSON.stringify({ toutiao: { fetchedAt: Date.now(), items: [{ title: '头条旧缓存', url: 'https://www.toutiao.com/a1/', hot: '5万' }], error: null } }));
+// 去掉摘要（note）之前存下的缓存：条目里还带着 note
+localStorage.setItem('niwa:hotlist-cache', JSON.stringify({ toutiao: { fetchedAt: Date.now(), items: [{ title: '头条旧缓存', url: 'https://www.toutiao.com/a1/', hot: '5万', note: '旧摘要' }], error: null } }));
 // 假数据：知乎的问题 id 有 19 位（超出 JS 数字的精度），只能从链接字符串里取
 const zhihu = `{"data":[{"detail_text":"681 万热度","target":{"id":2094093125488566874,"title":"知乎第一","url":"https://api.zhihu.com/questions/2094093125488566874","excerpt":" 第一的摘要 "}},{"detail_text":"3 万热度","target":{"id":1,"title":"知乎第二","url":"https://api.zhihu.com/questions/592258573"}}]}`;
 const bilibili = JSON.stringify({ code: 0, data: { list: [{ title: 'B 站第一', bvid: 'BV1xx', stat: { view: 1616401 }, owner: { name: 'UP 主' } }] } });
@@ -65,27 +65,42 @@ f.onload = async () => {
   await pick('知乎');
   log(titles()[0] === '知乎第一' && requests.length === before, 'cached source not refetched');
 
-  // 大面板：点标题打开，列出全部条目，标题下面是摘要
+  // 大面板：点标题打开，列出全部条目，只有标题和热度（知乎的摘要不显示）
   const dialog = hw.querySelector('.hot-dialog');
-  const entries = () => [...dialog.querySelectorAll('.hot-entry')].map((a) => [a.querySelector('.hot-entry-title').textContent, a.querySelector('.hot-entry-note')?.textContent ?? '']);
+  const entries = () => [...dialog.querySelectorAll('.hot-entry')].map((a) => a.textContent);
   hw.querySelector('.widget-title-open').click(); await sleep(100);
-  log(dialog.open && JSON.stringify(entries()) === '[["知乎第一","第一的摘要"],["知乎第二",""]]', `panel lists all with notes: ${JSON.stringify(entries())}`);
+  log(dialog.open && JSON.stringify(entries()) === '["1知乎第一681万","2知乎第二3万"]', `panel lists all, titles only: ${JSON.stringify(entries())}`);
+  log(dialog.querySelectorAll('.hot-rank.is-top').length === 2, 'top ranks marked in panel');
+  // 一栏 / 两栏：默认一栏，切换后存在这个小组件的设置里
+  const list = () => dialog.querySelector('.hot-panel-list');
+  const colsBtn = dialog.querySelector('[aria-label="两栏显示"]');
+  const hotColumns = () => JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'hotlist')?.settings?.hotColumns;
+  log(!list().classList.contains('is-columns') && colsBtn.getAttribute('aria-pressed') === 'false', 'panel defaults to one column');
+  colsBtn.click(); await sleep(50);
+  log(list().classList.contains('is-columns') && getComputedStyle(list()).columnCount === '2' && hotColumns() === 2, 'switched to two columns, saved');
+  colsBtn.click(); await sleep(50);
+  log(!list().classList.contains('is-columns') && hotColumns() === 1, 'back to one column');
   log(dialog.querySelector('.panel-tabs [aria-checked="true"]')?.textContent === '知乎', 'panel shows current source');
 
-  // 在面板里换来源：和卡片是同一个设置
+  // 在面板里换来源：不改卡片
   const tab = async (name) => {
     [...dialog.querySelectorAll('.panel-tabs button')].find((b) => b.textContent === name).click(); await sleep(200);
   };
+  const cardSource = () => JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'hotlist')?.settings?.hotSource;
   await tab('B 站');
-  log(JSON.stringify(entries()) === '[["B 站第一","UP 主"]]' && titles()[0] === 'B 站第一', `panel switch updates card: ${JSON.stringify(entries())} / ${titles()}`);
+  log(JSON.stringify(entries()) === '["1B 站第一162万播放"]' && titles()[0] === '知乎第一' && cardSource() === 'zhihu', `panel switch leaves card alone: ${JSON.stringify(entries())} / ${titles()}`);
 
-  // 旧缓存里没有摘要：照样显示，只是没有那一行
+  // 旧缓存里还带着摘要：照样显示，摘要不显示
   await tab('头条');
-  log(JSON.stringify(entries()) === '[["头条旧缓存",""]]' && !dialog.querySelector('.hot-entry-note'), `old cache without note: ${JSON.stringify(entries())}`);
+  log(JSON.stringify(entries()) === '["1头条旧缓存5万"]', `old cache with note: ${JSON.stringify(entries())}`);
 
   // 关闭后，点标题这一行的空白处也能打开；点来源按钮、点链接不打开
   dialog.querySelector('[aria-label="关闭热榜"]').click(); await sleep(50);
   log(!dialog.open, 'panel closes');
+  // 再打开：从卡片的来源开始
+  hw.querySelector('.widget-title-open').click(); await sleep(100);
+  log(dialog.querySelector('.panel-tabs [aria-checked="true"]')?.textContent === '知乎' && entries()[0] === '1知乎第一681万', 'reopened panel starts from card source');
+  dialog.querySelector('[aria-label="关闭热榜"]').click(); await sleep(50);
   hw.querySelector('.hot-source').click(); await sleep(50);
   hw.querySelector('.hot-source').click(); await sleep(50);
   hw.querySelector('.hot-row').addEventListener('click', (e) => e.preventDefault(), { once: true });

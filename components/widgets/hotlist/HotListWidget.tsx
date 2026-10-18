@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Popover from '@/components/common/Popover';
 import { HOTLIST, type HotSource } from '@/config';
-import { useHotList } from '@/hooks/useHotList';
-import { HOT_SOURCES, originOf, type HotSourceId } from '@/utils/hotlist';
-import { hasOrigins, requestOrigins } from '@/utils/permissions';
+import { useHotAccess, useHotList } from '@/hooks/useHotList';
+import { HOT_SOURCES, type HotSourceId } from '@/utils/hotlist';
 import AccessPrompt from '../AccessPrompt';
 import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
@@ -12,24 +11,18 @@ import HotListPanel from './HotListPanel';
 
 // 热榜：知乎、微博、B 站等的热门，标题栏右边换来源（存在自己的 settings.hotSource，放几个热榜就各看各的）。
 // 这些接口不允许跨域，要有访问那个网站的权限：换来源时申请（在点击里），没给时卡片里问。
-// 点标题这一行打开大面板看全部条目。
+// 点标题这一行打开大面板看全部条目（在面板里换来源不改卡片）。
 
 export default function HotListWidget({ widget, frame, now, settings, onSettings }: WidgetProps) {
   const { size } = widget;
   const source: HotSource = HOT_SOURCES.get(settings.hotSource as HotSourceId) ?? HOTLIST.sources[0]!;
-  // 有没有访问这个来源网站的权限（null：还在查）。记着是哪个来源的，换来源后旧结果不算数
-  const [access, setAccess] = useState<{ id: string; ok: boolean } | null>(null);
-  useEffect(() => {
-    void hasOrigins([originOf(source)]).then((ok) => setAccess({ id: source.id, ok }));
-  }, [source]);
-  const allowed = access?.id === source.id ? access.ok : null;
-  const { items, error, fetchedAt, loading, refresh } = useHotList(allowed ? source : null, now);
+  const { allowed, request } = useHotAccess(source);
+  const { items, error, loading, refresh } = useHotList(allowed ? source : null, now);
   const [panelOpen, setPanelOpen] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const request = (s: HotSource) => void requestOrigins([originOf(s)]).then((ok) => setAccess({ id: s.id, ok }));
   const choose = (s: HotSource) => {
     setMenuOpen(false);
     onSettings(() => ({ hotSource: s.id }));
@@ -114,15 +107,10 @@ export default function HotListWidget({ widget, frame, now, settings, onSettings
       )}
       <HotListPanel
         open={panelOpen}
-        source={source}
-        allowed={allowed}
-        items={items}
-        error={error}
-        loading={loading}
-        fetchedAt={fetchedAt}
-        onChoose={choose}
-        onRequest={() => request(source)}
-        onRefresh={() => void refresh()}
+        cardSource={source}
+        now={now}
+        columns={settings.hotColumns ?? 1}
+        onColumns={(hotColumns) => onSettings(() => ({ hotColumns }))}
         onClose={() => setPanelOpen(false)}
       />
     </WidgetFrame>

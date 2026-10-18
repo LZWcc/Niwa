@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { HOTLIST, type HotSource } from '@/config';
 import { DAY } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
-import { fetchHotList, type HotItem } from '@/utils/hotlist';
+import { fetchHotList, originOf, type HotItem } from '@/utils/hotlist';
+import { hasOrigins, requestOrigins } from '@/utils/permissions';
 import { KEYS, readJson, writeJson } from '@/utils/storage';
 
 /** 一个来源的上一次结果。error：这次没更新成功的原因（items 保留上一次的） */
@@ -16,6 +17,21 @@ const readCache = (): Cache =>
       isEntry(e),
     ),
   );
+
+/**
+ * 有没有访问 source 那个网站的权限（null：还在查），和申请权限的方法（要在点击里调用）。
+ * 记着是哪个来源的，换来源后旧结果不算数。
+ */
+export function useHotAccess(source: HotSource) {
+  const [access, setAccess] = useState<{ id: string; ok: boolean } | null>(null);
+  useEffect(() => {
+    void hasOrigins([originOf(source)]).then((ok) => setAccess({ id: source.id, ok }));
+  }, [source]);
+  return {
+    allowed: access?.id === source.id ? access.ok : null,
+    request: (s: HotSource) => void requestOrigins([originOf(s)]).then((ok) => setAccess({ id: s.id, ok })),
+  };
+}
 
 /**
  * 一个来源的热榜：先用本地缓存，过期（30 分钟，失败后 5 分钟）再取。source 为 null（还没有访问那个网站的权限）时不取。

@@ -13,7 +13,7 @@ type Pos = { x?: number; y?: number };
 /** icon 没有时用浏览器缓存的网站图标或首字母（默认项、更早添加的） */
 export type LinkItem = { id: string; kind: 'link'; name: string; url: string; icon?: LinkIcon } & Pos;
 /**
- * 小组件各自的设置和数据：同一种可以放多个，各管各的。便签的内容、天气的城市、收藏夹看到的文件夹、历史看的哪一组、世界时钟的城市（WORLD_CLOCK 里的 id）、计时器的状态、热榜看的哪个来源（HOTLIST 里的 id）、订阅的地址和看的哪一个（feed：Feed 的 id，没有是全部）。
+ * 小组件各自的设置和数据：同一种可以放多个，各管各的。便签的内容、天气的城市、收藏夹看到的文件夹、历史看的哪一组、世界时钟的城市（WORLD_CLOCK 里的 id）、计时器的状态、热榜看的哪个来源（HOTLIST 里的 id）和大面板分几栏、订阅的地址和看的哪一个（feed：Feed 的 id，没有是全部）。
  * 放在网格这一项里，只有网格一个地方读写（不会两个小组件互相覆盖），备份、移除都跟着这一项走。
  */
 export type WidgetSettings = {
@@ -24,6 +24,7 @@ export type WidgetSettings = {
   cities?: string[];
   timer?: TimerState;
   hotSource?: string;
+  hotColumns?: 1 | 2;
   feeds?: Feed[];
   feed?: string;
 };
@@ -61,6 +62,7 @@ const isSettings = (v: unknown) => {
     (s.cities === undefined || (Array.isArray(s.cities) && s.cities.every((c) => typeof c === 'string'))) &&
     (s.timer === undefined || isTimerState(s.timer)) &&
     (s.hotSource === undefined || typeof s.hotSource === 'string') &&
+    (s.hotColumns === undefined || s.hotColumns === 1 || s.hotColumns === 2) &&
     (s.feeds === undefined || (Array.isArray(s.feeds) && s.feeds.every(isFeed))) &&
     (s.feed === undefined || typeof s.feed === 'string')
   );

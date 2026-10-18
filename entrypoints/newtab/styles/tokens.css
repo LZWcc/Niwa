@@ -50,6 +50,10 @@
   --w-snow: #9fb4c6;
   --w-cool: #8fb0c8;
   --w-warm: #e3a86a;
+  /* 热榜前三名的名次 */
+  --hot-1: #df5340;
+  --hot-2: #ec8640;
+  --hot-3: #dba73a;
   /* 世界时钟地图的点：白天、晨昏、夜里 */
   --map-day: rgb(38 49 59 / 0.42);
   --map-dusk: rgb(38 49 59 / 0.26);
@@ -165,6 +169,9 @@
   --w-snow: #dfe7ec;
   --w-cool: #7fa3bd;
   --w-warm: #d9a46e;
+  --hot-1: #d9604c;
+  --hot-2: #d98448;
+  --hot-3: #c9a24e;
   --map-day: rgb(238 241 236 / 0.55);
   --map-dusk: rgb(238 241 236 / 0.3);
   --map-night: rgb(238 241 236 / 0.12);

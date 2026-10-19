@@ -4,8 +4,11 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'Niwa',
-    description: '一方安静的新标签页',
+    // 名称和描述放在 public/_locales/zh_CN/messages.json：商店按 _locales 识别语言（简体中文），
+    // 描述就是商店标题下面那一行。版本号取自 package.json。
+    name: '__MSG_extName__',
+    description: '__MSG_extDescription__',
+    default_locale: 'zh_CN',
     // 新标签页从浏览器本地缓存读取网站图标，不请求远程服务；计时器用闹钟在后台到点提醒，
     // 到点时把通知卡片放进正在看的网页（scripting，还要有那个网站的访问权限）。这几个都没有安装提示。
     permissions: ['favicon', 'alarms', 'scripting'],

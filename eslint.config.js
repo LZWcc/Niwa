@@ -6,7 +6,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  { ignores: ['.output/', '.wxt/', 'node_modules/'] },
+  { ignores: ['.output/', '.wxt/', 'node_modules/', 'promo/'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -19,7 +19,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['tests/**/*.mjs', '*.config.{js,ts}'],
+    files: ['tests/**/*.mjs', 'scripts/**/*.mjs', '*.config.{js,ts}'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 ]);

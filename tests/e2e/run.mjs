@@ -27,6 +27,7 @@ const suites = [
   { file: 'icons.test.html', flags: ['--force-prefers-reduced-motion'], done: 'deleting shortcut removes its image' },
   { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'calendar files restored' },
   { file: 'browsing.test.html', flags: ['--force-prefers-reduced-motion'], done: 'suggestions turned back on' },
+  { file: 'gallery.test.html', flags: ['--force-prefers-reduced-motion'], done: 'dragged out of gallery' },
   { file: 'widgets.test.html', flags: ['--force-prefers-reduced-motion'], done: 'removing a notes widget drops its notes' },
   { file: 'worldclock.test.html', flags: ['--force-prefers-reduced-motion'], done: 'second world clock has its own cities' },
   { file: 'timer.test.html', flags: ['--force-prefers-reduced-motion'], done: 'stopwatch counting' },

@@ -7,6 +7,8 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 「添加」菜单打开着：点「小组件」打开小组件库，选中 name，点「添加」
+const galleryAdd = async (d, name) => { [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(80); [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(30); d.querySelector('.gallery-add').click(); };
 // 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
 const toggleMenu = (widget) => {
   const doc = widget.ownerDocument, win = doc.defaultView;
@@ -40,9 +42,7 @@ f.onload = async () => {
 
   // 同一种可以再加一个：两个便签各管各的
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
-  const notesOption = [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('便签'));
-  log(!notesOption.disabled, 'notes can be added again');
-  notesOption.click(); await sleep(150);
+  await galleryAdd(d, '便签'); await sleep(150);
   const widgets = () => [...d.querySelectorAll('[data-type="notes"]')];
   log(widgets().length === 2, 'two notes widgets');
   const second = widgets().find((x) => x.dataset.key !== 'n1');

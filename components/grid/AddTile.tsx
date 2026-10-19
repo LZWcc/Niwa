@@ -1,15 +1,14 @@
 import { useCallback, useRef, useState, type CSSProperties } from 'react';
 import Popover from '@/components/common/Popover';
-import { WIDGETS, WIDGET_TYPES, type WidgetType } from '@/utils/widgets';
 
 type Props = {
   style: CSSProperties;
   lifted: boolean;
   onAddLink: () => void;
-  onAddWidget: (type: WidgetType) => void;
+  onAddWidget: () => void;
 };
 
-// 「添加」格子：点开菜单，加一个网站或一个小组件（同一种可以加多个）。它本身也能拖到别处。
+// 「添加」格子：点开菜单，加一个网站，或者打开小组件库挑一个小组件（同一种可以加多个）。它本身也能拖到别处。
 export default function AddTile({ style, lifted, onAddLink, onAddWidget }: Props) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -42,13 +41,10 @@ export default function AddTile({ style, lifted, onAddLink, onAddWidget }: Props
             <span className="picker-name">网站</span>
             <span className="picker-desc">添加一个快捷方式</span>
           </button>
-          <p className="add-heading">小组件</p>
-          {WIDGET_TYPES.map((type) => (
-            <button key={type} type="button" role="menuitem" className="add-option" onClick={pick(() => onAddWidget(type))}>
-              <span className="picker-name">{WIDGETS[type].name}</span>
-              <span className="picker-desc">{WIDGETS[type].desc}</span>
-            </button>
-          ))}
+          <button type="button" role="menuitem" className="add-option" onClick={pick(onAddWidget)}>
+            <span className="picker-name">小组件</span>
+            <span className="picker-desc">天气、日程、便签等，先预览再添加</span>
+          </button>
         </Popover>
       )}
     </div>

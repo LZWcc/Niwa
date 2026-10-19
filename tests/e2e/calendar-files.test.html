@@ -52,6 +52,8 @@ f.onload = async () => {
   d.querySelector('.cal-empty button').click(); await sleep(100);
   pick(transfer(['course.ics', ics('课程表', '高数')], ['holidays.ics', ics(null, '国庆')]));
   await waitFor(() => stored().length === 2);
+  // 存储是改的时候当场写的，界面要等下一次渲染
+  await waitFor(() => dlg().querySelectorAll('.source-new').length === 2);
   log(stored().map((s) => s.name).join() === '课程表,holidays' && stored().every((s) => s.url.startsWith('file:')), `two files imported: ${JSON.stringify(stored().map((s) => s.name))}`);
   log(dlg().querySelectorAll('.source-kind').length === 2 && [...dlg().querySelectorAll('.source-new')].every((t) => t.textContent === '已导入'), 'list marks imported files');
 

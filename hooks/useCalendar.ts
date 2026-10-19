@@ -12,7 +12,9 @@ import {
 } from '@/utils/calendar/ical';
 import { startOfDay } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
+import { SAMPLE_CALENDAR, sampleEvents } from '@/utils/sample';
 import { KEYS, readJson, writeJson } from '@/utils/storage';
+import { useSample } from './useSample';
 import { useStoredList } from './useStored';
 
 /** failed：这次没更新成功的日历，和给用户看的原因 */
@@ -23,9 +25,10 @@ const readCache = () => readJson(KEYS.calendarCache, isCache);
 
 /**
  * 日程数据：先用本地缓存立即显示，过期（15 分钟，失败后 2 分钟）再在后台刷新。
- * now 每分钟和页面重新可见时都会变，借此检查是否需要刷新，不另设定时器。
+ * now 每分钟和页面重新可见时都会变，借此检查是否需要刷新，不另设定时器。预览里是演示的日程，不取。
  */
 export function useCalendar(now: Date) {
+  const sample = useSample();
   const [sources, setSources] = useStoredList(KEYS.calendars, isCalendarSource, []);
   const [cache, setCache] = useState(readCache);
   const [loading, setLoading] = useState(false);
@@ -67,7 +70,7 @@ export function useCalendar(now: Date) {
   };
 
   useEffect(() => {
-    if (sources.length === 0) return;
+    if (sources.length === 0 || sample) return;
     const age = cache?.key === key ? Date.now() - cache.fetchedAt : Infinity;
     if (age > (cache?.failed.length ? CALENDAR.retryAfter : CALENDAR.refreshEvery)) void refresh();
     // 每分钟（now 变）和日历列表变了（key 变）时检查一次是否该刷新；其余都是这次渲染里的值。
@@ -114,7 +117,7 @@ export function useCalendar(now: Date) {
   const current = cache?.key === key ? cache : null;
   const events = (current?.events ?? []).filter((e) => e.end > now.getTime()).sort(byStart);
 
-  return {
+  const state = {
     sources,
     setSources,
     importFiles,
@@ -125,6 +128,7 @@ export function useCalendar(now: Date) {
     fetchedAt: current?.fetchedAt ?? null,
     refresh,
   };
+  return sample ? { ...state, sources: [SAMPLE_CALENDAR], events: sampleEvents(now), failed: [], fetchedAt: now.getTime() } : state;
 }
 
 /** useCalendar 的返回值：日历列表、日程、加载状态和刷新方法。 */

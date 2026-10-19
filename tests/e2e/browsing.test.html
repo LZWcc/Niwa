@@ -7,6 +7,8 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 「添加」菜单打开着：点「小组件」打开小组件库，选中 name，点「添加」
+const galleryAdd = async (d, name) => { [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(80); [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(30); d.querySelector('.gallery-add').click(); };
 // 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
 const toggleMenu = (widget) => {
   const doc = widget.ownerDocument, win = doc.defaultView;
@@ -22,7 +24,7 @@ f.onload = async () => {
   await sleep(500);
   const w = f.contentWindow, d = f.contentDocument;
   const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
-  const openAdd = async (name) => { d.querySelector('.grid-add .shortcut-add').click(); await sleep(50); [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name)).click(); await sleep(100); };
+  const openAdd = async (name) => { d.querySelector('.grid-add .shortcut-add').click(); await sleep(50); await galleryAdd(d, name); await sleep(100); };
   const resize = async (el, size) => {
     toggleMenu(el); await sleep(50);
     [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === size).click(); await sleep(80);

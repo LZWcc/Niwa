@@ -10,6 +10,8 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 「添加」菜单打开着：点「小组件」打开小组件库，选中 name，点「添加」
+const galleryAdd = async (d, name) => { [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(80); [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(30); d.querySelector('.gallery-add').click(); };
 // 小组件的菜单（在卡片上右键打开）：开着就按 Esc 关上
 const toggleMenu = (widget) => {
   const doc = widget.ownerDocument, win = doc.defaultView;
@@ -157,9 +159,7 @@ f.onload = async () => {
   log([...d.querySelector('.grid').children].map((c) => c.dataset.type || c.querySelector('.shortcut-name')?.textContent).slice(0, 3).join(',') === 'notes,garden,GitHub', 'widgets and links share one grid');
   log(!w.document.querySelector('[data-type="calendar"]') && !w.localStorage.getItem('niwa:calendar-cache'), 'calendar off by default, no fetch');
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
-  const pick = (name) => [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name));
-  log(!pick('便签').disabled && !pick('庭').disabled && !pick('日程').disabled, 'picker allows adding the same widget again');
-  pick('日程').click(); await sleep(80);
+  await galleryAdd(d, '日程'); await sleep(80);
   log(types() === 'notes:m,garden:s,calendar:s', `calendar added: ${types()}`);
   log(!!d.querySelector('.cal-empty'), 'calendar shows connect state');
   [...d.querySelectorAll('.cal-empty button')][0].click(); await sleep(80);
@@ -280,9 +280,6 @@ f.onload = async () => {
   toggleMenu(d.querySelector('[data-type="garden"]')); await sleep(50);
   [...d.querySelectorAll('.widget-menu .menu-item')].find((b) => b.textContent === '移除小组件').click(); await sleep(80);
   log(types() === 'notes:m,calendar:l', `garden removed: ${types()}`);
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
-  log(!pick('庭').disabled, 'removed widget can be re-added');
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
   // 拖动日程到第一位
   const ws = () => visual('.widget');
   // 在便签输入框上按下拖动不会拿起小组件

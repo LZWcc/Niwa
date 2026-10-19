@@ -8,12 +8,13 @@ import { useGridDrag } from '@/hooks/grid/useGridDrag';
 import { UNIT, useGridLayout } from '@/hooks/grid/useGridLayout';
 import type { FolderItem, LinkItem } from '@/utils/grid/items';
 import type { Layout, Rect } from '@/utils/grid/layout';
-import { WIDGETS, WIDGET_SIZES } from '@/utils/widgets';
+import { WIDGET_SIZES } from '@/utils/widgets';
 import AddTile from './AddTile';
 import Folder from './Folder';
 import FolderPanel from './FolderPanel';
 import Shortcut from './Shortcut';
 import ShortcutDialog from './ShortcutDialog';
+import WidgetGallery from './WidgetGallery';
 
 // 搜索框下方的网格：快捷方式、小组件和「添加」自由摆放在一起。
 // 数据 useGrid → 摆放 useGridLayout → 拖动 useGridDrag，增删改都经过 useFlip 的 animate 做动画。
@@ -44,6 +45,7 @@ export default function Grid({ now }: { now: Date }) {
   const closeDialog = () => setEditing(undefined);
   // 打开的文件夹；fresh：刚合成的，一打开就改名字
   const [opened, setOpened] = useState<{ id: string; fresh: boolean } | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const folderOf = (linkId: string) => items.find((i): i is FolderItem => i.kind === 'folder' && i.links.some((l) => l.id === linkId));
 
   const gridRef = useRef<HTMLElement>(null);
@@ -147,7 +149,7 @@ export default function Grid({ now }: { now: Date }) {
           style={area(layout.get('add')!)}
           lifted={dragId === 'add'}
           onAddLink={() => setEditing(null)}
-          onAddWidget={(type) => animate(() => addWidget(type, spotForNew(WIDGET_SIZES[WIDGETS[type].defaultSize])))}
+          onAddWidget={() => setGalleryOpen(true)}
         />
       </nav>
 
@@ -171,6 +173,25 @@ export default function Grid({ now }: { now: Date }) {
           })
         }
         onClose={closeDialog}
+      />
+
+      <WidgetGallery
+        open={galleryOpen}
+        now={now}
+        onAdd={(type, size) => {
+          animate(() => addWidget(type, size, spotForNew(WIDGET_SIZES[size])));
+          setGalleryOpen(false);
+        }}
+        onDragOut={(type, size, x, y, grab) => {
+          // 放到指针下的位置、关上小组件库，网格接着拖
+          let id = '';
+          animate(() => {
+            id = addWidget(type, size, spotAt(x - grab.x, y - grab.y, WIDGET_SIZES[size]));
+            setGalleryOpen(false);
+          });
+          start(id, x, y, grab);
+        }}
+        onClose={() => setGalleryOpen(false)}
       />
 
       <FolderPanel

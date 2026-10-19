@@ -4,7 +4,9 @@ import { DAY } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
 import { fetchHotList, originOf, type HotItem } from '@/utils/hotlist';
 import { hasOrigins, requestOrigins } from '@/utils/permissions';
+import { SAMPLE_HOT } from '@/utils/sample';
 import { KEYS, readJson, writeJson } from '@/utils/storage';
+import { useSample } from './useSample';
 
 /** 一个来源的上一次结果。error：这次没更新成功的原因（items 保留上一次的） */
 type Entry = { fetchedAt: number; items: HotItem[] | null; error: string | null };
@@ -20,15 +22,17 @@ const readCache = (): Cache =>
 
 /**
  * 有没有访问 source 那个网站的权限（null：还在查），和申请权限的方法（要在点击里调用）。
- * 记着是哪个来源的，换来源后旧结果不算数。
+ * 记着是哪个来源的，换来源后旧结果不算数。预览里当作有。
  */
 export function useHotAccess(source: HotSource) {
+  const sample = useSample();
   const [access, setAccess] = useState<{ id: string; ok: boolean } | null>(null);
   useEffect(() => {
+    if (sample) return;
     void hasOrigins([originOf(source)]).then((ok) => setAccess({ id: source.id, ok }));
-  }, [source]);
+  }, [source, sample]);
   return {
-    allowed: access?.id === source.id ? access.ok : null,
+    allowed: sample || (access?.id === source.id ? access.ok : null),
     request: (s: HotSource) => void requestOrigins([originOf(s)]).then((ok) => setAccess({ id: s.id, ok })),
   };
 }
@@ -36,8 +40,10 @@ export function useHotAccess(source: HotSource) {
 /**
  * 一个来源的热榜：先用本地缓存，过期（30 分钟，失败后 5 分钟）再取。source 为 null（还没有访问那个网站的权限）时不取。
  * 和天气一样省请求：只有正在看的标签页去取，取之前再读一遍缓存，别的标签页、别的热榜小组件刚取过就直接用。
+ * 预览里是演示的几条，不取。
  */
 export function useHotList(source: HotSource | null, now: Date) {
+  const sample = useSample();
   const [cache, setCache] = useState(readCache);
   const [loading, setLoading] = useState(false);
   const busy = useRef(false);
@@ -71,7 +77,7 @@ export function useHotList(source: HotSource | null, now: Date) {
   };
 
   useEffect(() => {
-    if (!key || document.hidden) return;
+    if (!key || document.hidden || sample) return;
     const latest = readCache();
     const current = latest[key];
     if (current !== cache[key]) setCache(latest);
@@ -81,6 +87,7 @@ export function useHotList(source: HotSource | null, now: Date) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, key]);
 
+  if (sample) return { items: SAMPLE_HOT, error: null, fetchedAt: now.getTime(), loading, refresh };
   const current = key ? cache[key] : undefined;
   return { items: current?.items ?? null, error: current?.error ?? null, fetchedAt: current?.fetchedAt ?? null, loading, refresh };
 }

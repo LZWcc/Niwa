@@ -7,6 +7,8 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 「添加」菜单打开着：点「小组件」打开小组件库，选中 name，点「添加」
+const galleryAdd = async (d, name) => { [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(80); [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(30); d.querySelector('.gallery-add').click(); };
 localStorage.clear();
 localStorage.setItem('niwa:grid', '[]');
 // 去掉摘要（note）之前存下的缓存：条目里还带着 note
@@ -31,7 +33,7 @@ f.onload = async () => {
     return body('{}', 404);
   };
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
-  [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('热榜')).click(); await sleep(200);
+  await galleryAdd(d, '热榜'); await sleep(200);
   const hw = d.querySelector('[data-type="hotlist"]');
   const titles = () => [...hw.querySelectorAll('.hot-title')].map((x) => x.textContent);
 

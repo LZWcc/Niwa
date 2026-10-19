@@ -40,24 +40,24 @@ export function useGridLayout(grid: RefObject<HTMLElement | null>, { items, plac
 
   // 「添加」和别的格子一样有自己的位置；第一次打开时放在最后一格后面并存下来。
   const [addPos, setAddPos] = useState(() => readJson(KEYS.addTile, isPoint));
-  useEffect(() => {
-    if (addPos) writeJson(KEYS.addTile, addPos);
-  }, [addPos]);
+  const saveAdd = (p: Point) => {
+    setAddPos(p);
+    writeJson(KEYS.addTile, p);
+  };
 
   // 按保存的位置摆放（「添加」先占住它的位置）；没有位置的默认项补上后存下来。
   const entries = items.map((i) => ({ id: i.id, size: sizeOf(i), x: i.x, y: i.y }));
   const { layout, fresh } = resolve(addPos ? [{ id: 'add', size: ADD, ...addPos }, ...entries] : entries, cols);
   if (!layout.has('add')) layout.set('add', appendSpot(layout, ADD, cols));
+  // 要量出列数才算得出来，所以在渲染之后存。
   const freshKey = [...fresh.keys()].join();
+  const addMissing = !addPos;
   useEffect(() => {
     if (fresh.size) place(fresh);
+    if (addMissing) saveAdd(pick(layout.get('add')!));
     // 只在出现新的待补位置时保存一次。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freshKey]);
-  useEffect(() => {
-    if (!addPos) setAddPos(pick(layout.get('add')!));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addPos]);
+  }, [freshKey, addMissing]);
 
   return {
     cols,
@@ -67,7 +67,7 @@ export function useGridLayout(grid: RefObject<HTMLElement | null>, { items, plac
     apply(next: Layout) {
       place(next);
       const add = next.get('add');
-      if (add) setAddPos(pick(add));
+      if (add) saveAdd(pick(add));
     },
 
     /** 新格子放哪：「添加」排在最后时占它的位置、它往后挪一格；否则接在最后一格后面，不填前面留的空。 */
@@ -76,7 +76,7 @@ export function useGridLayout(grid: RefObject<HTMLElement | null>, { items, plac
       const others = new Map([...layout].filter(([key]) => key !== 'add'));
       if (lastKey(layout) !== 'add') return pick(appendSpot(layout, size, cols, others));
       const spot = findSpot(others, size, cols, add);
-      setAddPos(pick(findSpot(new Map(others).set('new', spot), ADD, cols, { x: spot.x + spot.w, y: spot.y })));
+      saveAdd(pick(findSpot(new Map(others).set('new', spot), ADD, cols, { x: spot.x + spot.w, y: spot.y })));
       return pick(spot);
     },
 
@@ -87,17 +87,17 @@ export function useGridLayout(grid: RefObject<HTMLElement | null>, { items, plac
       return pick(findSpot(all, { w: 1, h: 1 }, cols, from));
     },
 
-    /** 指针 (x, y) 下面的格子；有东西就往后找第一个空的（从文件夹里拖出来时先放这里） */
-    spotAt(x: number, y: number): Point {
+    /** (x, y) 处的格子；放不下 size 就往后找第一个放得下的空位（从文件夹、小组件库里拖出来时先放这里） */
+    spotAt(x: number, y: number, size: Size = ADD): Point {
       const g = grid.current!;
       const base = g.getBoundingClientRect();
       const pitch = UNIT + GAP;
       const left = base.left + (g.clientWidth - (cols * pitch - GAP)) / 2; // 列是居中的
       const cell = {
-        x: Math.max(0, Math.min(cols - 1, Math.floor((x - left) / pitch))),
+        x: Math.max(0, Math.min(cols - Math.min(size.w, cols), Math.floor((x - left) / pitch))),
         y: Math.max(0, Math.floor((y - base.top) / pitch)),
       };
-      return pick(findSpot(layout, { w: 1, h: 1 }, cols, cell));
+      return pick(findSpot(layout, size, cols, cell));
     },
 
     /** 改尺寸后的摆放：变大时压到的格子竖直往下让；右边放不下就往左挪进网格里。 */

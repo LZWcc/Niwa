@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Popover from '@/components/common/Popover';
 import { useFeeds } from '@/hooks/useFeeds';
+import { useSample } from '@/hooks/useSample';
 import { visitLabel } from '@/utils/browsing';
 import { feedName, mergeItems, originOf, type Feed, type FeedContent } from '@/utils/feeds';
 import { hasOrigins, requestOrigins } from '@/utils/permissions';
@@ -22,10 +23,13 @@ export default function FeedsWidget({ widget, frame, now, settings, onSettings }
   const originKey = origins.join(' ');
   // 有没有访问这些网站的权限（null：还在查）。记着是哪几个网站的，订阅变了旧结果不算数
   const [access, setAccess] = useState<{ key: string; ok: boolean } | null>(null);
+  const sample = useSample();
   useEffect(() => {
+    if (sample) return;
     void hasOrigins(originKey ? originKey.split(' ') : []).then((ok) => setAccess({ key: originKey, ok }));
-  }, [originKey]);
-  const allowed = access?.key === originKey ? access.ok : null;
+  }, [originKey, sample]);
+  // 预览里当作有
+  const allowed = sample || (access?.key === originKey ? access.ok : null);
   const { entries, loading, refresh, remember } = useFeeds(feeds, allowed === true, now);
 
   const [dialogOpen, setDialogOpen] = useState(false);

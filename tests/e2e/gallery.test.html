@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- 页面测试：小组件库。「添加」菜单只有网站和小组件两项；预览是真组件、用演示数据，不联网、不写存储；换尺寸、点「添加」、把预览拖到页面上。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body style="margin:0"><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'l1', kind: 'link', name: 'GitHub', url: 'https://github.com/', x: 0, y: 0 }]));
+localStorage.setItem('niwa:add', JSON.stringify({ x: 1, y: 0 }));
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(400);
+  const w = f.contentWindow, d = f.contentDocument, ls = w.localStorage;
+  const grid = () => JSON.parse(ls.getItem('niwa:grid'));
+  const dialog = () => d.querySelector('.gallery-dialog');
+  const preview = () => d.querySelector('.gallery-preview .widget');
+  const choose = async (name) => { [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(60); };
+  const resize = async (size) => { [...d.querySelectorAll('.gallery-info .segmented button')].find((b) => b.textContent === size).click(); await sleep(40); };
+  const openGallery = async () => {
+    d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+    [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(100);
+  };
+
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  const options = [...d.querySelectorAll('.add-option .picker-name')].map((n) => n.textContent);
+  log(options.join(',') === '网站,小组件', `add menu: ${options}`);
+  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+
+  // 预览不联网、不写存储
+  let fetches = 0;
+  const realFetch = w.fetch;
+  w.fetch = (...args) => { fetches++; return realFetch(...args); };
+  const before = JSON.stringify(Object.entries(ls).sort());
+  await openGallery();
+  log(!!dialog()?.open, 'gallery opens');
+  const names = [...d.querySelectorAll('.gallery-item')].map((b) => b.textContent);
+  log(names.length === 10, `all widgets listed: ${names}`);
+  log(d.querySelector('.gallery-preview').hasAttribute('inert'), 'preview is inert');
+
+  const content = {
+    便签: () => d.querySelectorAll('.gallery-preview .note').length === 3,
+    日程: () => d.querySelectorAll('.gallery-preview .event').length > 0,
+    庭: () => preview().querySelector('.widget-meta')?.textContent === '第 30 日',
+    收藏夹: () => d.querySelectorAll('.gallery-preview .links-list li').length > 0,
+    历史: () => d.querySelectorAll('.gallery-preview .links-list li').length > 0,
+    天气: () => !!d.querySelector('.gallery-preview .weather-temp'),
+    世界时钟: () => d.querySelectorAll('.gallery-preview .wc-row').length > 0,
+    计时器: () => d.querySelectorAll('.gallery-preview .clock-digit').length > 0,
+    热榜: () => d.querySelectorAll('.gallery-preview .hot-list li').length > 0,
+    订阅: () => d.querySelectorAll('.gallery-preview .feeds-list li').length > 0,
+  };
+  const bad = [];
+  for (const name of names) {
+    await choose(name);
+    if (!preview() || d.querySelector('.gallery-note') || !content[name]?.()) bad.push(name);
+    for (const size of ['小', '中', '大']) {
+      await resize(size);
+      if (!preview() || d.querySelector('.gallery-note')) bad.push(`${name}/${size}`);
+    }
+  }
+  await sleep(300);
+  log(bad.length === 0, `every preview shows sample content in every size ${bad}`);
+  log(fetches === 0, `previews make no requests: ${fetches}`);
+  log(JSON.stringify(Object.entries(ls).sort()) === before, 'previews write nothing to storage');
+
+  await choose('天气');
+  log(preview().classList.contains('size-s') && d.querySelector('.gallery-info [aria-checked="true"]').textContent === '小', 'default size selected');
+  await resize('大');
+  const box = preview().getBoundingClientRect();
+  log(preview().classList.contains('size-l') && box.width === 380 && box.height === 380, `large preview at real size: ${box.width}×${box.height}`);
+  await resize('中');
+  d.querySelector('.gallery-add').click(); await sleep(200);
+  const weather = grid().find((i) => i.type === 'weather');
+  log(!dialog().open && weather?.size === 'm', `added with chosen size: ${weather?.size}`);
+  log(!!d.querySelector('.grid > [data-type="weather"].size-m'), 'added widget on the grid');
+  w.fetch = realFetch;
+
+  // 把预览拖到页面上：卡片左上角落在指针减去按下位置的那一格（最多拖到所有格子下面那一行：天气占了第 0、1 行）
+  await openGallery();
+  await choose('便签');
+  const card = preview().getBoundingClientRect();
+  const grab = { x: card.width / 2, y: card.height / 2 };
+  const pe = (type, x, y) => new w.PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerType: 'mouse', pointerId: 1 });
+  const g = d.querySelector('.grid'), gr = g.getBoundingClientRect();
+  const cols = getComputedStyle(g).gridTemplateColumns.split(' ').length;
+  const left = gr.left + (g.clientWidth - (cols * 100 - 20)) / 2;
+  const x0 = card.left + grab.x, y0 = card.top + grab.y;
+  const x1 = left + 4 * 100 + grab.x, y1 = gr.top + 2 * 100 + grab.y;
+  d.querySelector('.gallery-stage').dispatchEvent(pe('pointerdown', x0, y0));
+  for (let i = 1; i <= 8; i++) { w.dispatchEvent(pe('pointermove', x0 + (x1 - x0) * i / 8, y0 + (y1 - y0) * i / 8)); await sleep(30); }
+  log(!dialog().open && !!d.querySelector('.grid > [data-type="notes"].is-lifted'), 'dragging out closes gallery and lifts widget');
+  await sleep(200); w.dispatchEvent(pe('pointermove', x1, y1)); await sleep(50);
+  w.dispatchEvent(pe('pointerup', x1, y1)); await sleep(100);
+  const notes = grid().find((i) => i.type === 'notes');
+  log(notes?.size === 'm' && notes.x === 4 && notes.y === 2 && !d.querySelector('.is-lifted'), `dragged out of gallery: ${notes?.x},${notes?.y}`);
+};
+</script>

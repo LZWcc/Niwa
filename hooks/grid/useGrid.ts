@@ -4,7 +4,7 @@ import type { Layout } from '@/utils/grid/layout';
 import { isIconStore, type IconSpec, type IconStore, type LinkIcon } from '@/utils/icons/model';
 import { KEYS, readJson } from '@/utils/storage';
 import { clearTimerAlarm } from '@/utils/timer';
-import { WIDGETS, type WidgetSize, type WidgetType } from '@/utils/widgets';
+import type { WidgetSize, WidgetType } from '@/utils/widgets';
 import { useStored, useStoredList } from '../useStored';
 
 // 网格数据的增删改，存 niwa:grid；快捷方式的图标图片存 niwa:icons。
@@ -75,8 +75,12 @@ export function useGrid() {
       setItems((list) => [...list, { id, kind: 'link', name, url, icon: stored, ...at }]);
     },
     updateLink: (id: string, { name, url, icon }: LinkDraft) => patch(id, { name, url, icon: storeIcon(id, icon) }),
-    addWidget: (type: WidgetType, at: Point) =>
-      setItems((list) => [...list, { id: crypto.randomUUID(), kind: 'widget', type, size: WIDGETS[type].defaultSize, ...at }]),
+    /** 加一个小组件，返回它的 id */
+    addWidget: (type: WidgetType, size: WidgetSize, at: Point) => {
+      const id = crypto.randomUUID();
+      setItems((list) => [...list, { id, kind: 'widget', type, size, ...at }]);
+      return id;
+    },
     /** 改小组件自己的设置和数据（便签的内容、天气的城市等）：按当前的设置算出要改的那几项，合并进去。 */
     configure: (id: string, change: (settings: WidgetSettings) => WidgetSettings) =>
       setItems((list) =>

@@ -14,7 +14,7 @@ import { SPRINGS, prefersReducedMotion, springEasing } from '@/utils/spring';
 // 指针停稳（慢于 SLOW 持续 SETTLE）才让位，划过、减速经过的格子都不动。
 // 拖着快捷方式停在另一个快捷方式或文件夹的图标正中（MERGE_ZONE）时永远不让位；停够 MERGE_DWELL 就是要放进去（目标高亮），
 // 这时松手交给 onMerge。没停够、或停稳前就松手，都照常插到指针所在的格子。
-// 从打开的文件夹里拖出来的，由文件夹面板交给 start，接着在网格上拖。
+// 从打开的文件夹、小组件库里拖出来的，交给 start，接着在网格上拖。
 //
 // 小组件（relayout）：落点是左上角吸附到的格子（snapCell），一格一格走过去决定摆放（stepDrag）。
 
@@ -176,7 +176,7 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
   const opts = useRef(options);
   opts.current = options;
   const drag = useRef<Drag | null>(null);
-  const startRef = useRef<(id: string, x: number, y: number) => void>(null);
+  const startRef = useRef<(id: string, x: number, y: number, grab?: { x: number; y: number }) => void>(null);
 
   useEffect(() => {
     /** 让被拖的那块贴着指针，并看要不要换位。指针移动时和每一帧都会调用。 */
@@ -378,8 +378,8 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
       if (drag.current) addListeners();
     };
 
-    // 从文件夹里拖出来的：已经放到网格上了，直接接着拖，图标中心对着指针
-    startRef.current = (id, x, y) => {
+    // 从文件夹、小组件库里拖出来的：已经放到网格上了，直接接着拖。grab：指针在这块里的位置，没给时图标中心对着指针
+    startRef.current = (id, x, y, grab) => {
       const g = grid.current;
       const el = g && tiles(g).find((t) => t.dataset.key === id);
       if (!g || !el || drag.current) return;
@@ -388,8 +388,8 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
       drag.current = s;
       begin(s, g);
       const icon = el.querySelector<HTMLElement>('.shortcut-icon');
-      s.grabX = el.offsetWidth / 2;
-      s.grabY = icon ? icon.offsetTop + icon.offsetHeight / 2 : el.offsetHeight / 2;
+      s.grabX = grab?.x ?? el.offsetWidth / 2;
+      s.grabY = grab?.y ?? (icon ? icon.offsetTop + icon.offsetHeight / 2 : el.offsetHeight / 2);
       addListeners();
       update();
     };
@@ -407,7 +407,7 @@ export function useGridDrag(grid: RefObject<HTMLElement | null>, options: Option
   return {
     /** 正在拖的那一项的 key（没在拖时为 null） */
     dragId,
-    /** 接着拖网格上的 id（从文件夹里拖出来的），指针现在在 (x, y) */
-    start: (id: string, x: number, y: number) => startRef.current?.(id, x, y),
+    /** 接着拖网格上的 id（从文件夹、小组件库里拖出来的），指针现在在 (x, y) */
+    start: (id: string, x: number, y: number, grab?: { x: number; y: number }) => startRef.current?.(id, x, y, grab),
   };
 }

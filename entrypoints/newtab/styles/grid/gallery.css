@@ -1,0 +1,107 @@
+/* 小组件库（components/grid/WidgetGallery.tsx）：左边列表，右边预览、尺寸和「添加」。 */
+
+.gallery-dialog {
+  width: min(100% - 32px, 720px);
+}
+.gallery {
+  display: grid;
+  grid-template-columns: 148px 1fr;
+  min-height: 0;
+}
+
+.gallery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 20px 10px;
+  border-right: 1px solid var(--border);
+}
+.gallery-list h2 {
+  margin: 0 10px 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.gallery-item {
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+.gallery-item:hover {
+  background: var(--border);
+}
+.gallery-item[aria-pressed='true'] {
+  background: var(--border);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.gallery-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+}
+/* 预览的台子：一样高，换尺寸时下面的内容不跳 */
+.gallery-stage {
+  display: grid;
+  place-items: center;
+  height: 420px;
+  border-radius: 16px;
+  background: var(--bg);
+  cursor: grab;
+  user-select: none;
+}
+/* 预览和网格里一样大：小 2×2、中 4×2、大 4×4（单位 80px，间距 20px） */
+.gallery-preview .widget {
+  width: 380px;
+  height: 180px;
+}
+.gallery-preview .widget.size-s {
+  width: 180px;
+}
+.gallery-preview .widget.size-l {
+  height: 380px;
+}
+.gallery-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gallery-info {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.gallery-info h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.gallery-info p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gallery-info .segmented {
+  flex-shrink: 0;
+  width: 150px;
+  margin: 0;
+}
+
+.gallery-actions {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0;
+}
+.gallery-hint {
+  font-size: 12px;
+  color: var(--faint);
+}

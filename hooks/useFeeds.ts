@@ -3,7 +3,9 @@ import { FEEDS } from '@/config';
 import { DAY } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
 import { fetchFeed, type Feed, type FeedContent } from '@/utils/feeds';
+import { sampleFeedEntries } from '@/utils/sample';
 import { KEYS, readJson, writeJson } from '@/utils/storage';
+import { useSample } from './useSample';
 
 /** 一个订阅的上一次结果。error：这次没更新成功的原因（content 保留上一次的） */
 export type FeedEntry = { fetchedAt: number; content: FeedContent | null; error: string | null };
@@ -25,8 +27,10 @@ function save(changes: Cache) {
 /**
  * 一个订阅小组件里的几个订阅：先用本地缓存，过期（30 分钟，失败后 5 分钟）的再取。enabled 为 false（还没有访问那些网站的权限）时不取。
  * 和热榜一样省请求：只有正在看的标签页去取，取之前再读一遍缓存，别的标签页、别的订阅小组件刚取过就直接用。
+ * 预览里是演示的文章，不取。
  */
 export function useFeeds(feeds: Feed[], enabled: boolean, now: Date) {
+  const sample = useSample();
   const [cache, setCache] = useState(readCache);
   const [loading, setLoading] = useState(false);
   const busy = useRef(false);
@@ -58,7 +62,7 @@ export function useFeeds(feeds: Feed[], enabled: boolean, now: Date) {
   const remember = (url: string, content: FeedContent) => setCache(save({ [url]: { fetchedAt: Date.now(), content, error: null } }));
 
   useEffect(() => {
-    if (!key || document.hidden) return;
+    if (!key || document.hidden || sample) return;
     const latest = readCache();
     setCache(latest);
     const stale = feeds
@@ -72,5 +76,5 @@ export function useFeeds(feeds: Feed[], enabled: boolean, now: Date) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, key]);
 
-  return { entries: cache, loading, refresh: () => refresh(), remember };
+  return { entries: sample ? sampleFeedEntries(now) : cache, loading, refresh: () => refresh(), remember };
 }

@@ -7,6 +7,8 @@ const out = [];
 const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
 window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 「添加」菜单打开着：点「小组件」打开小组件库，选中 name，点「添加」
+const galleryAdd = async (d, name) => { [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(80); [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(30); d.querySelector('.gallery-add').click(); };
 localStorage.clear();
 // 一个早就到点的倒计时：一分钟长，61 秒前开始（模拟关掉页面期间到了点）
 localStorage.setItem('niwa:grid', JSON.stringify([
@@ -29,7 +31,7 @@ f.onload = async () => {
 
   // 新加一个：默认 25 分钟的倒计时；选 5 分钟
   d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
-  [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('计时器')).click(); await sleep(150);
+  await galleryAdd(d, '计时器'); await sleep(150);
   const tw = [...d.querySelectorAll('[data-type="timer"]')].find((x) => x.dataset.key !== 't0');
   const id = tw.dataset.key;
   log(time(tw) === '25:00', `default 25 minutes: ${time(tw)}`);

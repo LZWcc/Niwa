@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { WEATHER } from '@/config';
 import { DAY } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
+import { SAMPLE_ACCOUNT, SAMPLE_PLACE, sampleForecast } from '@/utils/sample';
 import { KEYS, readJson, writeJson } from '@/utils/storage';
 import { fetchForecast, isWeatherAccount, type Forecast, type Place, type WeatherAccount } from '@/utils/weather';
+import { useSample } from './useSample';
 import { useStored } from './useStored';
 
 /** 一个城市的上一次结果。error：这次没更新成功的原因（forecast 保留上一次的） */
@@ -24,9 +26,10 @@ const readCache = (): Cache =>
  * 一个城市的天气：先用本地缓存立即显示，过期（一小时，失败后 5 分钟）再刷新。没填 KEY 或没选城市时不联网。
  * 省额度：只有正在看的标签页去请求（后台的不请求）；请求前再读一遍缓存，别的标签页、别的天气小组件刚更新过就直接用。
  * 城市由各个天气小组件自己选（settings.place），和风的 KEY 共用。
- * now 每分钟和页面重新可见时都会变，借此检查是否需要刷新，不另设定时器。
+ * now 每分钟和页面重新可见时都会变，借此检查是否需要刷新，不另设定时器。预览里是演示的天气，不取。
  */
 export function useWeather(now: Date, place: Place | null) {
+  const sample = useSample();
   const [account, setAccount] = useStored<WeatherAccount | null>(KEYS.weatherAccount, () =>
     readJson(KEYS.weatherAccount, isWeatherAccount),
   );
@@ -61,7 +64,7 @@ export function useWeather(now: Date, place: Place | null) {
   };
 
   useEffect(() => {
-    if (!key || document.hidden) return;
+    if (!key || document.hidden || sample) return;
     // 先看存着的最新结果：可能别的标签页刚取过
     const latest = readCache();
     const current = latest[key];
@@ -72,6 +75,17 @@ export function useWeather(now: Date, place: Place | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, key]);
 
+  if (sample)
+    return {
+      account: SAMPLE_ACCOUNT,
+      setAccount,
+      place: SAMPLE_PLACE,
+      forecast: sampleForecast(now),
+      fetchedAt: now.getTime(),
+      error: null,
+      loading,
+      refresh,
+    };
   const current = key ? cache[key] : undefined;
   return {
     account,

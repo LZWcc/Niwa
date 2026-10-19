@@ -193,8 +193,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 3. 在 `components/widgets/index.ts` 的 `WIDGET_COMPONENTS` 里对上组件。
 4. 每个小组件自己的设置和数据（同一种放了几个时各管各的）放在 `settings` 里：在 `utils/grid/items.ts` 的 `WidgetSettings` 加字段并补上校验，组件里读 `settings`、用 `onSettings` 改。几个小组件共用的数据（比如日程的日历）才在 `utils/storage.ts` 的 `KEYS` 里加一个键，用 `useStoredList` 或 `readJson` / `writeJson` 读写。
 5. 样式加到 `entrypoints/newtab/styles/widgets/`，新文件记得在 `index.css` 里引入。
-
-「添加」菜单会自动列出新的小组件。
+6. 小组件库（`components/grid/WidgetGallery.tsx`，点「添加」→「小组件」打开）会自动列出新的小组件，预览就是真组件，包在 `SampleContext` 里画。要联网、读浏览器数据、申请权限或写存储的数据钩子，先用 `useSample()` 判断：预览里不做这些，改返回 `utils/sample.ts` 里的演示数据；需要预设内容的（便签的内容、天气的城市）在 `sampleSettings` 里补。`tests/e2e/gallery.test.html` 会检查每种预览都有内容、不发请求、不写存储。
 
 ## 代码约定
 
@@ -208,6 +207,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - 不为不会发生的情况加兜底（多余的 `try/catch`、`?.`、`?? 默认值`、判断浏览器是否支持某个 API）。只校验真正来自外部的数据：localStorage 里存的、iCal 下载的、用户输入的。出错了怎么办见「错误处理」。
 - 打开新标签页本身从不联网：不加远程字体、远程图片；优先使用 CSS、浏览器原生 API 和 React 自带能力，按实际需求增加依赖。只在用户主动操作时联网：添加的日程、选了城市的天气、添加的热榜和订阅（之后都定时刷新）、添加快捷方式时获取网站图标（取到就存在本地，之后不再联网）。访问网站的权限都在用的时候才申请。
 - 深色样式写在 `:where([data-theme='dark'])` 下，不用 `prefers-color-scheme`（是否深色由 `utils/theme.ts` 决定）。
+- `useEffect` 只用来和外部同步：订阅事件、定时器、发请求、改 DOM 上的属性。由用户操作引起的写入（存储、通知别处）直接写在事件处理或 setter 里（如 `useStored`）；能从 props、state 算出来的直接在渲染时算，不放进 state 再用 effect 同步。
 - `useEffect` 的依赖确实需要省略时，用 `eslint-disable-next-line` 并在上一行写明原因。
 
 开发模式下可以在新标签页地址后加 `?days=30&season=winter&phase=night&weather=rain&moon=0.25` 预览庭和季节、时辰、背景的天气（cloudy、fog、drizzle、rain、snow）、月相（`utils/preview.ts`）；正式构建会忽略这些参数。

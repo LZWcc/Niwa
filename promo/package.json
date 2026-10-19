@@ -6,7 +6,8 @@
     "assets": "cd .. && pnpm exec wxt build -b edge && node scripts/screenshots.mjs promo/public",
     "still": "remotion still src/index.ts",
     "render": "remotion render src/index.ts",
-    "music": "node music.ts"
+    "music": "node music.ts",
+    "cards": "remotion render src/index.ts Xhs out/xhs --sequence --image-format=png"
   },
   "dependencies": {
     "@remotion/cli": "4.0.536",

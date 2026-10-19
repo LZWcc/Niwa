@@ -295,6 +295,7 @@ pnpm assets                         # 构建扩展并截素材图到 promo/publi
 pnpm music                          # 合成配乐 promo/public/music.wav（music.ts）
 pnpm still Niwa out/f.png --frame=135   # 渲染单帧检查
 pnpm render Niwa out/niwa-3x4.mp4       # 渲染整段，约 1 分钟
+pnpm cards                          # 小红书图文：9 张 3:4 的图到 out/xhs/（src/Cards.tsx，一帧一张）
 ```
 
 - 时间轴在 `src/theme.ts` 的 `T`，各段画面在 `src/Promo.tsx`。窗口里是截图分层做的：格子从 `light.png` 里按网格位置裁出来弹出，入夜是 `dark.png` 从上往下盖；庭那一段直接用 `components/widgets/garden/Garden.tsx` 和 niwa 的样式（`@/` 和 `/fonts/` 的别名在 `remotion.config.ts`）。改了截图的布局（`scripts/screenshots.mjs`），`Promo.tsx` 里的 `POPS` 要跟着改。

@@ -371,8 +371,7 @@ function Privacy() {
   );
 }
 
-// 仓库建好后填上，例如 'github.com/xxx/niwa'
-const REPO = '';
+const REPO = 'github.com/LZWcc/Niwa';
 
 function Outro({ fps }: { fps: number }) {
   const frame = useCurrentFrame();

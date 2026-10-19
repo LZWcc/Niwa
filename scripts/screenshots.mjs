@@ -3,11 +3,12 @@
 // 天气用的是写好的缓存，日程是这里生成的演示日历；只有快捷方式的图标要联网，从 icon.horse 取，再按 utils/icons/image.ts 同样的规则统一成 128px。
 
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fetchIcon, toIconImage } from './icon-image.mjs';
 
 const dist = fileURLToPath(new URL('../.output/edge-mv3/', import.meta.url));
 // 可以指定输出目录（宣传片用 promo/public）。这时多截一张网格是空的浅色页，宣传片里让格子在它上面一个个出现。
@@ -141,49 +142,6 @@ function demoData(origin, theme, empty) {
     'niwa:weather-account': JSON.stringify({ host: 'demo.re.qweatherapi.com', key: 'demo' }),
     'niwa:weather-forecast': JSON.stringify({ [`${place.id}|demo.re.qweatherapi.com|demo`]: { fetchedAt: now, forecast, error: null } }),
   };
-}
-
-// icon.horse 时好时坏：取到的存在临时目录里，下次直接用；连不上时再试两次
-const iconCache = join(tmpdir(), 'niwa-icon-cache');
-await mkdir(iconCache, { recursive: true });
-/** 网站图标（icon.horse）。不带 content-type，浏览器按内容认出是 png 还是 ico */
-async function fetchIcon(host) {
-  const file = join(iconCache, host);
-  try {
-    return await readFile(file);
-  } catch {
-    for (let attempt = 1; ; attempt++) {
-      try {
-        const r = await fetch(`https://icon.horse/icon/${host}`, { signal: AbortSignal.timeout(15_000) });
-        if (!r.ok) throw new Error(`取不到 ${host} 的图标：${r.status}`);
-        const body = Buffer.from(await r.arrayBuffer());
-        await writeFile(file, body);
-        return body;
-      } catch (error) {
-        if (attempt === 3) throw error;
-      }
-    }
-  }
-}
-
-/** 在页面里运行：和 utils/icons/image.ts 的 toIconImage 同样的规则（四角透明或不是方形的放在白底上留边） */
-async function toIconImage(blob) {
-  const img = new Image();
-  img.src = URL.createObjectURL(blob);
-  await img.decode();
-  const { naturalWidth: w, naturalHeight: h } = img;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 128;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0, 128, 128);
-  const corners = [0, 127].flatMap((x) => [0, 127].map((y) => ctx.getImageData(x, y, 1, 1).data[3]));
-  if (w !== h || corners.some((a) => a < 250)) {
-    const scale = (128 - 44) / Math.max(w, h);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, 128, 128);
-    ctx.drawImage(img, (128 - w * scale) / 2, (128 - h * scale) / 2, w * scale, h * scale);
-  }
-  return canvas.toDataURL('image/webp', 0.9);
 }
 
 const server = createServer(async (req, res) => {

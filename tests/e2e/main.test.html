@@ -18,6 +18,15 @@ const toggleMenu = (widget) => {
   widget.dispatchEvent(new win.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 }));
 };
 localStorage.clear();
+// 从一组固定的快捷方式和小组件开始（以前的默认项），不随 config.ts 的 DEFAULT_ITEMS 变；下面的名称、顺序、拖放都按它写
+localStorage.setItem('niwa:grid', JSON.stringify([
+  { id: 'notes', kind: 'widget', type: 'notes', size: 'm' },
+  { id: 'garden', kind: 'widget', type: 'garden', size: 's' },
+  { id: 'github', kind: 'link', name: 'GitHub', url: 'https://github.com/' },
+  { id: 'wxt', kind: 'link', name: 'WXT', url: 'https://wxt.dev/' },
+  { id: 'react', kind: 'link', name: 'React', url: 'https://react.dev/' },
+  { id: 'mdn', kind: 'link', name: 'MDN', url: 'https://developer.mozilla.org/zh-CN/' },
+]));
 const f = document.getElementById('f');
 f.src = '/newtab.html';
 f.onload = async () => {

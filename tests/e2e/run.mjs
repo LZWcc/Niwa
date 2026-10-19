@@ -21,6 +21,7 @@ const edge = process.env.EDGE_BIN ?? '/Applications/Microsoft Edge.app/Contents/
 const suites = [
   // 无头模式的虚拟时间里动画不会推进，所以关掉动效（也顺带覆盖“减少动态效果”的路径）。
   { file: 'main.test.html', flags: ['--force-prefers-reduced-motion'], done: 'positions persist after reload' },
+  { file: 'defaults.test.html', flags: ['--force-prefers-reduced-motion'], done: 'icons kept after reload' },
   { file: 'calendars.test.html', flags: [], done: 'month shows failure reasons' },
   { file: 'icons.test.html', flags: ['--force-prefers-reduced-motion'], done: 'deleting shortcut removes its image' },
   { file: 'backup.test.html', flags: ['--force-prefers-reduced-motion'], done: 'secrets kept when backup has none' },

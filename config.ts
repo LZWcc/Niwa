@@ -162,14 +162,24 @@ export const SEARCH_ENGINES: SearchEngine[] = [
 
 // ---------- 网格 ----------
 
-/** 第一次打开时的快捷方式和小组件。不写位置，打开时按顺序补进空位；id 不重复就行。 */
+/**
+ * 第一次打开时的快捷方式和小组件（左上 4×2 的快捷方式，右边世界时钟、庭，下面便签）；id 不重复就行。
+ * 只放打开就能用的小组件（天气、日程要先填 KEY、订阅地址，不放）。快捷方式用打包在扩展里的图片图标：
+ * utils/icons/defaults.ts，改了这里的快捷方式要运行 pnpm default-icons 重新生成，第一次打开时由 main.tsx 写进 niwa:icons。
+ */
 export const DEFAULT_ITEMS: GridItem[] = [
-  { id: 'notes', kind: 'widget', type: 'notes', size: 'm' },
-  { id: 'garden', kind: 'widget', type: 'garden', size: 's' },
-  { id: 'github', kind: 'link', name: 'GitHub', url: 'https://github.com/' },
-  { id: 'wxt', kind: 'link', name: 'WXT', url: 'https://wxt.dev/' },
-  { id: 'react', kind: 'link', name: 'React', url: 'https://react.dev/' },
-  { id: 'mdn', kind: 'link', name: 'MDN', url: 'https://developer.mozilla.org/zh-CN/' },
+  { id: 'github', kind: 'link', name: 'GitHub', url: 'https://github.com/', icon: { kind: 'image' }, x: 0, y: 0 },
+  { id: 'youtube', kind: 'link', name: 'YouTube', url: 'https://www.youtube.com/', icon: { kind: 'image' }, x: 1, y: 0 },
+  { id: 'x', kind: 'link', name: 'X', url: 'https://x.com/', icon: { kind: 'image' }, x: 2, y: 0 },
+  { id: 'chatgpt', kind: 'link', name: 'ChatGPT', url: 'https://chatgpt.com/', icon: { kind: 'image' }, x: 3, y: 0 },
+  { id: 'zhihu', kind: 'link', name: '知乎', url: 'https://www.zhihu.com/', icon: { kind: 'image' }, x: 0, y: 1 },
+  { id: 'xiaohongshu', kind: 'link', name: '小红书', url: 'https://www.xiaohongshu.com/', icon: { kind: 'image' }, x: 1, y: 1 },
+  { id: 'weread', kind: 'link', name: '微信读书', url: 'https://weread.qq.com/', icon: { kind: 'image' }, x: 2, y: 1 },
+  { id: 'notion', kind: 'link', name: 'Notion', url: 'https://www.notion.so/', icon: { kind: 'image' }, x: 3, y: 1 },
+  { id: 'worldclock', kind: 'widget', type: 'worldclock', size: 'm', x: 4, y: 0 },
+  { id: 'garden', kind: 'widget', type: 'garden', size: 's', x: 8, y: 0 },
+  { id: 'figma', kind: 'link', name: 'Figma', url: 'https://www.figma.com/', icon: { kind: 'image' }, x: 10, y: 0 },
+  { id: 'notes', kind: 'widget', type: 'notes', size: 'm', x: 4, y: 2 },
 ];
 
 // ---------- 快捷方式的图标 ----------

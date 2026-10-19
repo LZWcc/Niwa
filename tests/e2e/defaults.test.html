@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- 页面测试：第一次打开时的默认布局：快捷方式带打包好的图标，世界时钟、庭、便签，位置和 config.ts 的 DEFAULT_ITEMS 一致；图标写进了 niwa:icons，再打开还在。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body style="margin:0"><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const f = document.getElementById('f');
+const open = () => new Promise((resolve) => { f.onload = async () => { await sleep(400); resolve(f.contentDocument); }; f.src = '/newtab.html?' + Math.random(); });
+const images = (d) => [...d.querySelectorAll('.shortcut-icon.is-image img')];
+(async () => {
+  localStorage.clear();
+  let d = await open();
+  const cells = [...d.querySelector('.grid').children].map((c) => c.dataset.type || c.querySelector('.shortcut-name')?.textContent).filter(Boolean);
+  log(cells.slice(0, 12).join(',') === 'GitHub,YouTube,X,ChatGPT,知乎,小红书,微信读书,Notion,worldclock,garden,Figma,notes', `default items: ${cells}`);
+  const at = (type) => { const s = d.querySelector(`.grid > [data-type="${type}"]`)?.style; return s && `${s.gridColumnStart},${s.gridRowStart}`; };
+  log(at('worldclock') === '5,1' && at('garden') === '9,1' && at('notes') === '5,3', `widgets placed: ${at('worldclock')} ${at('garden')} ${at('notes')}`);
+  const imgs = images(d);
+  log(imgs.length === 9 && imgs.every((i) => i.src.startsWith('data:image/webp') && i.naturalWidth === 128), `bundled icons shown: ${imgs.length}`);
+  const stored = JSON.parse(localStorage.getItem('niwa:icons') ?? '{}');
+  log(Object.keys(stored).length === 9 && stored.github?.startsWith('data:image/webp'), 'icons written to storage');
+  d = await open();
+  log(images(d).length === 9, 'icons kept after reload');
+})();
+</script>

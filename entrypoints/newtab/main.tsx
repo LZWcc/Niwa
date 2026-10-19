@@ -5,7 +5,9 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { applyAtmosphere } from '@/utils/almanac';
 import { reportError } from '@/utils/errors';
 import { migrateWidgetData } from '@/utils/grid/migrate';
+import { DEFAULT_ICONS } from '@/utils/icons/defaults';
 import { preview } from '@/utils/preview';
+import { KEYS, writeJson } from '@/utils/storage';
 import { applyTheme, readThemeChoice, systemTheme } from '@/utils/theme';
 import { applySceneWeather } from '@/utils/weather';
 import App from './App';
@@ -28,6 +30,9 @@ addEventListener('unhandledrejection', (e) => {
   if (detached()) e.preventDefault();
   else reportError(e.reason, '未处理的 Promise 失败');
 });
+
+// 第一次打开（还没有网格）：默认快捷方式的图标打包在扩展里，先写进 niwa:icons。
+if (!localStorage.getItem(KEYS.grid)) writeJson(KEYS.icons, DEFAULT_ICONS);
 
 // 旧版本单独存的小组件数据搬进网格（只有升级后第一次打开时有事做）。
 migrateWidgetData();

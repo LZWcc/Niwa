@@ -10,6 +10,7 @@
     "build": "wxt build",
     "zip": "wxt zip -b edge",
     "icons": "node scripts/icons.mjs",
+    "default-icons": "node scripts/default-icons.mjs",
     "screenshots": "wxt build -b edge && node scripts/screenshots.mjs",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",

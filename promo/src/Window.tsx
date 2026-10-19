@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Img, staticFile } from 'remotion';
 
 // 浏览器窗口：里面是 1440×900 的新标签页截图（promo/public/，pnpm assets 生成）。
-// 整个页面缩放到窗口的宽度。
+// 整个页面缩放到窗口的宽度（默认 WIN.width，横版宽一些）。
 export const WIN = { left: 40, top: 300, width: 1000, bar: 40 };
 export const SCALE = WIN.width / 1440;
 export const VIEW_H = 900 * SCALE;
@@ -45,15 +45,18 @@ export function Shot({ src, style }: { src: string; style?: React.CSSProperties 
 export default function Window({
   camera,
   dark,
+  width = WIN.width,
   children,
   style,
 }: {
   camera: Camera;
   dark: number;
+  width?: number;
   children: ReactNode;
   style?: React.CSSProperties;
 }) {
-  const s = SCALE * camera.zoom;
+  const viewH = (900 * width) / 1440;
+  const s = (width / 1440) * camera.zoom;
   const bar = `rgb(${232 - 200 * dark} ${236 - 196 * dark} ${238 - 194 * dark})`;
   return (
     <div
@@ -61,7 +64,7 @@ export default function Window({
         position: 'absolute',
         left: WIN.left,
         top: WIN.top,
-        width: WIN.width,
+        width,
         borderRadius: 20,
         overflow: 'hidden',
         boxShadow: '0 30px 80px -30px rgb(20 30 40 / 0.45), 0 0 0 1px rgb(0 0 0 / 0.06)',
@@ -73,14 +76,14 @@ export default function Window({
           <span key={c} style={{ width: 12, height: 12, borderRadius: 6, background: c }} />
         ))}
       </div>
-      <div style={{ position: 'relative', height: VIEW_H, overflow: 'hidden', background: '#dde4ea' }}>
+      <div style={{ position: 'relative', height: viewH, overflow: 'hidden', background: '#dde4ea' }}>
         <div
           style={{
             position: 'absolute',
             width: 1440,
             height: 900,
             transformOrigin: '0 0',
-            transform: `translate(${WIN.width / 2 - camera.x * s}px, ${VIEW_H / 2 - camera.y * s}px) scale(${s})`,
+            transform: `translate(${width / 2 - camera.x * s}px, ${viewH / 2 - camera.y * s}px) scale(${s})`,
           }}
         >
           {children}

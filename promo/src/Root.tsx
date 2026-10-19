@@ -7,6 +7,15 @@ export default function Root() {
   return (
     <>
       <Composition id="Niwa" component={Promo} durationInFrames={DURATION} fps={30} width={1080} height={1440} />
+      <Composition
+        id="NiwaWide"
+        component={Promo}
+        defaultProps={{ wide: true }}
+        durationInFrames={DURATION}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
       <Composition id="Xhs" component={Cards} durationInFrames={PAGE_COUNT} fps={30} width={1080} height={1440} />
     </>
   );

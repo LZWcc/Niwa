@@ -295,6 +295,7 @@ pnpm assets                         # 构建扩展并截素材图到 promo/publi
 pnpm music                          # 合成配乐 promo/public/music.wav（music.ts）
 pnpm still Niwa out/f.png --frame=135   # 渲染单帧检查
 pnpm render Niwa out/niwa-3x4.mp4       # 渲染整段，约 1 分钟
+pnpm render NiwaWide out/niwa-16x9.mp4  # 横版 1920×1080（X、B 站），同一套时间轴和配乐，布局见 Promo.tsx 的 LAYOUTS
 pnpm cards                          # 小红书图文：9 张 3:4 的图到 out/xhs/（src/Cards.tsx，一帧一张）
 ```
 

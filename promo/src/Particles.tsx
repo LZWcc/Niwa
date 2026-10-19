@@ -1,19 +1,20 @@
-import { random, useCurrentFrame } from 'remotion';
+import { random, useCurrentFrame, useVideoConfig } from 'remotion';
 
-// 前景的粒子和胶片颗粒，让画面有层次和空气感。位置都由 random(种子) 算，每帧一样、可重复。
+// 前景的粒子和胶片颗粒，让画面有层次和空气感。位置都由 random(种子) 算，每帧一样、可重复；按画面大小铺（竖版、横版都用）。
 
 const LEAF_COLORS = ['#d9573f', '#e3a86a', '#c8553d', '#dba73a'];
 
 /** 白天：飘落的秋叶 */
 export function Leaves({ opacity }: { opacity: number }) {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   if (!opacity) return null;
   return (
-    <svg width={1080} height={1440} style={{ position: 'absolute', inset: 0, opacity, pointerEvents: 'none' }}>
+    <svg width={width} height={height} style={{ position: 'absolute', inset: 0, opacity, pointerEvents: 'none' }}>
       {Array.from({ length: 12 }, (_, i) => {
         const speed = 1.4 + random(`leaf-v${i}`) * 1.6;
-        const y = ((random(`leaf-y${i}`) * 1640 + frame * speed) % 1640) - 100;
-        const x = random(`leaf-x${i}`) * 1080 + Math.sin(frame / 26 + i) * 46;
+        const y = ((random(`leaf-y${i}`) * (height + 200) + frame * speed) % (height + 200)) - 100;
+        const x = random(`leaf-x${i}`) * width + Math.sin(frame / 26 + i) * 46;
         const size = 0.9 + random(`leaf-s${i}`) * 1.4;
         const turn = frame * (random(`leaf-r${i}`) - 0.5) * 5 + i * 40;
         const flip = 0.6 + 0.4 * Math.abs(Math.cos(frame / 14 + i));
@@ -31,12 +32,13 @@ export function Leaves({ opacity }: { opacity: number }) {
 /** 夜里：萤火和星点，忽明忽暗 */
 export function Fireflies({ opacity }: { opacity: number }) {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   if (!opacity) return null;
   return (
     <div style={{ position: 'absolute', inset: 0, opacity, pointerEvents: 'none' }}>
       {Array.from({ length: 30 }, (_, i) => {
-        const x = random(`ff-x${i}`) * 1080 + Math.sin(frame / 40 + i) * 30;
-        const y = random(`ff-y${i}`) * 1440 + Math.cos(frame / 55 + i * 2) * 24 - frame * 0.15;
+        const x = random(`ff-x${i}`) * width + Math.sin(frame / 40 + i) * 30;
+        const y = random(`ff-y${i}`) * height + Math.cos(frame / 55 + i * 2) * 24 - frame * 0.15;
         const r = 2 + random(`ff-r${i}`) * 4;
         const glow = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(frame / 9 + i * 1.7));
         return (
@@ -63,10 +65,11 @@ export function Fireflies({ opacity }: { opacity: number }) {
 /** 很淡的胶片颗粒，每两帧换一次 */
 export function Grain() {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   return (
     <svg
-      width={1080}
-      height={1440}
+      width={width}
+      height={height}
       style={{ position: 'absolute', inset: 0, opacity: 0.08, mixBlendMode: 'overlay', pointerEvents: 'none' }}
     >
       <filter id="grain">

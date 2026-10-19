@@ -231,3 +231,37 @@
   height: 30px;
   padding: 0 12px;
 }
+
+/* 管理日历：导入的日历标个「文件」，和订阅的区分开 */
+.source-kind {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--faint);
+}
+/* 导入 .ics 文件：拖进来或选择文件 */
+.file-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.file-drop.is-dragging {
+  border-color: var(--term);
+  background: var(--panel);
+}
+.file-drop-pick {
+  color: var(--term);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.file-drop .field-note {
+  font-size: 12px;
+}

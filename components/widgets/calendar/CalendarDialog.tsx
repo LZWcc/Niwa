@@ -2,21 +2,23 @@ import { useId, useState } from 'react';
 import Dialog from '@/components/common/Dialog';
 import type { CalendarState } from '@/hooks/useCalendar';
 import { CALENDAR } from '@/config';
-import { normalizeCalendarUrl } from '@/utils/calendar/ical';
+import { isFileSource, normalizeCalendarUrl } from '@/utils/calendar/ical';
 import { toUserMessage } from '@/utils/errors';
 import { requestOrigins } from '@/utils/permissions';
 
-// 管理日历：列出已连接的日历，粘贴 iCal 私密地址添加（可一次多个），移除。
+// 管理日历：列出已连接的日历，粘贴 iCal 私密地址添加（可一次多个），或者导入 .ics 文件（拖进来或选择，可一次多个），移除。
 
-type Props = { open: boolean; calendar: CalendarState; onClose: () => void };
+/** dropped：拖到日程小组件上的文件，打开时直接导入 */
+type Props = { open: boolean; calendar: CalendarState; dropped: File[] | null; onClose: () => void };
 
-export default function CalendarDialog({ open, calendar, onClose }: Props) {
+export default function CalendarDialog({ open, calendar, dropped, onClose }: Props) {
   // 放了几个这种小组件时页面上有几份这个对话框，id 不能重复
   const uid = useId();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [added, setAdded] = useState<string[]>([]);
-  const { sources, setSources } = calendar;
+  const [dragging, setDragging] = useState(false);
+  const { sources, setSources, importFiles, removeSource } = calendar;
 
   // 一次可以粘贴多个地址，一行一个（也接受空格、逗号分隔）。
   const add = (e: React.FormEvent) => {
@@ -52,6 +54,15 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
     );
   };
 
+  const importAll = (files: File[]) => {
+    if (files.length === 0) return;
+    setError('');
+    void importFiles(files).then(({ imported, problems }) => {
+      setAdded(imported);
+      setError(problems.join('；'));
+    });
+  };
+
   return (
     <Dialog
       open={open}
@@ -62,8 +73,10 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
         setText('');
         setError('');
         setAdded([]);
+        setDragging(false);
         // 光标直接在输入框里，而不是落在第一个“移除”按钮上。
         el.querySelector('textarea')?.focus();
+        if (dropped) importAll(dropped);
       }}
     >
       <form className="dialog-body" onSubmit={add} noValidate>
@@ -78,11 +91,12 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
               {sources.map((s) => (
                 <li key={s.id}>
                   <span className="source-dot" style={{ background: s.color }} aria-hidden="true" />
-                  <span className="source-name" title={s.url}>
+                  <span className="source-name" title={isFileSource(s) ? '导入的文件，不会自动更新' : s.url}>
                     {s.name || <span className="source-pending">读取中…</span>}
                   </span>
-                  {added.includes(s.id) && <span className="source-new">已添加</span>}
-                  <button type="button" className="btn btn-danger" onClick={() => setSources((list) => list.filter((x) => x.id !== s.id))}>
+                  {isFileSource(s) && <span className="source-kind">文件</span>}
+                  {added.includes(s.id) && <span className="source-new">{isFileSource(s) ? '已导入' : '已添加'}</span>}
+                  <button type="button" className="btn btn-danger" onClick={() => removeSource(s)}>
                     移除
                   </button>
                 </li>
@@ -126,6 +140,40 @@ export default function CalendarDialog({ open, calendar, onClose }: Props) {
             </span>
           )}
         </label>
+
+        {/* 没有订阅地址的日历（课程表、节假日、从别的日历导出的）：导入 .ics 文件，是一份快照，不会自动更新 */}
+        <div
+          className={dragging ? 'file-drop is-dragging' : 'file-drop'}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            importAll([...e.dataTransfer.files]);
+          }}
+        >
+          <span>
+            或者把 .ics 文件拖到这里，
+            <label className="file-drop-pick">
+              选择文件
+              <input
+                type="file"
+                accept=".ics,text/calendar"
+                multiple
+                hidden
+                onChange={(e) => {
+                  importAll([...(e.target.files ?? [])]);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          </span>
+          <span className="field-note">适合课程表、节假日这类很少变的日历。导入后不会自动更新，源文件变了就再导入一次，同名的会替换。</span>
+        </div>
 
         <footer className="dialog-actions">
           <button type="button" className="btn" onClick={onClose}>

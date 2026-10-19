@@ -1,4 +1,5 @@
 // 本地保存。所有数据都只在这台电脑的 localStorage 里，键统一在 KEYS 登记，都以 niwa: 开头。
+// 只有导入的日历文件例外：可能有几 MB，存在 IndexedDB 里（calendar/files.ts）。
 // 字符串直接用 localStorage.getItem / setItem；JSON 用 readJson / writeJson，读出来的要校验。
 
 export const KEYS = {

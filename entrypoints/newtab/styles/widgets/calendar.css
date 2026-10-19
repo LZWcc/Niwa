@@ -336,3 +336,12 @@
 .cal-empty .btn {
   align-self: flex-start;
 }
+
+/* 拖着 .ics 文件经过日程卡片：整张卡片描一圈虚线。.cal-drop 是 display: contents，自己没有方框，不影响排版 */
+.cal-drop {
+  display: contents;
+}
+.widget:has(.cal-drop.is-dropping) {
+  outline: 2px dashed var(--term);
+  outline-offset: -6px;
+}

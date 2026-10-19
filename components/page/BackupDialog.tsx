@@ -30,14 +30,20 @@ export default function BackupDialog({ open, onClose }: { open: boolean; onClose
   const [pending, setPending] = useState<Backup | null>(null);
   const [error, setError] = useState('');
 
+  // 导入的日历文件要从 IndexedDB 里读，导出是异步的。
   const exportFile = () => {
-    const blob = new Blob([JSON.stringify(createBackup(withSecrets), null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `niwa-backup-${dayKey(new Date())}.json`;
-    link.click();
-    // 下载开始之前不能撤销地址，过一会儿再释放。
-    setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
+    createBackup(withSecrets).then(
+      (backup) => {
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `niwa-backup-${dayKey(new Date())}.json`;
+        link.click();
+        // 下载开始之前不能撤销地址，过一会儿再释放。
+        setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
+      },
+      (err) => setError(toUserMessage(err, '导出备份')),
+    );
   };
 
   const pickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,14 +59,11 @@ export default function BackupDialog({ open, onClose }: { open: boolean; onClose
   };
 
   const restore = () => {
-    // 写 localStorage 可能因为存不下而失败，要告诉用户。
-    try {
-      restoreBackup(pending!);
-    } catch (err) {
-      setError(toUserMessage(err, '导入备份'));
-      return;
-    }
-    location.reload();
+    // 写 localStorage 可能因为存不下而失败（日历文件写进 IndexedDB 也可能失败），要告诉用户。
+    restoreBackup(pending!).then(
+      () => location.reload(),
+      (err) => setError(toUserMessage(err, '导入备份')),
+    );
   };
 
   return (

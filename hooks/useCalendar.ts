@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { CALENDAR } from '@/config';
-import { byStart, fetchCalendar, isCalendarSource, type CalendarEvent } from '@/utils/calendar/ical';
+import { deleteCalendarFile, saveCalendarFile } from '@/utils/calendar/files';
+import {
+  byStart,
+  calendarName,
+  fetchCalendar,
+  isCalendarSource,
+  isFileSource,
+  type CalendarEvent,
+  type CalendarSource,
+} from '@/utils/calendar/ical';
 import { startOfDay } from '@/utils/date';
 import { toUserMessage } from '@/utils/errors';
 import { KEYS, readJson, writeJson } from '@/utils/storage';
@@ -65,12 +74,51 @@ export function useCalendar(now: Date) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, key]);
 
+  /**
+   * 导入几个 .ics 文件：先解析确认是日历；和已经导入的同名时替换内容（换一个 url，缓存跟着失效），否则新加一个。
+   * 返回导入了的日历 id，和没导入的文件各自的原因。
+   */
+  const importFiles = async (files: File[]) => {
+    const imported = new Map<string, CalendarSource>();
+    const problems: string[] = [];
+    for (const file of files) {
+      if (file.size > CALENDAR.maxFileSize) {
+        problems.push(`${file.name} 超过 ${CALENDAR.maxFileSize / 1024 / 1024} MB，导出时可以只选一段时间`);
+        continue;
+      }
+      try {
+        const text = await file.text();
+        const name = (await calendarName(text)) ?? file.name.replace(/\.ics$/i, '');
+        const same = [...imported.values(), ...sources].find((s) => isFileSource(s) && s.name === name);
+        const color = same?.color ?? CALENDAR.colors[(sources.length + imported.size) % CALENDAR.colors.length]!;
+        const source = { id: same?.id ?? crypto.randomUUID(), url: `file:${crypto.randomUUID()}`, name, color };
+        await saveCalendarFile(source.id, text);
+        imported.set(source.id, source);
+      } catch (error) {
+        problems.push(`${file.name}：${toUserMessage(error, `导入日历文件 ${file.name}`)}`);
+      }
+    }
+    setSources((list) => [
+      ...list.map((s) => imported.get(s.id) ?? s),
+      ...[...imported.values()].filter((i) => !list.some((s) => s.id === i.id)),
+    ]);
+    return { imported: [...imported.keys()], problems };
+  };
+
+  /** 移除一个日历；导入的文件一起删掉 */
+  const removeSource = (source: CalendarSource) => {
+    setSources((list) => list.filter((s) => s.id !== source.id));
+    if (isFileSource(source)) void deleteCalendarFile(source.id);
+  };
+
   const current = cache?.key === key ? cache : null;
   const events = (current?.events ?? []).filter((e) => e.end > now.getTime()).sort(byStart);
 
   return {
     sources,
     setSources,
+    importFiles,
+    removeSource,
     events,
     loading,
     failed: current?.failed ?? [],

@@ -1,11 +1,13 @@
-// 通过日历的 iCal 订阅地址（如 Google 日历的“iCal 格式的私密地址”）读取日程。
-// 只读、无需登录；地址本身就是凭证，只保存在本机。
+// 读取日程：日历的 iCal 订阅地址（如 Google 日历的“iCal 格式的私密地址”），或者导入的 .ics 文件。
+// 只读、无需登录；订阅地址本身就是凭证，只保存在本机。导入的文件存在 IndexedDB（files.ts），不会自动更新。
 
 import { CALENDAR } from '../../config';
 import { DAY } from '../date';
 import { AppError } from '../errors';
 import { hasStrings } from '../storage';
+import { readCalendarFile } from './files';
 
+/** url：订阅地址；导入的文件是 file:<随机串>（每次导入换一个，缓存跟着失效），内容按 id 存在 IndexedDB */
 export type CalendarSource = { id: string; url: string; name: string; color: string };
 export const isCalendarSource = hasStrings('id', 'url', 'name', 'color');
 export type CalendarEvent = {
@@ -26,6 +28,8 @@ const MAX_OCCURRENCES = 20_000;
 
 /** 按开始时间排；同一时刻全天的排在前面。 */
 export const byStart = (a: CalendarEvent, b: CalendarEvent) => a.start - b.start || Number(b.allDay) - Number(a.allDay);
+
+export const isFileSource = (source: CalendarSource) => source.url.startsWith('file:');
 
 /** webcal:// 换成 https://；无效时返回 null。 */
 export function normalizeCalendarUrl(input: string): string | null {
@@ -53,28 +57,46 @@ function plainText(value: unknown, limit = 2000) {
 
 type ParsedCalendar = { name?: string; expand: (from: number, until: number) => CalendarEvent[] };
 
-/** 下载并解析一个日历；返回的 expand 可以反复展开任意时间段（重复日程逐次展开）。 */
-async function download(source: CalendarSource): Promise<ParsedCalendar> {
+/** 下载订阅地址的内容 */
+async function fetchText(url: string) {
   // fetch 只在连不上（断网、代理、没给网站权限）或超时的时候抛错；HTTP 错误码要自己判断。
-  const response = await fetch(source.url, { cache: 'no-store', signal: AbortSignal.timeout(CALENDAR.timeout) }).catch((cause) => {
+  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(CALENDAR.timeout) }).catch((cause) => {
     throw new AppError(cause.name === 'TimeoutError' ? '日历网站响应太慢，稍后会自动重试' : '连不上日历所在的网站，检查网络或代理', {
       cause,
     });
   });
   if (response.status === 404) throw new AppError('日历地址已失效，请重新复制私密地址');
   if (!response.ok) throw new AppError(`日历网站返回错误（HTTP ${response.status}）`);
-  const text = await response.text();
+  return response.text();
+}
 
+/** 取到日历的内容（下载订阅地址，或读导入的文件）并解析 */
+async function download(source: CalendarSource): Promise<ParsedCalendar> {
+  if (!isFileSource(source)) return parse(source.id, await fetchText(source.url), '这个地址返回的不是日历（.ics）');
+  const text = await readCalendarFile(source.id);
+  if (text === undefined) throw new AppError('这个日历文件不在这台电脑上，请重新导入');
+  return parse(source.id, text, '这个文件不是日历（.ics）');
+}
+
+/** 导入 .ics 文件前先解析一遍：不是日历时抛 AppError；返回日历自带的名称（没有时是 undefined） */
+export async function calendarName(text: string) {
+  return (await parse('', text, '这个文件不是日历（.ics）')).name;
+}
+
+/** 解析一个日历；返回的 expand 可以反复展开任意时间段（重复日程逐次展开）。sourceId 记在每个日程上 */
+async function parse(sourceId: string, text: string, notCalendar: string): Promise<ParsedCalendar> {
   // 解析库只在需要时加载，不拖慢新标签页的首屏。
   const { default: ICAL } = await import('ical.js');
-  const parse = () => {
+  const read = () => {
     try {
       return new ICAL.Component(ICAL.parse(text));
     } catch (cause) {
-      throw new AppError('这个地址返回的不是日历（.ics）', { cause });
+      throw new AppError(notCalendar, { cause });
     }
   };
-  const root = parse();
+  const root = read();
+  // 能解析但不是日历（比如通讯录 vCard）
+  if (root.name !== 'vcalendar') throw new AppError(notCalendar);
   for (const tz of root.getAllSubcomponents('vtimezone')) ICAL.TimezoneService.register(tz);
 
   const all = root.getAllSubcomponents('vevent').map((c) => new ICAL.Event(c));
@@ -105,12 +127,12 @@ async function download(source: CalendarSource): Promise<ParsedCalendar> {
         plainText(item.component.getFirstPropertyValue('conference'), 300) ??
         (/^https?:\/\/\S+$/i.test(location ?? '') ? location : undefined);
       events.push({
-        id: `${source.id}:${item.uid}:${start}`,
+        id: `${sourceId}:${item.uid}:${start}`,
         title: item.summary || '（无标题）',
         start,
         end,
         allDay,
-        source: source.id,
+        source: sourceId,
         location,
         description,
         conference,

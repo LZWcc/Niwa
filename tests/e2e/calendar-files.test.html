@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- 页面测试：导入 .ics 文件当日历：选择文件导入多个、没有名称时用文件名、不是日历和太大的文件被拒绝、拖到卡片上导入、同名替换内容、刷新后还在、移除时文件一起删掉。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 读文件、IndexedDB 是真实的异步操作，无头模式的虚拟时间不等它们：等待期间一直向测试服务器发一个 20ms 后才返回的请求，最多等 5 秒
+const waitFor = async (ok) => { for (let i = 0; i < 250 && !(await ok()); i++) await fetch('/__tick'); };
+const pad = (n) => String(n).padStart(2, '0');
+const tomorrow = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return `${t.getFullYear()}${pad(t.getMonth() + 1)}${pad(t.getDate())}`; })();
+const ics = (name, title) => ['BEGIN:VCALENDAR', 'VERSION:2.0', ...(name ? [`X-WR-CALNAME:${name}`] : []), 'BEGIN:VEVENT', `UID:${title}@test`, `DTSTART:${tomorrow}T090000`, `DTEND:${tomorrow}T100000`, `SUMMARY:${title}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+// 测试页和新标签页同源，直接读 IndexedDB 里的文件
+const fileIn = (id) => new Promise((resolve) => {
+  const open = indexedDB.open('niwa', 1);
+  open.onupgradeneeded = () => open.result.createObjectStore('calendar-files');
+  open.onsuccess = () => { const req = open.result.transaction('calendar-files').objectStore('calendar-files').get(id); req.onsuccess = () => { open.result.close(); resolve(req.result); }; };
+});
+
+localStorage.clear();
+localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'c', kind: 'widget', type: 'calendar', size: 'l', x: 0, y: 0 }]));
+let reloaded = false;
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument;
+  const titles = () => [...d.querySelectorAll('.event-title')].map((e) => e.textContent);
+  const stored = () => JSON.parse(w.localStorage.getItem('niwa:calendars') ?? '[]');
+  const transfer = (...files) => { const dt = new w.DataTransfer(); for (const [name, text] of files) dt.items.add(new w.File([text], name, { type: 'text/calendar' })); return dt; };
+  const dlg = () => d.querySelector('.dialog-wide');
+  const error = () => dlg().querySelector('.field-error')?.textContent ?? '';
+  const done = () => [...dlg().querySelectorAll('button')].find((b) => b.textContent === '完成').click();
+  const pick = (dt) => { const input = dlg().querySelector('.file-drop input[type=file]'); input.files = dt.files; input.dispatchEvent(new w.Event('change', { bubbles: true })); };
+
+  if (reloaded) {
+    await waitFor(() => titles().includes('高数（新）'));
+    log(titles().includes('高数（新）'), `imported calendar kept after reload: ${titles()}`);
+    const course = stored().find((s) => s.name === '课程表');
+    const widget = d.querySelector('.widget'), r = widget.getBoundingClientRect();
+    widget.dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 12 })); await sleep(50);
+    [...d.querySelectorAll('.menu-item')].find((b) => b.textContent === '管理日历…').click(); await sleep(100);
+    [...dlg().querySelectorAll('.sources li')].find((li) => li.textContent.includes('课程表')).querySelector('button').click(); await sleep(50);
+    await waitFor(async () => (await fileIn(course.id)) === undefined);
+    log(stored().length === 1 && (await fileIn(course.id)) === undefined, 'removing deletes the file');
+    return;
+  }
+
+  // 选择两个文件：一个带日历名称，一个没有（用文件名）
+  d.querySelector('.cal-empty button').click(); await sleep(100);
+  pick(transfer(['course.ics', ics('课程表', '高数')], ['holidays.ics', ics(null, '国庆')]));
+  await waitFor(() => stored().length === 2);
+  log(stored().map((s) => s.name).join() === '课程表,holidays' && stored().every((s) => s.url.startsWith('file:')), `two files imported: ${JSON.stringify(stored().map((s) => s.name))}`);
+  log(dlg().querySelectorAll('.source-kind').length === 2 && [...dlg().querySelectorAll('.source-new')].every((t) => t.textContent === '已导入'), 'list marks imported files');
+
+  // 不是日历的、太大的：不导入，说明原因
+  pick(transfer(['notes.txt', 'hello'], ['big.ics', 'x'.repeat(5 * 1024 * 1024 + 1)]));
+  await waitFor(() => error());
+  log(error().includes('notes.txt：这个文件不是日历') && error().includes('big.ics 超过 5 MB') && stored().length === 2, `bad files rejected: ${error()}`);
+
+  done(); await waitFor(() => titles().includes('高数') && titles().includes('国庆'));
+  log(titles().includes('高数') && titles().includes('国庆'), `widget shows imported events: ${titles()}`);
+
+  // 拖到卡片上：打开「管理日历」并导入；同名的替换内容（id 不变，url 换一个）
+  const before = stored()[0];
+  const target = d.querySelector('.cal-list') ?? d.querySelector('.cal');
+  const dt = transfer(['course-v2.ics', ics('课程表', '高数（新）')]);
+  target.dispatchEvent(new w.DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt })); await sleep(30);
+  log(!!d.querySelector('.cal-drop.is-dropping'), 'card highlights while dragging a file');
+  target.dispatchEvent(new w.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+  await waitFor(() => stored()[0]?.url !== before.url);
+  const after = stored()[0];
+  log(dlg()?.open && stored().length === 2 && after.id === before.id && after.url !== before.url, 'drop on card replaces the same-named calendar');
+  done(); await waitFor(() => titles().includes('高数（新）'));
+  log(titles().includes('高数（新）') && !titles().includes('高数'), `replaced events shown: ${titles()}`);
+
+  reloaded = true;
+  w.location.reload();
+};
+</script>

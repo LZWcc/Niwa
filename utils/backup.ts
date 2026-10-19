@@ -1,8 +1,10 @@
 // 备份与恢复：把布局（含每个小组件自己的设置和数据，比如便签）、图标、庭的天数和偏好打包成一个 JSON 文件，在另一个浏览器里导入。
 // 导入是整体替换，不和现有数据合并；文件校验不过就整个拒绝，不只导入一部分。
-// 私密信息（日历订阅地址、天气 KEY、联想排除的网站，见 SECRETS）相当于密码，只有用户勾选时才导出；备份里没有的那几项，导入后保留这边原来的。
+// 私密信息（日历订阅地址、导入的日历文件、天气 KEY、联想排除的网站，见 SECRETS）相当于密码，只有用户勾选时才导出；备份里没有的那几项，导入后保留这边原来的。
+// 导入的日历文件存在 IndexedDB 里，读写是异步的，所以导出、导入都是异步的。
 import { DEFAULT_ITEMS } from '../config';
-import { isCalendarSource } from './calendar/ical';
+import { readCalendarFiles, replaceCalendarFiles } from './calendar/files';
+import { isCalendarSource, isFileSource } from './calendar/ical';
 import { AppError } from './errors';
 import { allLinks, isGridItem, isPoint, type GridItem, type Point, type WidgetItem } from './grid/items';
 import { isIconStore, type IconStore } from './icons/model';
@@ -14,29 +16,60 @@ import { isWeatherAccount, type Place } from './weather';
 /**
  * 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。
  * 第 6 版网格里多了收纳文件夹（旧版本不用迁移；旧版本的 Niwa 读到第 6 版会提示先更新，而不是说数据不对）。
+ * 第 7 版私密信息里多了导入的日历文件（calendarFiles）。
  */
-const VERSION = 6;
+const VERSION = 7;
 
-/** cache：替换后要清掉的缓存 */
-type Secret = { key: StorageKey; label: string; isValid: (v: unknown) => boolean; cache?: StorageKey };
+/** read：这边现在的值，没有时是 null；write：用备份里的值替换（并清掉它的缓存） */
+type Secret = { label: string; isValid: (v: unknown) => boolean; read: () => unknown; write: (v: unknown) => unknown };
+
+/** 存在 localStorage 里的一项私密数据；cache：替换后要清掉的缓存 */
+const stored = (key: StorageKey, label: string, isValid: (v: unknown) => boolean, cache?: StorageKey): Secret => ({
+  label,
+  isValid,
+  read: () => readJson(key, (v): v is unknown => isValid(v)),
+  write: (v) => {
+    writeJson(key, v);
+    if (cache) localStorage.removeItem(cache);
+  },
+});
 
 /**
  * 私密的数据：相当于密码，所有私密数据都在这里登记，备份时统一处理——只有用户勾选时才导出，
  * 导入时备份里有哪项就替换哪项（并清掉它的缓存），没有的保留这边原来的。排除的网站也算：列表本身会暴露不想被看到的网站。
  */
-const SECRETS: Record<'calendars' | 'weatherAccount' | 'searchExclude', Secret> = {
-  calendars: {
-    key: KEYS.calendars,
-    label: '日历订阅地址',
-    isValid: (v) => Array.isArray(v) && v.length > 0 && v.every(isCalendarSource),
-    cache: KEYS.calendarCache,
+const SECRETS: Record<'calendars' | 'calendarFiles' | 'weatherAccount' | 'searchExclude', Secret> = {
+  calendars: stored(
+    KEYS.calendars,
+    '日历订阅地址',
+    (v) => Array.isArray(v) && v.length > 0 && v.every(isCalendarSource),
+    KEYS.calendarCache,
+  ),
+  // 导入的 .ics 文件（IndexedDB，见 calendar/files.ts）：日历 id → 内容。日程里可能有私人安排，和订阅地址一样算私密。
+  calendarFiles: {
+    label: '导入的日历文件',
+    isValid: (v) =>
+      typeof v === 'object' &&
+      v !== null &&
+      !Array.isArray(v) &&
+      Object.keys(v).length > 0 &&
+      Object.values(v).every((t) => typeof t === 'string'),
+    read: async () => {
+      const files = await readCalendarFiles(
+        readList(KEYS.calendars, isCalendarSource, [])
+          .filter(isFileSource)
+          .map((s) => s.id),
+      );
+      return Object.keys(files).length ? files : null;
+    },
+    write: (v) => replaceCalendarFiles(v as Record<string, string>),
   },
-  weatherAccount: { key: KEYS.weatherAccount, label: '天气 KEY', isValid: isWeatherAccount, cache: KEYS.weatherCache },
-  searchExclude: {
-    key: KEYS.searchExclude,
-    label: '联想排除的网站',
-    isValid: (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string'),
-  },
+  weatherAccount: stored(KEYS.weatherAccount, '天气 KEY', isWeatherAccount, KEYS.weatherCache),
+  searchExclude: stored(
+    KEYS.searchExclude,
+    '联想排除的网站',
+    (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string'),
+  ),
 };
 type SecretName = keyof typeof SECRETS;
 
@@ -54,13 +87,13 @@ export type BackupData = {
   visits: Visits | null;
   engine: string | null;
   theme: ThemeChoice;
-  /** 勾选时才有的私密数据，按 SECRETS 的名称存（第 3 版起，第 4 版加了排除的网站；之前的版本只有日历，放在 data.calendars） */
+  /** 勾选时才有的私密数据，按 SECRETS 的名称存（第 3 版起，第 4 版加了排除的网站，第 7 版加了导入的日历文件；之前的版本只有日历，放在 data.calendars） */
   secrets?: Partial<Record<SecretName, unknown>>;
 };
 
 export type Backup = { app: 'niwa'; version: number; exportedAt: string; data: BackupData };
 
-export function createBackup(includeSecrets: boolean): Backup {
+export async function createBackup(includeSecrets: boolean): Promise<Backup> {
   const data: BackupData = {
     grid: readList(KEYS.grid, isGridItem, DEFAULT_ITEMS),
     addTile: readJson(KEYS.addTile, isPoint),
@@ -71,7 +104,7 @@ export function createBackup(includeSecrets: boolean): Backup {
   };
   if (includeSecrets) {
     // 这边没有的（没连日历、没填天气 KEY）不带，导入时就保留那边原来的。
-    const entries = Object.entries(SECRETS).map(([name, s]) => [name, readJson(s.key, (v): v is unknown => s.isValid(v))]);
+    const entries = await Promise.all(Object.entries(SECRETS).map(async ([name, s]) => [name, await s.read()]));
     data.secrets = Object.fromEntries(entries.filter(([, value]) => value !== null));
   }
   return { app: 'niwa', version: VERSION, exportedAt: new Date().toISOString(), data };
@@ -140,8 +173,11 @@ export function parseBackup(text: string): Backup {
 }
 
 /** 用备份替换现在的数据。写完要重新加载页面。 */
-export function restoreBackup({ data }: Backup) {
-  // 图片最大，先写：存不下时在这一步就失败，别的数据还没动。
+export async function restoreBackup({ data }: Backup) {
+  const { calendarFiles, ...secrets } = data.secrets ?? {};
+  // 日历文件写进 IndexedDB 是异步的，最先写：失败时这边的数据还没动。
+  if (calendarFiles !== undefined) await SECRETS.calendarFiles.write(calendarFiles);
+  // 图片最大，接着写：存不下时在这一步就失败，别的数据还没动。
   writeJson(KEYS.icons, data.icons);
   writeJson(KEYS.grid, data.grid);
   if (data.addTile) writeJson(KEYS.addTile, data.addTile);
@@ -152,9 +188,5 @@ export function restoreBackup({ data }: Backup) {
   else localStorage.removeItem(KEYS.engine);
   localStorage.setItem(KEYS.theme, data.theme);
   localStorage.removeItem(KEYS.weatherCache);
-  for (const [name, value] of Object.entries(data.secrets ?? {})) {
-    const secret = SECRETS[name as SecretName];
-    writeJson(secret.key, value);
-    if (secret.cache) localStorage.removeItem(secret.cache);
-  }
+  for (const [name, value] of Object.entries(secrets)) SECRETS[name as SecretName].write(value);
 }

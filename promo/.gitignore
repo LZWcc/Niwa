@@ -1,0 +1,4 @@
+node_modules
+out
+# 由 pnpm assets 生成（niwa 的截图）
+public

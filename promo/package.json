@@ -1,0 +1,17 @@
+{
+  "name": "niwa-promo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "cd .. && pnpm exec wxt build -b edge && node scripts/screenshots.mjs promo/public",
+    "still": "remotion still src/index.ts",
+    "render": "remotion render src/index.ts",
+    "music": "node music.ts"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.536",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "4.0.536"
+  }
+}

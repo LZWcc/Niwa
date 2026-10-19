@@ -3,5 +3,7 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx"
-  }
+  },
+  // 宣传片（promo/）有自己的依赖和 tsconfig；这里重写 exclude 要带上 .wxt/tsconfig.json 原来排除的
+  "exclude": ["promo", ".output", "**/node_modules"]
 }

@@ -267,7 +267,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 - **记录只有一个出口**：`reportError`。现在只打到控制台（新标签页不联网）；以后要存日志或上报，只改这一个函数。
 - 多个互不相关的请求用 `Promise.allSettled`，一个失败不影响其他的（例如多个日历）。
 
-## 打包
+## 打包与发布
 
 ```sh
 pnpm exec wxt build -b edge
@@ -276,6 +276,16 @@ pnpm exec wxt build -b edge
 Edge 构建输出位于 `.output/edge-mv3/`。可以在日常浏览器的 `edge://extensions` 中开启开发人员模式，通过“加载解压缩的扩展”选择该目录。不要直接修改 `.output/` 或 `.wxt/`，它们是生成目录。
 
 `pnpm zip` 打成 `.output/niwa-<版本>-edge.zip`，上架扩展商店或发给别人用。版本号取自 `package.json` 的 `version`。
+
+平时开发正常提交、推送就行，推送不算发版。攒够一批改动再发一个版本，GitHub Release 和 [Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/niwa/aonnmkpdcdkcfhcionbpmigmfbjcmnec) 用同一个版本号、同一个 zip：
+
+1. **检查**：`pnpm check`、`pnpm test` 都通过。界面变了就 `pnpm screenshots` 重新截 README 和商店用的图。
+2. **改版本号**：只改 `package.json` 的 `version`（manifest 的版本取自它），单独提交一次 `chore: v0.2.0`。只修 bug 加最后一位（0.1.2），有新功能加中间一位（0.2.0）；商店要求比已上架的版本大。
+3. **打包**：`pnpm zip`。上传前把 zip 解压，用「加载解压缩的扩展」装一次试试。
+4. **GitHub**：`git tag v0.2.0`、`git push origin main --tags`，再 `gh release create v0.2.0 .output/niwa-0.2.0-edge.zip --title "v0.2.0 · 一句话标题" --notes-file <说明>`。说明分「新功能 / 其他 / 安装」三段，写给用户看（照之前的 Release）。
+5. **Edge 扩展商店**：在 [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview) 打开 Niwa，「Packages」上传同一个 zip，功能有变化时一并更新「Store listings」的描述和截图，点「Publish」提交审核。审核最长约 7 个工作日，期间旧版本照常可用；通过后用户自动更新。
+
+新版本如果在 `wxt.config.ts` 的 `permissions`（安装时就有的权限）里加了新权限，用户更新后扩展会先被停用，要用户点同意才恢复，审核也会看得更细。所以新功能要用的权限尽量放进 `optional_permissions`，用到时再申请。
 
 只支持 Chromium 内核的浏览器（Edge、Chrome）：用到了浏览器本地缓存的网站图标（`favicon` 权限、`_favicon`）等 Firefox 没有的接口，所以没有 Firefox 的构建脚本。
 

@@ -6,6 +6,8 @@
 
 <p align="center">一方安静的新标签页：节气与山水，快捷方式和小组件自由摆放。<br>适用于 Edge / Chrome，数据都留在你自己的浏览器里。</p>
 
+<p align="center"><a href="https://microsoftedge.microsoft.com/addons/detail/niwa/aonnmkpdcdkcfhcionbpmigmfbjcmnec">Edge 扩展商店</a> · <a href="../../releases">下载 zip</a></p>
+
 ![浅色：山水](docs/images/light.png)
 
 ![深色：夜庭](docs/images/dark.png)
@@ -30,12 +32,16 @@
 
 ## 安装
 
-扩展商店的版本还在准备中。现在可以先手动安装：
+**Edge**：在 [Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/niwa/aonnmkpdcdkcfhcionbpmigmfbjcmnec) 点「获取」，以后会自动更新。
+
+**Chrome，或者想先用上最新版**：商店的新版本要等审核，可能比 GitHub 晚几天。也可以手动安装（不会自动更新，有新版本时重新下载、覆盖原来的文件夹，再到扩展页点「重新加载」）：
 
 1. 在 [Releases](../../releases) 下载最新的 `niwa-<版本>-edge.zip`，解压到一个不会删掉的文件夹。
 2. 打开 `edge://extensions`（Chrome 是 `chrome://extensions`），打开「开发人员模式」。
 3. 点「加载解压缩的扩展」，选择刚才解压出来的文件夹。
 4. 打开一个新标签页；浏览器问要不要保留更改时，选择保留。
+
+商店版和手动安装的是两个不同的扩展，数据不互通。从手动安装换到商店版：先在原来的 Niwa 里「设置 › 备份与恢复」导出，装好商店版后再导入，然后移除原来那个。
 
 想自己构建：
 

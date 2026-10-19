@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 页面测试：计时器——倒计时的时长、开始暂停继续重置、正计时、到点显示时间到，以及放两个时各走各的。由 tests/e2e/run.mjs 运行。 -->
+<!-- 页面测试：计时器——倒计时的时长（滑块、箭头、双击某一段打数字）、开始暂停继续重置、正计时、到点显示时间到，以及放两个时各走各的。由 tests/e2e/run.mjs 运行。 -->
 <meta charset="utf-8">
 <body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
 <script>
@@ -57,6 +57,82 @@ f.onload = async () => {
   log(time(tw) === '04:00', `arrow key: ${time(tw)}`);
   await tap('秒', -1);
   log(time(tw) === '04:59' && state(id).duration === 299000, `seconds wrap without touching minutes: ${time(tw)}`);
+  // 双击某一段打数字改这一段：打满两位跳到右边一段；点别处、回车保存，Esc 取消；冒号不用管
+  const box = () => tw.querySelector('.timer-time.is-editable');
+  const active = () => tw.querySelector('.timer-seg.is-active')?.getAttribute('aria-label') ?? null;
+  // 一个键一个键地按，中间让页面更新（真实打字也是这样）
+  const keys = async (...list) => {
+    for (const key of list) {
+      const [, mod, k] = key.match(/^(?:(Meta|Control)\+)?(.+)$/);
+      box().dispatchEvent(new w.KeyboardEvent('keydown', { key: k, metaKey: mod === 'Meta', ctrlKey: mod === 'Control', bubbles: true, cancelable: true }));
+      await sleep(20);
+    }
+    await sleep(30);
+  };
+  const edit = async (label) => { seg(label).querySelector('.clock-digit').dispatchEvent(new w.MouseEvent('dblclick', { bubbles: true })); await sleep(50); };
+  await edit('分钟');
+  log(active() === '分钟' && d.activeElement === box() && time(tw) === '04:59', `double click selects that segment: ${active()}`);
+  await keys('2');
+  log(time(tw) === '02:59' && active() === '分钟' && state(id).duration === 299000, `first digit replaces, not saved yet: ${time(tw)}`);
+  await keys('5');
+  log(time(tw) === '25:59' && active() === '秒', `two digits move on to seconds: ${active()}`);
+  await keys('3', '0');
+  log(time(tw) === '25:30' && active() === '秒', `keeps typing into seconds: ${time(tw)}`);
+  box().blur(); await sleep(50);
+  log(!active() && state(id).duration === 1530000, `blur saves: ${time(tw)}`);
+  // 分钟第一位打 7：不可能再有第二位，直接到秒
+  await edit('分钟'); await keys('7');
+  log(time(tw) === '07:30' && active() === '秒', `digit over 5 jumps ahead: ${time(tw)}`);
+  await keys('9', '9');
+  log(time(tw) === '07:09' && active() === '秒', `seconds 9 can't take a second digit, next one replaces it: ${time(tw)}`);
+  await keys('Escape');
+  log(!active() && time(tw) === '25:30' && state(id).duration === 1530000, `escape cancels: ${time(tw)}`);
+  // 只改秒：分钟不动
+  await edit('秒'); await keys('0', '5', 'Enter');
+  log(time(tw) === '25:05' && state(id).duration === 1505000, `edit seconds only: ${time(tw)}`);
+  // ← → 换段，↑ ↓ 加减，退格清零，字母不理
+  await edit('秒'); await keys('ArrowLeft');
+  log(active() === '分钟', 'arrow left moves to minutes');
+  await keys('ArrowUp', 'ArrowUp', 'a', ':');
+  log(time(tw) === '27:05', `arrow up adds, letters ignored: ${time(tw)}`);
+  await keys('Backspace');
+  log(time(tw) === '00:05', `backspace clears the segment: ${time(tw)}`);
+  await keys('ArrowRight');
+  log(active() === '秒', 'arrow right moves to seconds');
+  // ⌘A / Ctrl+A 只重新选中这一段，接着打就换掉
+  await keys('4');
+  const selectAll = new w.KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true, cancelable: true });
+  box().dispatchEvent(selectAll); await sleep(30);
+  await keys('1');
+  log(selectAll.defaultPrevented && time(tw) === '00:01', `ctrl+a reselects the segment: ${time(tw)}`);
+  const cmd1 = new w.KeyboardEvent('keydown', { key: '1', metaKey: true, bubbles: true, cancelable: true });
+  box().dispatchEvent(cmd1); await sleep(30);
+  log(!cmd1.defaultPrevented && time(tw) === '00:01', 'cmd+1 left to the browser');
+  // 全是 0 当没改
+  await keys('ArrowLeft', 'Meta+a', '0', '0', '0', 'Enter');
+  log(state(id).duration === 1505000 && time(tw) === '25:05', `all zeros changes nothing: ${time(tw)}`);
+  // 改着的时候点另一段：换过去，不算点到别处
+  await edit('分钟');
+  seg('秒').dispatchEvent(new w.MouseEvent('mousedown', { bubbles: true, cancelable: true })); await sleep(30);
+  log(active() === '秒' && d.activeElement === box(), 'clicking another segment switches to it');
+  await keys('Escape');
+  // 有小时时：小时这一段也能改，打满跳到分钟；小时最多 24
+  for (let i = 0; i < 36; i++) await tap('分钟', 1);
+  log(time(tw) === '1:01:05', `minutes carry into hours: ${time(tw)}`);
+  await edit('小时'); await keys('3');
+  log(time(tw) === '3:01:05' && active() === '分钟', `hour digit over 2 jumps ahead: ${time(tw)}`);
+  await keys('Escape');
+  await edit('小时'); await keys('2', '9');
+  log(time(tw) === '24:01:05' && active() === '分钟', `hours capped at 24: ${time(tw)}`);
+  await keys('Enter');
+  log(state(id).duration === 86400000, `capped at one day: ${time(tw)}`);
+  // 双击箭头是在连点，不进入输入；聚焦一段数字按回车也能改
+  seg('秒').querySelector('.is-up').dispatchEvent(new w.MouseEvent('dblclick', { bubbles: true })); await sleep(50);
+  log(!active(), 'double click on arrow does not start editing');
+  seg('秒').focus(); seg('秒').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(50);
+  log(active() === '秒', 'enter on a segment starts editing it');
+  await keys('Escape');
+
   // 滑块还停在 5 分钟那一格：挪开再挪回来，回到整 5 分钟
   slide(3); await sleep(50); slide(4); await sleep(50);
   log(time(tw) === '05:00', `slider snaps back to whole minutes: ${time(tw)}`);

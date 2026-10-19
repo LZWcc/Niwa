@@ -86,6 +86,19 @@
 .timer-seg:focus-visible .timer-arrow {
   opacity: 1;
 }
+/* 双击某一段打数字：正在改的那一段像选中的文字；改的时候不显示箭头（用键盘 ↑ ↓） */
+.timer-time.is-editable {
+  user-select: none;
+}
+.timer-time.is-typing {
+  outline: 0;
+}
+.timer-seg.is-active {
+  background: color-mix(in srgb, var(--focus) 35%, transparent);
+}
+.timer-time.is-typing .timer-arrow {
+  display: none;
+}
 .timer-bar {
   width: 80%;
   height: 3px;

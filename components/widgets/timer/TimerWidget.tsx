@@ -18,7 +18,7 @@ import type { WidgetProps } from '../types';
 import WidgetFrame from '../WidgetFrame';
 import WidgetHeader from '../WidgetHeader';
 
-// 计时器：倒计时（还没开始时用滑块粗调时长，面板上时、分、秒上下的箭头细调）和正计时。状态在自己的 settings.timer 里，只记开始的时刻，
+// 计时器：倒计时（还没开始时用滑块粗调时长，面板上时、分、秒上下的箭头细调，或者双击某一段直接打数字）和正计时。状态在自己的 settings.timer 里，只记开始的时刻，
 // 刷新页面、开着几个标签页都接着走；放几个计时器就各走各的。
 // 倒计时开始时定一个闹钟，到点由后台脚本发系统通知，新标签页关了也能收到。
 // 通知权限在第一次开始倒计时时问一次（浏览器只许在点击里问），之后在菜单里开关；没给时后台改弹一个提醒小窗。
@@ -36,13 +36,17 @@ const digits = (text: string) =>
     </span>
   ));
 
-type SegmentProps = { text: string; label: string; onStep: (direction: 1 | -1) => void };
+type Unit = 'h' | 'm' | 's';
+/** 双击输入时每一段的上限：最长一天 */
+const UNIT_MAX: Record<Unit, number> = { h: 24, m: 59, s: 59 };
+
+type SegmentProps = { unit: Unit; text: string; label: string; active: boolean; onStep: (direction: 1 | -1) => void };
 
 /**
  * 倒计时还没开始时，面板上可以调的一段数字（时、分或秒）：悬停时上下出现箭头，点一下加减一，按住不放连续加减、越来越快；
- * 聚焦后也可以按 ↑ ↓。onStep 按当时的设置算（连按时不会用旧值）。
+ * 聚焦后也可以按 ↑ ↓。onStep 按当时的设置算（连按时不会用旧值）。active：双击输入时正在改的这一段。
  */
-function Segment({ text, label, onStep }: SegmentProps) {
+function Segment({ unit, text, label, active, onStep }: SegmentProps) {
   const hold = useRef<number>(undefined);
   const release = () => clearTimeout(hold.current);
   useEffect(() => release, []);
@@ -81,7 +85,8 @@ function Segment({ text, label, onStep }: SegmentProps) {
   );
   return (
     <span
-      className="timer-seg"
+      className={active ? 'timer-seg is-active' : 'timer-seg'}
+      data-unit={unit}
       role="spinbutton"
       tabIndex={0}
       aria-label={label}
@@ -103,6 +108,9 @@ export default function TimerWidget({ widget, frame, settings, onSettings }: Wid
   const { size } = widget;
   const timer = settings.timer ?? DEFAULT_TIMER;
   const [notify, requestNotify, revokeNotify] = usePermissions(NOTIFY);
+  // 双击某一段（或聚焦后按回车）打数字改时长：改到一半的时、分、秒，正在改哪一段（unit），
+  // fresh：这一段还没打过数字（刚选中、按了 ⌘A / Ctrl+A），打第一个数字时换掉；hours：显示小时那一段。null：没在改
+  const [editing, setEditing] = useState<{ h: number; m: number; s: number; unit: Unit; fresh: boolean; hours: boolean } | null>(null);
   const countdown = timer.mode === 'countdown';
   const running = timer.startedAt !== null;
   const spent = spentOf(timer, Date.now());
@@ -110,6 +118,8 @@ export default function TimerWidget({ widget, frame, settings, onSettings }: Wid
   const idle = !running && timer.elapsed === 0;
   const total = Math.round(timer.duration / 1000);
   const [editHours, editMinutes, editSeconds] = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60];
+  const showHours = editing ? editing.hours : editHours > 0;
+  const units: Unit[] = showHours ? ['h', 'm', 's'] : ['m', 's'];
   // 滑块停在最接近当前时长的那一格
   const minutes = timer.duration / 60_000;
   const step = STEPS.reduce((best, m, i) => (Math.abs(m - minutes) < Math.abs(STEPS[best]! - minutes) ? i : best), 0);
@@ -141,6 +151,30 @@ export default function TimerWidget({ widget, frame, settings, onSettings }: Wid
       const seconds = Math.round(d / 1000) % 60;
       return d + (((((seconds + direction) % 60) + 60) % 60) - seconds) * 1000;
     });
+  const startEditing = (target: EventTarget) => {
+    const unit = ((target as Element).closest<HTMLElement>('[data-unit]')?.dataset.unit ?? 'm') as Unit;
+    setEditing({ h: editHours, m: editMinutes, s: editSeconds, unit, fresh: true, hours: editHours > 0 });
+  };
+  // 打一个数字：这一段打满两位（或者第一位就大到不可能再有第二位，比如分钟打 7）就跳到右边一段，接着打改下一段
+  const type = (digit: number) =>
+    setEditing((e) => {
+      const { unit, fresh } = e!;
+      const full = !fresh || digit * 10 > UNIT_MAX[unit];
+      const next = units[units.indexOf(unit) + 1];
+      return {
+        ...e!,
+        [unit]: Math.min(UNIT_MAX[unit], fresh ? digit : e![unit] * 10 + digit),
+        unit: full && next ? next : unit,
+        fresh: full,
+      };
+    });
+  // 回车、点到别处都算确认；全是 0 就当没改
+  const commit = () => {
+    const { h, m, s } = editing!;
+    const duration = ((h * 60 + m) * 60 + s) * 1000;
+    if (duration) set({ duration: Math.min(MAX_DURATION, duration) });
+    setEditing(null);
+  };
   const stop = (change: Partial<TimerState>) => {
     set({ elapsed: 0, startedAt: null, ...change });
     void clearTimerAlarm(widget.id);
@@ -206,17 +240,80 @@ export default function TimerWidget({ widget, frame, settings, onSettings }: Wid
         <div className="timer-body">
           <div className={done ? 'timer-panel widget-panel is-dotted is-done' : 'timer-panel widget-panel is-dotted'}>
             {countdown && idle ? (
-              // 还没开始：时、分、秒可以一段一段地调
-              <span className="timer-time is-editable">
-                {editHours > 0 && (
+              // 还没开始：时、分、秒可以一段一段地调；双击某一段（不在箭头上）或聚焦后按回车，打数字改这一段，冒号不用管
+              <span
+                ref={editing ? (el) => el?.focus() : undefined}
+                className={editing ? 'timer-time is-editable is-typing' : 'timer-time is-editable'}
+                tabIndex={editing ? -1 : undefined}
+                title={editing ? undefined : '双击输入时长'}
+                onDoubleClick={(e) => {
+                  if (!editing && !(e.target as Element).closest('.timer-arrow')) startEditing(e.target);
+                }}
+                // 改着的时候点另一段：换到那一段，焦点留在这里（不然算点到别处）
+                onMouseDown={(e) => {
+                  const seg = (e.target as Element).closest<HTMLElement>('[data-unit]');
+                  if (!editing || !seg) return;
+                  e.preventDefault();
+                  setEditing({ ...editing, unit: seg.dataset.unit as Unit, fresh: true });
+                }}
+                onKeyDown={(e) => {
+                  if (!editing) {
+                    if (e.key === 'Enter') startEditing(e.target);
+                    return;
+                  }
+                  const { unit } = editing;
+                  const at = units.indexOf(unit);
+                  // ⌘A / Ctrl+A 重新选中这一段（不然浏览器会选中整页）；别的带 ⌘ / Ctrl / Alt 的组合键（⌘1、⌘R）交给浏览器
+                  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') setEditing({ ...editing, fresh: true });
+                  else if (e.metaKey || e.ctrlKey || e.altKey) return;
+                  else if (/^\d$/.test(e.key)) type(Number(e.key));
+                  else if (e.key === 'Backspace') setEditing({ ...editing, [unit]: 0, fresh: true });
+                  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight')
+                    setEditing({
+                      ...editing,
+                      unit: units[Math.min(units.length - 1, Math.max(0, at + (e.key === 'ArrowRight' ? 1 : -1)))]!,
+                      fresh: true,
+                    });
+                  else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    const span = UNIT_MAX[unit] + 1;
+                    setEditing({ ...editing, [unit]: (editing[unit] + (e.key === 'ArrowUp' ? 1 : -1) + span) % span, fresh: true });
+                  } else if (e.key === 'Enter') commit();
+                  else if (e.key === 'Escape') setEditing(null);
+                  else return;
+                  e.preventDefault();
+                }}
+                // 焦点离开整个时间才算点到别处（开始改时焦点从某一段挪到这里，那一段的 blur 也会冒泡上来）
+                onBlur={(e) => {
+                  if (editing && !e.currentTarget.contains(e.relatedTarget)) commit();
+                }}
+              >
+                {showHours && (
                   <>
-                    <Segment text={String(editHours)} label="小时" onStep={(d) => adjust((x) => x + d * 3_600_000)} />
+                    <Segment
+                      unit="h"
+                      text={String(editing ? editing.h : editHours)}
+                      label="小时"
+                      active={editing?.unit === 'h'}
+                      onStep={(d) => adjust((x) => x + d * 3_600_000)}
+                    />
                     <span className="timer-colon">:</span>
                   </>
                 )}
-                <Segment text={pad2(editMinutes)} label="分钟" onStep={(d) => adjust((x) => x + d * 60_000)} />
+                <Segment
+                  unit="m"
+                  text={pad2(editing ? editing.m : editMinutes)}
+                  label="分钟"
+                  active={editing?.unit === 'm'}
+                  onStep={(d) => adjust((x) => x + d * 60_000)}
+                />
                 <span className="timer-colon">:</span>
-                <Segment text={pad2(editSeconds)} label="秒" onStep={stepSeconds} />
+                <Segment
+                  unit="s"
+                  text={pad2(editing ? editing.s : editSeconds)}
+                  label="秒"
+                  active={editing?.unit === 's'}
+                  onStep={stepSeconds}
+                />
               </span>
             ) : (
               <span className="timer-time" role="timer" aria-live="off">

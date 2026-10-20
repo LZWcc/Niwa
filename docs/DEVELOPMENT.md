@@ -40,9 +40,9 @@ entrypoints/newtab/        新标签页入口
     page/  search/  grid/  widgets/          和 components/ 对应
 components/
   common/                  Popover（挂在 body 上、按视口定位的弹出层）、Dialog（原生 <dialog> 的模态对话框）、ErrorBoundary
-  page/                    Scene（背景的景）、Clock（时间、日期、节气）、ThemeToggle（浅色 / 深色）、SettingsButton（设置面板，见「设置」）、BackupDialog（备份与恢复）
+  page/                    Scene（背景的景）、Clock（时间、日期、节气）、AddButton（右上角的「添加」菜单）、ThemeToggle（浅色 / 深色）、SettingsButton（设置面板，见「设置」）、BackupDialog（备份与恢复）
   search/                  Search（搜索框与搜索引擎菜单）、Suggestions（收藏和浏览记录的联想）
-  grid/                    网格：Grid（组装）、AddTile、Shortcut、ShortcutIcon、ShortcutDialog、IconPicker（选图标）、Folder 和 FolderPanel（收纳文件夹）
+  grid/                    网格：Grid（组装）、Shortcut、ShortcutIcon、ShortcutDialog、IconPicker（选图标）、Folder 和 FolderPanel（收纳文件夹）
   widgets/                 小组件
     index.ts               每种小组件对应哪个组件（注册表）
     types.ts               小组件的参数约定（WidgetProps、FrameProps）
@@ -55,7 +55,7 @@ components/
 hooks/
   grid/
     useGrid.ts             网格数据：增删改，存 niwa:grid；快捷方式的图标图片存 niwa:icons
-    useGridLayout.ts       摆放：列数、每一格在哪（含「添加」）、新格子放哪、改尺寸怎么让
+    useGridLayout.ts       摆放：列数、每一格在哪、新格子放哪、改尺寸怎么让
     useGridDrag.ts         拖动交互：指针、吸附、占位框、自动滚动、Esc 取消、停在图标上合成文件夹
     useFolderDrag.ts       打开的文件夹里的拖动：换顺序、拖出去交给网格
     useFlip.ts             布局动画：改数据前后各格从旧位置弹到新位置
@@ -133,11 +133,11 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 
 数据流：`useGrid`（存什么）→ `useGridLayout`（结合当前列数算出每一格在哪）→ `Grid` 画出来；拖动由 `useGridDrag` 处理，增删、改尺寸、拖动都经过 `useFlip` 的 `animate`，其余格子会滑到新位置。
 
-- 「添加」也是一个能拖的格子，位置存在 `niwa:add`，第一次打开时放在最后一格后面。新加的格子：「添加」排在最后时占它的位置、它往后挪一格；否则接在最后一格后面，不填前面留的空。
+- 「添加」在右上角（`page/AddButton.tsx`，和设置、浅色 / 深色放在一起），不占网格。菜单里选的（`adding`）由 `App` 交给 `Grid`，在那里打开新建快捷方式的对话框或小组件库。新加的格子接在最后一格后面，不填前面留的空（拖出小组件库的放在松手的地方）。以前「添加」是网格里的一格，位置存在 `niwa:add`，现在不读了。
 - 没有位置的项（第一次打开时的默认项）按顺序补进空位并保存；窗口变窄、某一格超出列数时临时挪到空位里，不改保存的位置。
 - 页面打开期间不移动 DOM 节点，位置全靠 `grid-column` / `grid-row`（移动节点会让毛玻璃重建合成层、闪一下）。
 
-拖放规则在 `utils/grid/layout.ts`。拖 1×1 的格子（快捷方式、文件夹、「添加」）参照手机桌面（`insertIcon`）：
+拖放规则在 `utils/grid/layout.ts`。拖 1×1 的格子（快捷方式、文件夹）参照手机桌面（`insertIcon`）：
 
 - 落点是指针所在的格子：空格子直接放下；有别的 1×1 就插进去，从那里往被拖那块原来的格子那边按阅读顺序一个个顺移一格，碰到第一个空格子就停（远处的不动），被组件盖住的格子跳过；组件盖住的格子不接受。
 - 总是从拖动开始时的摆放算，拖回原处就复原。指针停稳（慢于 0.15 像素/毫秒持续 0.2 秒）才让位，划过、减速经过的格子都不动；没停稳就松手，照常插到指针所在的格子。
@@ -193,7 +193,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 3. 在 `components/widgets/index.ts` 的 `WIDGET_COMPONENTS` 里对上组件。
 4. 每个小组件自己的设置和数据（同一种放了几个时各管各的）放在 `settings` 里：在 `utils/grid/items.ts` 的 `WidgetSettings` 加字段并补上校验，组件里读 `settings`、用 `onSettings` 改。几个小组件共用的数据（比如日程的日历）才在 `utils/storage.ts` 的 `KEYS` 里加一个键，用 `useStoredList` 或 `readJson` / `writeJson` 读写。
 5. 样式加到 `entrypoints/newtab/styles/widgets/`，新文件记得在 `index.css` 里引入。
-6. 小组件库（`components/grid/WidgetGallery.tsx`，点「添加」→「小组件」打开）会自动列出新的小组件，预览就是真组件，包在 `SampleContext` 里画。要联网、读浏览器数据、申请权限或写存储的数据钩子，先用 `useSample()` 判断：预览里不做这些，改返回 `utils/sample.ts` 里的演示数据；需要预设内容的（便签的内容、天气的城市）在 `sampleSettings` 里补。`tests/e2e/gallery.test.html` 会检查每种预览都有内容、不发请求、不写存储。
+6. 小组件库（`components/grid/WidgetGallery.tsx`，点右上角的「添加」→「小组件」打开）会自动列出新的小组件，预览就是真组件，包在 `SampleContext` 里画。要联网、读浏览器数据、申请权限或写存储的数据钩子，先用 `useSample()` 判断：预览里不做这些，改返回 `utils/sample.ts` 里的演示数据；需要预设内容的（便签的内容、天气的城市）在 `sampleSettings` 里补。`tests/e2e/gallery.test.html` 会检查每种预览都有内容、不发请求、不写存储。
 
 ## 代码约定
 

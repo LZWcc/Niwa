@@ -24,7 +24,7 @@ f.onload = async () => {
   await sleep(500);
   const w = f.contentWindow, d = f.contentDocument;
   const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
-  const openAdd = async (name) => { d.querySelector('.grid-add .shortcut-add').click(); await sleep(50); await galleryAdd(d, name); await sleep(100); };
+  const openAdd = async (name) => { d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50); await galleryAdd(d, name); await sleep(100); };
   const resize = async (el, size) => {
     toggleMenu(el); await sleep(50);
     [...d.querySelectorAll('.widget-menu .segmented button')].find((b) => b.textContent === size).click(); await sleep(80);

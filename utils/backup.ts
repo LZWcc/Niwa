@@ -6,7 +6,7 @@ import { DEFAULT_ITEMS } from '../config';
 import { readCalendarFiles, replaceCalendarFiles } from './calendar/files';
 import { isCalendarSource, isFileSource } from './calendar/ical';
 import { AppError } from './errors';
-import { allLinks, isGridItem, isPoint, type GridItem, type Point, type WidgetItem } from './grid/items';
+import { allLinks, isGridItem, type GridItem, type WidgetItem } from './grid/items';
 import { isIconStore, type IconStore } from './icons/model';
 import { KEYS, readJson, readList, writeJson, type StorageKey } from './storage';
 import { isThemeChoice, readThemeChoice, type ThemeChoice } from './theme';
@@ -17,8 +17,9 @@ import { isWeatherAccount, type Place } from './weather';
  * 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。
  * 第 6 版网格里多了收纳文件夹（旧版本不用迁移；旧版本的 Niwa 读到第 6 版会提示先更新，而不是说数据不对）。
  * 第 7 版私密信息里多了导入的日历文件（calendarFiles）。
+ * 第 8 版去掉了「添加」格子的位置（addTile，「添加」挪到了右上角；旧备份里的不用管，导入时不读）。
  */
-const VERSION = 7;
+const VERSION = 8;
 
 /** read：这边现在的值，没有时是 null；write：用备份里的值替换（并清掉它的缓存） */
 type Secret = { label: string; isValid: (v: unknown) => boolean; read: () => unknown; write: (v: unknown) => unknown };
@@ -81,8 +82,6 @@ export const secretsIn = (data: BackupData) => Object.keys(data.secrets ?? {}).m
 
 export type BackupData = {
   grid: GridItem[];
-  /** 「添加」格子的位置 */
-  addTile: Point | null;
   icons: IconStore;
   visits: Visits | null;
   engine: string | null;
@@ -96,7 +95,6 @@ export type Backup = { app: 'niwa'; version: number; exportedAt: string; data: B
 export async function createBackup(includeSecrets: boolean): Promise<Backup> {
   const data: BackupData = {
     grid: readList(KEYS.grid, isGridItem, DEFAULT_ITEMS),
-    addTile: readJson(KEYS.addTile, isPoint),
     icons: readJson(KEYS.icons, isIconStore) ?? {},
     visits: readJson(KEYS.visits, isVisits),
     engine: localStorage.getItem(KEYS.engine),
@@ -116,7 +114,6 @@ function findProblem(d: BackupData): string | null {
   // 文件夹里的快捷方式也算：图标图片按 id 存
   const ids = [...d.grid, ...allLinks(d.grid).filter((link) => !d.grid.includes(link))].map((item) => item.id);
   if (new Set(ids).size !== ids.length) return '有重复的格子';
-  if (d.addTile !== null && !isPoint(d.addTile)) return '「添加」的位置不对';
   if (!isIconStore(d.icons)) return '图标的数据不对';
   if (allLinks(d.grid).some((link) => link.icon?.kind === 'image' && !d.icons[link.id])) return '缺少图标图片';
   if (d.visits !== null && !isVisits(d.visits)) return '庭的数据不对';
@@ -180,8 +177,6 @@ export async function restoreBackup({ data }: Backup) {
   // 图片最大，接着写：存不下时在这一步就失败，别的数据还没动。
   writeJson(KEYS.icons, data.icons);
   writeJson(KEYS.grid, data.grid);
-  if (data.addTile) writeJson(KEYS.addTile, data.addTile);
-  else localStorage.removeItem(KEYS.addTile);
   if (data.visits) writeJson(KEYS.visits, data.visits);
   else localStorage.removeItem(KEYS.visits);
   if (data.engine) localStorage.setItem(KEYS.engine, data.engine);

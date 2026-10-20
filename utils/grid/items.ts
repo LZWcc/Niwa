@@ -43,9 +43,8 @@ export const sizeOf = (item: GridItem): Size => (item.kind === 'widget' ? WIDGET
 export const allLinks = (items: GridItem[]): LinkItem[] =>
   items.flatMap((item) => (item.kind === 'link' ? [item] : item.kind === 'folder' ? item.links : []));
 
-/** 网格里的一个格子位置（「添加」格子的位置用它） */
+/** 网格里的一个格子位置 */
 export type Point = { x: number; y: number };
-export const isPoint = (v: unknown): v is Point => Number.isInteger((v as Point | null)?.x) && Number.isInteger((v as Point).y);
 
 const isPos = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 0);
 

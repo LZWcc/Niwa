@@ -25,7 +25,7 @@ f.onload = async () => {
   const w = f.contentWindow, d = f.contentDocument;
   const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
   const add = async () => {
-    d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+    d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
     await galleryAdd(d, '世界时钟'); await sleep(150);
   };
   const clocks = () => [...d.querySelectorAll('[data-type="worldclock"]')];

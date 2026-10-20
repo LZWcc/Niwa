@@ -15,8 +15,7 @@
   position: relative;
 }
 
-.shortcut,
-.grid-add {
+.shortcut {
   position: relative;
   width: 80px;
   height: 80px;
@@ -33,8 +32,7 @@
   backdrop-filter: none;
   box-shadow: 0 28px 56px -22px rgb(20 35 50 / 0.45);
 }
-.shortcut.is-lifted .shortcut-icon,
-.grid-add.is-lifted .shortcut-icon {
+.shortcut.is-lifted .shortcut-icon {
   background: var(--elevated);
   backdrop-filter: none;
   box-shadow: 0 18px 32px -14px rgb(20 35 50 / 0.45);
@@ -133,23 +131,6 @@ html.is-reordering * {
 }
 
 /* 编辑按钮贴在图标右上角，悬停或键盘聚焦时出现 */
-/* 添加：虚线、无阴影，平时淡一些 */
-.shortcut-add .shortcut-icon {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--muted) 35%, transparent);
-  background: transparent;
-  box-shadow: none;
-  color: var(--faint);
-}
-.shortcut-add .shortcut-name {
-  color: var(--faint);
-}
-.shortcut-add:hover .shortcut-icon {
-  border-color: var(--muted);
-  color: var(--muted);
-  background: transparent;
-}
-
 /* 设置了图标的快捷方式：图片满铺；文字图标是彩色底白字。
    图片不要边框和底色：边框是半透明的，会透出下面的底色，深色时就成了图片外面一圈白边。
    透明的标志在存的时候已经放在白底上了（utils/icons/image.ts），这里不用再垫。 */

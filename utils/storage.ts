@@ -7,8 +7,6 @@ export const KEYS = {
   grid: 'niwa:grid',
   /** 快捷方式的图标图片：快捷方式 id → data URL */
   icons: 'niwa:icons',
-  /** 「添加」格子的位置 */
-  addTile: 'niwa:add',
   /** 已连接的日历（订阅地址相当于密码，私密数据见 backup.ts 的 SECRETS） */
   calendars: 'niwa:calendars',
   /** 日程的上一次结果，打开页面时先显示它 */

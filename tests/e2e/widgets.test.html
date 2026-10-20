@@ -41,7 +41,7 @@ f.onload = async () => {
   log(['niwa:notes', 'niwa:bookmark-folder', 'niwa:history-tab', 'niwa:weather-city'].every((k) => ls.getItem(k) === null), 'legacy keys removed');
 
   // 同一种可以再加一个：两个便签各管各的
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   await galleryAdd(d, '便签'); await sleep(150);
   const widgets = () => [...d.querySelectorAll('[data-type="notes"]')];
   log(widgets().length === 2, 'two notes widgets');

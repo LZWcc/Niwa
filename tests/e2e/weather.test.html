@@ -75,7 +75,7 @@ f.onload = async () => {
   };
 
   // 还没填 KEY：不联网，提示设置
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   await galleryAdd(d, '天气'); await sleep(200);
   const ww = d.querySelector('[data-type="weather"]');
   log(!!ww?.querySelector('.weather-empty') && requests.length === 0, 'empty state, no requests');

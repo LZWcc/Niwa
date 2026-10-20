@@ -35,7 +35,7 @@ f.onload = async () => {
   await sleep(400);
   const w = f.contentWindow, d = f.contentDocument;
   const stored = () => JSON.parse(w.localStorage.getItem('niwa:grid')).filter((i) => i.kind === 'link');
-  const openAdd = async (name) => { d.querySelector('.grid-add .shortcut-add').click(); await sleep(50); [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name)).click(); await sleep(50); };
+  const openAdd = async (name) => { d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50); [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith(name)).click(); await sleep(50); };
   const names = () => stored().map((s) => s.name).join(',');
   const dialog = () => d.querySelector('dialog[aria-labelledby="dialog-title"]');
   const setVal = (input, v) => {
@@ -151,14 +151,11 @@ f.onload = async () => {
   const overlapFree = () => { const t = [...d.querySelectorAll('.grid > [data-key]')]; return t.every((a) => t.every((b) => a === b || a.offsetLeft + a.offsetWidth <= b.offsetLeft || b.offsetLeft + b.offsetWidth <= a.offsetLeft || a.offsetTop + a.offsetHeight <= b.offsetTop || b.offsetTop + b.offsetHeight <= a.offsetTop)); };
   const types = () => visual('.widget').map((x) => `${x.dataset.type}:${x.className.match(/size-(\w)/)[1]}`).join(',');
   log(types() === 'notes:m,garden:s', `default widgets: ${types()}`);
-  {
-    // 第一次打开：「添加」在最后一格后面，并保存了位置
-    const add = d.querySelector('.grid-add'), last = visual('.grid > [data-key]').filter((t) => t !== add).at(-1);
-    log((add.offsetTop > last.offsetTop || (add.offsetTop === last.offsetTop && add.offsetLeft > last.offsetLeft)) && !!w.localStorage.getItem('niwa:add'), `add starts after the last tile (${add.offsetLeft},${add.offsetTop})`);
-  }
+  // 「添加」在右上角，不占网格
+  log(!!d.querySelector('.page-actions [aria-label="添加"]') && !d.querySelector('.grid [data-key="add"]'), 'add button sits top right, not in the grid');
   log([...d.querySelector('.grid').children].map((c) => c.dataset.type || c.querySelector('.shortcut-name')?.textContent).slice(0, 3).join(',') === 'notes,garden,GitHub', 'widgets and links share one grid');
   log(!w.document.querySelector('[data-type="calendar"]') && !w.localStorage.getItem('niwa:calendar-cache'), 'calendar off by default, no fetch');
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   await galleryAdd(d, '日程'); await sleep(80);
   log(types() === 'notes:m,garden:s,calendar:s', `calendar added: ${types()}`);
   log(!!d.querySelector('.cal-empty'), 'calendar shows connect state');
@@ -393,23 +390,16 @@ f.onload = async () => {
   {
     const g = d.querySelector('.grid'), cols = getComputedStyle(g).gridTemplateColumns.split(' ').length;
     const tiles = [...g.querySelectorAll(':scope > [data-key]')];
-    const add = g.querySelector('.grid-add');
     const taken = (x, y) => tiles.some((t) => t.offsetLeft <= x * 100 && x * 100 < t.offsetLeft + t.offsetWidth && t.offsetTop <= y * 100 && y * 100 < t.offsetTop + t.offsetHeight);
     const rows = Math.max(...tiles.map((t) => (t.offsetTop + t.offsetHeight + 20) / 100));
     let cell = null;
     for (let y = 0; y < rows && !cell; y++) for (let x = 0; x < cols && !cell; x++) if (!taken(x, y)) cell = { x, y };
     const mdn = visual('.shortcut')[3];
-    const others = positions().split(' ').filter((p) => !p.startsWith(mdn.dataset.key + '@') && !p.startsWith('add@'));
+    const others = positions().split(' ').filter((p) => !p.startsWith(mdn.dataset.key + '@'));
     const target = { getBoundingClientRect: () => { const gr = g.getBoundingClientRect(), ox = (g.clientWidth - (cols * 100 - 20)) / 2; return { left: gr.left + ox + cell.x * 100, top: gr.top + cell.y * 100, width: 80, height: 80 }; } };
     await dragTo(mdn.querySelector('.shortcut-link'), target);
-    const othersAfter = positions().split(' ').filter((p) => !p.startsWith(mdn.dataset.key + '@') && !p.startsWith('add@'));
+    const othersAfter = positions().split(' ').filter((p) => !p.startsWith(mdn.dataset.key + '@'));
     log(!!cell && mdn.offsetLeft === cell.x * 100 && mdn.offsetTop === cell.y * 100 && othersAfter.join() === others.join(), `free placement into empty cell ${cell?.x},${cell?.y}`);
-    // 「添加」也能拖：拖到第一个空位，松手后停在那里；点击不会误开菜单
-    const empty = (() => { const ts = [...g.querySelectorAll(':scope > [data-key]')]; for (let y = 0; y < 8; y++) for (let x = 0; x < cols; x++) if (!ts.some((t) => t.offsetLeft <= x * 100 && x * 100 < t.offsetLeft + t.offsetWidth && t.offsetTop <= y * 100 && y * 100 < t.offsetTop + t.offsetHeight)) return { x, y }; })();
-    const cellBox = (c) => ({ getBoundingClientRect: () => { const gr = g.getBoundingClientRect(), ox = (g.clientWidth - (cols * 100 - 20)) / 2; return { left: gr.left + ox + c.x * 100, top: gr.top + c.y * 100, width: 80, height: 80 }; } });
-    await dragTo(add.querySelector('.shortcut-add'), cellBox(empty));
-    log(add.offsetLeft === empty.x * 100 && add.offsetTop === empty.y * 100 && !d.querySelector('.add-menu'), `add tile draggable to ${empty.x},${empty.y}, menu not opened`);
-    log(JSON.parse(w.localStorage.getItem('niwa:add'))?.x === empty.x, 'add position saved');
   }
   const posBeforeReload = positions();
 

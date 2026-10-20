@@ -9,7 +9,8 @@ window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.rea
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 localStorage.clear();
 localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'l1', kind: 'link', name: 'GitHub', url: 'https://github.com/', x: 0, y: 0 }]));
-localStorage.setItem('niwa:add', JSON.stringify({ x: 1, y: 0 }));
+// 升级前存过「添加」格子的位置（niwa:add，以前新加的会占它的位置）：现在不用了，新加的接在最后一格后面
+localStorage.setItem('niwa:add', JSON.stringify({ x: 0, y: 3 }));
 const f = document.getElementById('f');
 f.src = '/newtab.html';
 f.onload = async () => {
@@ -21,14 +22,14 @@ f.onload = async () => {
   const choose = async (name) => { [...d.querySelectorAll('.gallery-item')].find((b) => b.textContent === name).click(); await sleep(60); };
   const resize = async (size) => { [...d.querySelectorAll('.gallery-info .segmented button')].find((b) => b.textContent === size).click(); await sleep(40); };
   const openGallery = async () => {
-    d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+    d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
     [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('小组件')).click(); await sleep(100);
   };
 
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   const options = [...d.querySelectorAll('.add-option .picker-name')].map((n) => n.textContent);
   log(options.join(',') === '网站,小组件', `add menu: ${options}`);
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
 
   // 预览不联网、不写存储
   let fetches = 0;
@@ -76,6 +77,7 @@ f.onload = async () => {
   d.querySelector('.gallery-add').click(); await sleep(200);
   const weather = grid().find((i) => i.type === 'weather');
   log(!dialog().open && weather?.size === 'm', `added with chosen size: ${weather?.size}`);
+  log(weather?.x === 1 && weather.y === 0 && !d.querySelector('.grid [data-key="add"]'), `appended after the last tile, old add position ignored: ${weather?.x},${weather?.y}`);
   log(!!d.querySelector('.grid > [data-type="weather"].size-m'), 'added widget on the grid');
   w.fetch = realFetch;
 

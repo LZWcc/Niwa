@@ -5,7 +5,7 @@
 //    大的压到几个小的：这几个保持相互位置，整组搬进它腾出来的地方（也是互换）；
 // 3. 搬不进去时，被压的小格子竖直往下推到它下面，下面再碰到的也依次往下推——只竖直移动，从不横向绕行；
 // 4. 小的压到大的：这个位置不接受（返回 null），留在上一个有效位置。
-// 以上是拖小组件时的规则。拖 1×1 的格子（快捷方式、文件夹、「添加」）参照手机桌面，用 insertIcon：插进去、其余顺移一格。
+// 以上是拖小组件时的规则。拖 1×1 的格子（快捷方式、文件夹）参照手机桌面，用 insertIcon：插进去、其余顺移一格。
 // 这里都是纯函数。
 
 export type Size = { w: number; h: number };
@@ -189,18 +189,15 @@ export function insertIcon(layout: Layout, id: string, target: { x: number; y: n
   return next;
 }
 
-/** 新加的格子放在 after 里最后一格后面（按阅读顺序），并避开 taken 里所有格子。 */
-export function appendSpot(taken: Layout, size: Size, cols: number, after: Layout = taken) {
-  const last = [...after.values()].sort(before).at(-1);
+/** 新加的格子放在最后一格后面（按阅读顺序），并避开所有格子。 */
+export function appendSpot(taken: Layout, size: Size, cols: number) {
+  const last = [...taken.values()].sort(before).at(-1);
   return scan([...taken.values()], size, cols, last ? { x: last.x + last.w, y: last.y } : undefined);
 }
 
 /** 从 from 起按阅读顺序找第一个放得下 size、且不压到 taken 的位置。 */
 export const findSpot = (taken: Layout, size: Size, cols: number, from: { x: number; y: number }) =>
   scan([...taken.values()], size, cols, from);
-
-/** 按阅读顺序排在最后的那一格的 key。 */
-export const lastKey = (layout: Layout) => [...layout].sort(([, a], [, b]) => before(a, b)).at(-1)?.[0];
 
 export const sameLayout = (a: Layout, b: Layout) =>
   a.size === b.size &&

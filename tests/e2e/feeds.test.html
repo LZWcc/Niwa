@@ -56,7 +56,7 @@ f.onload = async () => {
     return Promise.resolve(new w.Response('', { status: 404 }));
   };
 
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   await galleryAdd(d, '订阅'); await sleep(200);
   const fw = d.querySelector('[data-type="feeds"]');
   const titles = () => [...fw.querySelectorAll('.feeds-title')].map((x) => x.textContent);

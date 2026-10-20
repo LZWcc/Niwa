@@ -1,6 +1,6 @@
 // 布局算法（utils/layout.ts）的单元测试：pnpm test:unit
 // 用字母画出网格，每个检查都写明期望的摆放。
-import { moveItem, stepDrag, insertIcon, pushDown, resolve, appendSpot, findSpot, lastKey } from '../../utils/grid/layout.ts';
+import { moveItem, stepDrag, insertIcon, pushDown, resolve, appendSpot, findSpot } from '../../utils/grid/layout.ts';
 let pass = 0,
   fail = 0;
 const ok = (c, m) => {
@@ -155,10 +155,6 @@ ok(
 l = L({ a: [0, 0], c: [3, 0] });
 const s = appendSpot(l, { w: 1, h: 1 }, 6);
 ok(s.x === 4 && s.y === 0, `append after last item: ${s.x},${s.y}`);
-const withAdd = L({ a: [0, 0], b: [1, 0], add: [2, 0] });
-ok(
-  lastKey(withAdd) === 'add' && findSpot(L({ a: [0, 0], b: [1, 0] }), { w: 1, h: 1 }, 6, { x: 2, y: 0 }).x === 2,
-  'new item takes add spot when add is last',
-);
+ok(findSpot(L({ a: [0, 0], b: [1, 0] }), { w: 1, h: 1 }, 6, { x: 2, y: 0 }).x === 2, 'find spot from a cell');
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

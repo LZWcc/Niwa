@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Grid from '@/components/grid/Grid';
+import AddButton, { type Adding } from '@/components/page/AddButton';
 import SettingsButton from '@/components/page/SettingsButton';
 import Clock from '@/components/page/Clock';
 import Scene from '@/components/page/Scene';
@@ -13,6 +14,7 @@ import { preview } from '@/utils/preview';
 // 新标签页：背景的景、左上角的时间、居中的搜索框，下面是快捷方式和小组件的网格。
 export default function App() {
   const now = useMinute();
+  const [adding, setAdding] = useState<Adding | null>(null);
   // 不管有没有放庭，每天打开都记一次；庭的天数从第一次打开算起。
   useVisits(now);
 
@@ -24,12 +26,13 @@ export default function App() {
       <Scene />
       <Clock now={now} />
       <div className="page-actions">
+        <AddButton onPick={setAdding} />
         <SettingsButton />
         <ThemeToggle />
       </div>
       <main className="newtab">
         <Search />
-        <Grid now={now} />
+        <Grid now={now} adding={adding} onAddClose={() => setAdding(null)} />
       </main>
     </>
   );

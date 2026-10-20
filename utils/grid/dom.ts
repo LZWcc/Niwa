@@ -1,5 +1,5 @@
 // 网格在页面上的几个查询，拖动和动画共用。
-// 网格的每个子元素带 data-key（快捷方式、小组件的 id；“添加”是 "add"）。
+// 网格的每个子元素带 data-key（快捷方式、文件夹、小组件的 id）。
 
 /** 网格里的格子（不含对话框、占位框等没有 data-key 的元素）。 */
 export const tiles = (grid: HTMLElement) =>

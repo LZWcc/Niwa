@@ -30,7 +30,7 @@ f.onload = async () => {
   log(time(t0) === '01:00' && state('t0').startedAt === null, `acknowledged: ${time(t0)}`);
 
   // 新加一个：默认 25 分钟的倒计时；选 5 分钟
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   await galleryAdd(d, '计时器'); await sleep(150);
   const tw = [...d.querySelectorAll('[data-type="timer"]')].find((x) => x.dataset.key !== 't0');
   const id = tw.dataset.key;

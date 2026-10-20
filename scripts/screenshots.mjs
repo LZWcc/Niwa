@@ -135,8 +135,6 @@ function demoData(origin, theme, empty) {
   return {
     'niwa:theme': theme,
     'niwa:grid': JSON.stringify(empty ? [] : theme === 'dark' ? darkGrid : lightGrid),
-    // 空网格时把「添加」放到截图下面看不到的地方
-    'niwa:add': JSON.stringify(empty ? { x: 0, y: 30 } : theme === 'dark' ? { x: 9, y: 3 } : { x: 11, y: 3 }),
     'niwa:garden': JSON.stringify({ first: '2026-01-01', last: dayKey, days: 30 }),
     'niwa:calendars': JSON.stringify([{ id: 'c1', url: `${origin}/demo.ics`, name: '生活', color: '#4f6b80' }]),
     'niwa:weather-account': JSON.stringify({ host: 'demo.re.qweatherapi.com', key: 'demo' }),

@@ -28,7 +28,7 @@ f.onload = async () => {
   const checked = () => dlg.querySelector('.icon-option[aria-checked="true"]');
   const tile = (name) => [...d.querySelectorAll('.shortcut')].find((s) => s.textContent.includes(name));
   const openAdd = async () => {
-    d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+    d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
     [...d.querySelectorAll('.add-option')].find((b) => b.textContent.startsWith('网站')).click(); await sleep(100);
   };
   const upload = async (file, done) => {

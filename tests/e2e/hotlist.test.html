@@ -32,7 +32,7 @@ f.onload = async () => {
     if (url.startsWith('https://top.baidu.com/')) return body('{"success":true,"data":{"cards":[]}}');
     return body('{}', 404);
   };
-  d.querySelector('.grid-add .shortcut-add').click(); await sleep(50);
+  d.querySelector('.page-actions [aria-label="添加"]').click(); await sleep(50);
   await galleryAdd(d, '热榜'); await sleep(200);
   const hw = d.querySelector('[data-type="hotlist"]');
   const titles = () => [...hw.querySelectorAll('.hot-title')].map((x) => x.textContent);

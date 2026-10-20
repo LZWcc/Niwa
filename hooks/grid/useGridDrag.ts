@@ -10,7 +10,7 @@ import { SPRINGS, prefersReducedMotion, springEasing } from '@/utils/spring';
 // → 松手或取消（finish）。按 Esc 恢复拖动前的摆放。
 // 摆放规则全在 utils/layout.ts，这里只管指针和页面。
 //
-// 1×1 的格子（快捷方式、文件夹、「添加」，参照手机桌面，settle）：落点是指针所在的格子，插进去、其余顺移一格（insertIcon）。
+// 1×1 的格子（快捷方式、文件夹，参照手机桌面，settle）：落点是指针所在的格子，插进去、其余顺移一格（insertIcon）。
 // 指针停稳（慢于 SLOW 持续 SETTLE）才让位，划过、减速经过的格子都不动。
 // 拖着快捷方式停在另一个快捷方式或文件夹的图标正中（MERGE_ZONE）时永远不让位；停够 MERGE_DWELL 就是要放进去（目标高亮），
 // 这时松手交给 onMerge。没停够、或停稳前就松手，都照常插到指针所在的格子。
@@ -31,9 +31,9 @@ export const SLOW = 0.15;
 export const SETTLE = 200;
 const MERGE_DWELL = 400; // 在别的图标正中停这么久（毫秒）就是要放进文件夹
 const MERGE_ZONE = 26; // 离图标中心这么近（像素）算“正中”，差不多是整个图标（58px）
-// 在这些元素上按下不触发拖动：输入框里要能选字，按钮要能点。快捷方式本身是链接、「添加」和文件夹本身是按钮，都可以拖。
+// 在这些元素上按下不触发拖动：输入框里要能选字，按钮要能点。快捷方式本身是链接、文件夹本身是按钮，都可以拖。
 // 小组件打开的对话框（月历、热榜）在 DOM 里也在卡片下面，在里面按下不拖动卡片。
-const BLOCKED = 'input, textarea, select, button:not(.shortcut-add, .shortcut-link), [contenteditable], a:not(.shortcut-link), dialog';
+const BLOCKED = 'input, textarea, select, button:not(.shortcut-link), [contenteditable], a:not(.shortcut-link), dialog';
 
 type Options = {
   /** 当前的摆放和列数（取值函数：网格先调用这个钩子，摆放算好后才有值） */

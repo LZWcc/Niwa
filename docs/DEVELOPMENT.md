@@ -236,7 +236,7 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 
 ## 设置
 
-右上角的设置面板（`page/SettingsButton.tsx`）把散在各处的设置集中在一起：外观（跟随系统 / 浅色 / 深色）、搜索（引擎、联想开关、排除的网站）、小组件（背景跟随天气、清除和风天气的 KEY、计时器的系统通知）、数据（备份与恢复）。原来的入口（引擎菜单、各小组件的菜单、右上角的浅色 / 深色按钮）照样能改，存储键也没变。
+右上角的设置面板（`page/SettingsButton.tsx`）把散在各处的设置集中在一起：外观（跟随系统 / 浅色 / 深色）、搜索（管理搜索引擎、联想开关、排除的网站）、小组件（背景跟随天气、清除和风天气的 KEY、计时器的系统通知）、数据（备份与恢复）。原来的入口（引擎菜单、各小组件的菜单、右上角的浅色 / 深色按钮）照样能改，存储键也没变。
 
 两边同步靠 `useStored` 这一组 hook：写入时除了存进 localStorage，还在页面里发一个 `niwa:stored` 事件，同一页面里用同一个键的地方跟着更新（别的标签页靠浏览器的 `storage` 事件）；值没变时不写也不通知。权限（通知、收藏夹等）在任何一处给了或收回，`usePermissions` 都跟着变（`onPermissionsChange`）。以后新加的全页面设置用 `useStoredText` / `useStored` 读写，放进设置面板，不要直接读写 localStorage。
 
@@ -283,14 +283,14 @@ pnpm exec wxt build -b edge
 
 Edge 构建输出位于 `.output/edge-mv3/`。可以在日常浏览器的 `edge://extensions` 中开启开发人员模式，通过“加载解压缩的扩展”选择该目录。不要直接修改 `.output/` 或 `.wxt/`，它们是生成目录。
 
-`pnpm zip` 打成 `.output/niwa-<版本>-edge.zip`，上架扩展商店或发给别人用。版本号取自 `package.json` 的 `version`。
+`pnpm zip` 打成 `.output/niwa-<版本>.zip`，上架扩展商店或发给别人用。版本号取自 `package.json` 的 `version`。Edge 和 Chrome 用同一个包，所以文件名里不带浏览器名（`wxt.config.ts` 的 `zip.artifactTemplate`）。
 
 平时开发正常提交、推送就行，推送不算发版。攒够一批改动再发一个版本，GitHub Release 和 [Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/niwa/aonnmkpdcdkcfhcionbpmigmfbjcmnec) 用同一个版本号、同一个 zip：
 
 1. **检查**：`pnpm check`、`pnpm test` 都通过。界面变了就 `pnpm screenshots` 重新截 README 和商店用的图。
 2. **改版本号**：只改 `package.json` 的 `version`（manifest 的版本取自它），单独提交一次 `chore: v0.2.0`。只修 bug 加最后一位（0.1.2），有新功能加中间一位（0.2.0）；商店要求比已上架的版本大。
 3. **打包**：`pnpm zip`。上传前把 zip 解压，用「加载解压缩的扩展」装一次试试。
-4. **GitHub**：`git tag v0.2.0`、`git push origin main --tags`，再 `gh release create v0.2.0 .output/niwa-0.2.0-edge.zip --title "v0.2.0 · 一句话标题" --notes-file <说明>`。说明分「新功能 / 其他 / 安装」三段，写给用户看（照之前的 Release）。
+4. **GitHub**：`git tag v0.2.0`、`git push origin main --tags`，再 `gh release create v0.2.0 .output/niwa-0.2.0.zip --title "v0.2.0 · 一句话标题" --notes-file <说明>`。说明分「新功能 / 其他 / 安装」三段，写给用户看（照之前的 Release）。
 5. **Edge 扩展商店**：在 [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview) 打开 Niwa，「Packages」上传同一个 zip，功能有变化时一并更新「Store listings」的描述和截图，点「Publish」提交审核。审核最长约 7 个工作日，期间旧版本照常可用；通过后用户自动更新。
 
 新版本如果在 `wxt.config.ts` 的 `permissions`（安装时就有的权限）里加了新权限，用户更新后扩展会先被停用，要用户点同意才恢复，审核也会看得更细。所以新功能要用的权限尽量放进 `optional_permissions`，用到时再申请。
@@ -326,11 +326,12 @@ pnpm cards                          # 小红书图文：9 张 3:4 的图到 out/
 
 ```sh
 pnpm test        # 两种都跑
-pnpm test:unit   # 布局算法（utils/grid/layout.ts），只要 Node，不开浏览器
+pnpm test:unit   # 布局算法、搜索引擎的网址模板，只要 Node，不开浏览器
 pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
 ```
 
 - `tests/unit/layout.test.mjs`：拖放规则的单元测试，用字母画出网格，每条写明期望的摆放。改 `utils/grid/layout.ts` 时先跑它。
+- `tests/unit/search.test.mjs`：搜索引擎的网址模板（`utils/search/template.ts`）：搜索词的编码、从搜索结果网址和 OpenSearch 模板里得出 `%s` 的写法。
 - `tests/e2e/`：页面测试。`run.mjs` 起一个本地服务器（扩展文件来自 `.output/edge-mv3/`，测试页来自 `tests/e2e/`，测试日历由 `fixtures.mjs` 按今天生成），用独立的临时配置目录打开无头 Edge，汇总每个测试页输出的 PASS / FAIL；有失败或没跑完时退出码非 0。Edge 不在默认位置时用 `EDGE_BIN` 指定。
   - `folders.test.html`：收纳文件夹。开始前写入升级前的布局（只有快捷方式）：拖到远处插进去（中间的顺移一格）、停稳在图标边上才让位、没停够照常互换、经过边上再停在正中合成（高亮、名字选中、改名）、拖进已有的文件夹（图片图标还在）、在里面换顺序（没停稳松手、停稳后松手）、拖出去放到空格子、「移出文件夹」和删除到只剩一个时换回快捷方式、解散、刷新后还在。
   - `defaults.test.html`：第一次打开时的默认布局：快捷方式和打包好的图标、小组件的位置，图标写进了存储、再打开还在。
@@ -343,6 +344,8 @@ pnpm test:e2e    # 先构建，再用无头 Edge 跑页面测试
   - `worldclock.test.html`：世界时钟的默认城市、当地时间与时差、昼夜地图、选城市，放两个时各选各的。
   - `timer.test.html`：计时器的时长（滑块、箭头、双击某一段打数字）、开始暂停继续重置、正计时、关掉页面期间到点（打开就是时间到），放两个时各走各的。系统通知要在真实浏览器里试。
   - 网页里的通知卡片（滑进来、往右划掉、拖不够远弹回）要加载真实扩展才能试，页面测试覆盖不到。
+  - `gallery.test.html`：小组件库：「添加」菜单的两项、每种预览都有演示内容（各尺寸）、不联网不写存储；按选的尺寸添加、接在最后一格后面（升级前存的「添加」位置不管）、把预览拖到页面上。
+  - `engines.test.html`：搜索引擎：以前按名字记的选择照样认；管理对话框里点一行使用、常用的一键添加（都有打包的图标或文字标记）、移除（至少留一个，移除正在用的换成第一个）；粘贴搜索结果的网址、填网站地址读 OpenSearch、识别不了、重复的；设置面板里显示在用哪个。网络请求转到假数据。
   - `settings.test.html`：设置面板里改的和原来入口改的互相同步（浅色 / 深色、引擎、联想、背景跟随天气、天气 KEY、排除的网站），从设置面板打开备份。
   - `alarm.test.html`：提醒小窗的内容，「知道了」「再计一次」改对了那个计时器。小窗真的弹出来、浮在网页上、提示音要在真实浏览器里试。
   - `feeds.test.html`：订阅的添加（订阅地址、http 换成 https、网站首页、订阅地址在别的网站上、不是订阅的拒绝、重复）、RSS 2.0 / RSS 1.0 / Atom 的解析（HTML 标题、相对链接、坏链接、GBK 编码）、合在一起排序、只看一个、大面板、更新失败保留文章、移除正在看的那个。网络请求转到假数据；真实的订阅能不能读要加载扩展试。

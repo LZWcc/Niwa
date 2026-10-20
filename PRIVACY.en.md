@@ -30,6 +30,7 @@ Opening a new tab makes no network requests. Niwa sends requests directly from y
 | RSS feeds                                         | The feed URLs you add                                                           | Standard requests                                                                                       |
 | Shortcut icons (when you click "fetch site icon") | The website you add; if it has no usable icon, icon.horse, Google, and favicone | The website's address (to the services: its domain)                                                     |
 | Search                                            | The search engine you choose                                                    | Your search terms (a normal web search you submit)                                                      |
+| Adding a search engine by its address             | The website you enter, to read the search method its home page declares         | Standard requests                                                                                       |
 
 Imported calendar (.ics) files are read from your computer and are never uploaded. These services have their own privacy policies.
 

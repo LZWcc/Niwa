@@ -3,6 +3,8 @@ import { defineConfig } from 'wxt';
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  // 同一个包 Edge 和 Chrome 都能装，文件名里不带浏览器名
+  zip: { artifactTemplate: '{{name}}-{{version}}.zip' },
   manifest: {
     // 名称和描述放在 public/_locales/zh_CN/messages.json：商店按 _locales 识别语言（简体中文），
     // 描述就是商店标题下面那一行。版本号取自 package.json。

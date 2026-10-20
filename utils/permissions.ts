@@ -17,6 +17,9 @@ const has = (p: Request) => permissions?.contains(p) ?? Promise.resolve(true);
 // 浏览器只允许在点击事件里直接调用。
 const request = (p: Request) => permissions?.request(p) ?? Promise.resolve(true);
 
+/** 网站的地址，申请访问权限用 */
+export const originOf = (url: string) => `${new URL(url).origin}/*`;
+
 export const hasOrigins = (origins: string[]) => has({ origins });
 
 /** 申请访问这些网站。浏览器只允许在点击事件里直接调用。 */

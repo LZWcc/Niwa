@@ -78,6 +78,7 @@ Niwa 没有服务器，不收集、不上传任何数据，也没有统计。你
 - 时钟字体：[Zen Kaku Gothic New](https://github.com/googlefonts/zen-kakugothic)（SIL Open Font License 1.1，见 `public/fonts/OFL.txt`）
 - 世界地图：[Natural Earth](https://www.naturalearthdata.com/) 陆地数据（公有领域）
 - 七十二候的解释：元代吴澄《月令七十二候集解》，据[维基文库](https://zh.wikisource.org/)本整理
+- 搜索引擎图标：[Simple Icons](https://simpleicons.org/)（CC0），商标归各自所有
 - 读取日历：[ical.js](https://github.com/kewisch/ical.js)（MPL-2.0）
 - 默认快捷方式的网站图标取自各网站（经 [icon.horse](https://icon.horse/)），商标归各自所有，只用来显示快捷方式
 

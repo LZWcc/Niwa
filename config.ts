@@ -2,6 +2,7 @@
 // 只放“换个值就行、不用改逻辑”的东西。和 CSS、交互手感绑在一起的常量（网格尺寸、拖动阈值、动画时长）
 // 留在各自的代码旁边，不放这里，见 docs/DEVELOPMENT.md「代码约定」。
 import type { GridItem } from './utils/grid/items';
+import type { Engine } from './utils/search/engines';
 
 // ---------- 天气 ----------
 
@@ -142,23 +143,46 @@ export const WORLD_CLOCK = {
 
 // ---------- 搜索 ----------
 
-export type SearchEngine = {
-  name: string;
-  /** 圆形标记里的图标：public/engines/ 下的文件名（不含 .svg），单色，按 color 着色 */
-  icon: string;
-  color: string;
-  /** 表单用 GET 提交到 action，搜索词放在 param 参数里 */
-  action: string;
-  param: string;
+export type SearchEngine = Engine & {
+  /** 圆形标记里的图标：public/engines/ 下的文件名（不含 .svg，取自 Simple Icons），单色，按 color 着色 */
+  icon?: string;
+  /** Simple Icons 里没有图标的，圆里写这几个字 */
+  mark?: string;
+  /** 品牌色；黑色的品牌不写，用文字颜色（深色模式下黑色看不见） */
+  color?: string;
 };
 
-/** 搜索引擎，第一个是默认的。用户选过的按 name 记住，改了 name 会回到默认。 */
+/**
+ * 常用的搜索引擎，设置里点一下就能加上。前 SEARCH.initial 个是第一次打开时就有的，第一个是默认的。
+ * url 里的 %s 换成搜索词（UTF-8 编码）。id 用来认出用户列表里的内置引擎、记住选的哪个，不要改。
+ */
 export const SEARCH_ENGINES: SearchEngine[] = [
-  { name: 'Google', icon: 'google', color: '#4285f4', action: 'https://www.google.com/search', param: 'q' },
-  { name: 'Bing', icon: 'bing', color: '#108a8a', action: 'https://www.bing.com/search', param: 'q' },
-  { name: '百度', icon: 'baidu', color: '#3245df', action: 'https://www.baidu.com/s', param: 'wd' },
-  { name: 'DuckDuckGo', icon: 'duckduckgo', color: '#de5833', action: 'https://duckduckgo.com/', param: 'q' },
+  { id: 'Google', name: 'Google', icon: 'google', color: '#4285f4', url: 'https://www.google.com/search?q=%s' },
+  { id: 'Bing', name: 'Bing', icon: 'bing', color: '#108a8a', url: 'https://www.bing.com/search?q=%s' },
+  { id: '百度', name: '百度', icon: 'baidu', color: '#3245df', url: 'https://www.baidu.com/s?wd=%s' },
+  { id: 'DuckDuckGo', name: 'DuckDuckGo', icon: 'duckduckgo', color: '#de5833', url: 'https://duckduckgo.com/?q=%s' },
+  { id: 'Yandex', name: 'Yandex', mark: 'Y', color: '#fc3f1d', url: 'https://yandex.com/search/?text=%s' },
+  { id: '搜狗', name: '搜狗', icon: 'sogou', color: '#fb6022', url: 'https://www.sogou.com/web?query=%s&ie=utf8' },
+  { id: '360 搜索', name: '360 搜索', mark: '360', color: '#19b955', url: 'https://www.so.com/s?q=%s' },
+  { id: 'Brave', name: 'Brave', icon: 'brave', color: '#fb542b', url: 'https://search.brave.com/search?q=%s' },
+  { id: 'Startpage', name: 'Startpage', icon: 'startpage', color: '#6563ff', url: 'https://www.startpage.com/sp/search?query=%s' },
+  // AI：带着问题打开；发不发由网站决定（ChatGPT 从别的网站跳过去时只填进输入框，防恶意链接）
+  { id: 'Perplexity', name: 'Perplexity', icon: 'perplexity', color: '#1fb8cd', url: 'https://www.perplexity.ai/search?q=%s' },
+  { id: 'ChatGPT', name: 'ChatGPT', icon: 'chatgpt', url: 'https://chatgpt.com/?q=%s' },
+  { id: 'Claude', name: 'Claude', icon: 'claude', color: '#d97757', url: 'https://claude.ai/new?q=%s' },
+  // 站内搜索
+  { id: '维基百科', name: '维基百科', icon: 'wikipedia', url: 'https://zh.wikipedia.org/w/index.php?search=%s' },
+  { id: 'GitHub', name: 'GitHub', icon: 'github', url: 'https://github.com/search?q=%s&type=repositories' },
+  { id: '知乎', name: '知乎', icon: 'zhihu', color: '#0084ff', url: 'https://www.zhihu.com/search?type=content&q=%s' },
+  { id: 'B 站', name: 'B 站', icon: 'bilibili', color: '#00a1d6', url: 'https://search.bilibili.com/all?keyword=%s' },
 ];
+
+export const SEARCH = {
+  /** 第一次打开时有 SEARCH_ENGINES 的前几个 */
+  initial: 4,
+  /** 识别自己加的搜索引擎时，读网站首页和 OpenSearch 描述的超时（毫秒） */
+  timeout: 10_000,
+};
 
 // ---------- 网格 ----------
 

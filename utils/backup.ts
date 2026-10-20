@@ -8,6 +8,7 @@ import { isCalendarSource, isFileSource } from './calendar/ical';
 import { AppError } from './errors';
 import { allLinks, isGridItem, type GridItem, type WidgetItem } from './grid/items';
 import { isIconStore, type IconStore } from './icons/model';
+import { isEngine, type Engine } from './search/engines';
 import { KEYS, readJson, readList, writeJson, type StorageKey } from './storage';
 import { isThemeChoice, readThemeChoice, type ThemeChoice } from './theme';
 import { isVisits, type Visits } from './visits';
@@ -17,7 +18,7 @@ import { isWeatherAccount, type Place } from './weather';
  * 备份格式的版本。改了 BackupData 的结构就加一，并在 parseBackup 里把旧版本迁移过来。
  * 第 6 版网格里多了收纳文件夹（旧版本不用迁移；旧版本的 Niwa 读到第 6 版会提示先更新，而不是说数据不对）。
  * 第 7 版私密信息里多了导入的日历文件（calendarFiles）。
- * 第 8 版去掉了「添加」格子的位置（addTile，「添加」挪到了右上角；旧备份里的不用管，导入时不读）。
+ * 第 8 版去掉了「添加」格子的位置（addTile，「添加」挪到了右上角；旧备份里的不用管，导入时不读），加了搜索引擎列表（engines，之前的版本当作 null）。
  */
 const VERSION = 8;
 
@@ -80,10 +81,15 @@ export const SECRET_LABELS = Object.values(SECRETS).map((s) => s.label);
 /** 备份里带了哪几项私密数据 */
 export const secretsIn = (data: BackupData) => Object.keys(data.secrets ?? {}).map((name) => SECRETS[name as SecretName].label);
 
+const isEngineList = (v: unknown): v is Engine[] => Array.isArray(v) && v.length > 0 && v.every(isEngine);
+
 export type BackupData = {
   grid: GridItem[];
   icons: IconStore;
   visits: Visits | null;
+  /** 搜索引擎列表；null 是没改过（用默认的几个） */
+  engines: Engine[] | null;
+  /** 选中的搜索引擎的 id */
   engine: string | null;
   theme: ThemeChoice;
   /** 勾选时才有的私密数据，按 SECRETS 的名称存（第 3 版起，第 4 版加了排除的网站，第 7 版加了导入的日历文件；之前的版本只有日历，放在 data.calendars） */
@@ -97,6 +103,7 @@ export async function createBackup(includeSecrets: boolean): Promise<Backup> {
     grid: readList(KEYS.grid, isGridItem, DEFAULT_ITEMS),
     icons: readJson(KEYS.icons, isIconStore) ?? {},
     visits: readJson(KEYS.visits, isVisits),
+    engines: readJson(KEYS.engines, isEngineList),
     engine: localStorage.getItem(KEYS.engine),
     theme: readThemeChoice(),
   };
@@ -117,6 +124,7 @@ function findProblem(d: BackupData): string | null {
   if (!isIconStore(d.icons)) return '图标的数据不对';
   if (allLinks(d.grid).some((link) => link.icon?.kind === 'image' && !d.icons[link.id])) return '缺少图标图片';
   if (d.visits !== null && !isVisits(d.visits)) return '庭的数据不对';
+  if (d.engines !== null && !isEngineList(d.engines)) return '搜索引擎列表不对';
   if (d.engine !== null && typeof d.engine !== 'string') return '搜索引擎的设置不对';
   if (!isThemeChoice(d.theme)) return '浅色 / 深色的设置不对';
   if (d.secrets !== undefined) {
@@ -164,6 +172,7 @@ export function parseBackup(text: string): Backup {
     delete old.notes;
     delete old.weather;
   }
+  if (backup.version < 8) backup.data.engines = null;
   const problem = findProblem(backup.data);
   if (problem) throw new AppError(`备份文件有问题：${problem}。没有导入任何数据`);
   return backup;
@@ -179,6 +188,8 @@ export async function restoreBackup({ data }: Backup) {
   writeJson(KEYS.grid, data.grid);
   if (data.visits) writeJson(KEYS.visits, data.visits);
   else localStorage.removeItem(KEYS.visits);
+  if (data.engines) writeJson(KEYS.engines, data.engines);
+  else localStorage.removeItem(KEYS.engines);
   if (data.engine) localStorage.setItem(KEYS.engine, data.engine);
   else localStorage.removeItem(KEYS.engine);
   localStorage.setItem(KEYS.theme, data.theme);

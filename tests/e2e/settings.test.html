@@ -39,8 +39,11 @@ f.onload = async () => {
   log(d.querySelector('.theme-toggle')?.getAttribute('aria-label').startsWith('切换到浅色'), 'top-right toggle follows');
 
   // 搜索引擎：搜索框跟着换
-  radio('搜索引擎', 'Bing').click(); await sleep(50);
-  log(d.querySelector('#search-query').placeholder === '在 Bing 中搜索' && ls.getItem('niwa:engine') === 'Bing', 'search engine follows settings');
+  row('搜索引擎').querySelector('button').click(); await sleep(100);
+  const edlg = [...d.querySelectorAll('dialog')].find((x) => x.open && x.querySelector('h2')?.textContent === '搜索引擎');
+  [...edlg.querySelectorAll('.engine-pick')].find((b) => b.textContent === 'Bing').click(); await sleep(50);
+  [...edlg.querySelectorAll('button')].find((b) => b.textContent === '完成').click(); await sleep(50);
+  log(d.querySelector('#search-query').placeholder === '在 Bing 中搜索' && ls.getItem('niwa:engine') === 'Bing' && row('搜索引擎').textContent.includes('在用 Bing'), 'search engine follows settings');
 
   // 联想：在设置里关掉，引擎菜单里的开关也是关的
   row('联想收藏和历史').querySelector('[role=switch]').click(); await sleep(50);

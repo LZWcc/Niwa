@@ -30,7 +30,7 @@ f.onload = async () => {
   const titles = () => [...d.querySelectorAll('.event-title')].map((e) => e.textContent);
   const stored = () => JSON.parse(w.localStorage.getItem('niwa:calendars') ?? '[]');
   const transfer = (...files) => { const dt = new w.DataTransfer(); for (const [name, text] of files) dt.items.add(new w.File([text], name, { type: 'text/calendar' })); return dt; };
-  const dlg = () => d.querySelector('.dialog-wide');
+  const dlg = () => d.querySelector('.dialog-wide[open]');
   const error = () => dlg().querySelector('.field-error')?.textContent ?? '';
   const done = () => [...dlg().querySelectorAll('button')].find((b) => b.textContent === '完成').click();
   const pick = (dt) => { const input = dlg().querySelector('.file-drop input[type=file]'); input.files = dt.files; input.dispatchEvent(new w.Event('change', { bubbles: true })); };

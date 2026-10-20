@@ -15,7 +15,7 @@
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",
     "test": "pnpm test:unit && pnpm test:e2e",
-    "test:unit": "node --experimental-strip-types --no-warnings tests/unit/layout.test.mjs",
+    "test:unit": "node --experimental-strip-types --no-warnings tests/unit/layout.test.mjs && node --experimental-strip-types --no-warnings tests/unit/search.test.mjs",
     "test:e2e": "wxt build -b edge && node tests/e2e/run.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",

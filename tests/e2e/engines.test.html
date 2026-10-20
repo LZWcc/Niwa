@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- 页面测试：搜索引擎——以前按名字记的选择照样认；管理对话框：点一行使用、从常用里加、移除；
+     填网站地址读 OpenSearch、粘贴搜索结果的网址、识别不了、重复的；设置面板跟着变。网络请求转到假数据。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+localStorage.clear();
+localStorage.setItem('niwa:grid', '[]');
+// 升级前：只按名字记了选的哪个，没有 niwa:engines
+localStorage.setItem('niwa:engine', 'Bing');
+
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+f.onload = async () => {
+  await sleep(400);
+  const w = f.contentWindow, d = f.contentDocument, ls = w.localStorage;
+  const setVal = (el, v) => { Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new w.Event('input', { bubbles: true })); };
+  const stored = () => JSON.parse(ls.getItem('niwa:engines') ?? 'null');
+  const placeholder = () => d.querySelector('#search-query').placeholder;
+  w.fetch = (input) => {
+    const url = String(input);
+    const body = (b, type) => Promise.resolve(new w.Response(b, { headers: { 'content-type': type } }));
+    if (url === 'https://os.example/') return body('<html><head><link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="OS"></head></html>', 'text/html');
+    if (url === 'https://os.example/opensearch.xml') return body(`<?xml version="1.0"?><OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"><ShortName>OS 搜索</ShortName>
+<Url type="application/x-suggestions+json" template="https://os.example/suggest?q={searchTerms}"/>
+<Url type="text/html" method="get" template="https://os.example/s?q={searchTerms}&amp;page={startPage?}"/></OpenSearchDescription>`, 'application/opensearchdescription+xml');
+    if (url === 'https://none.example/') return body('<html><head><title>没有</title></head></html>', 'text/html');
+    return Promise.resolve(new w.Response('', { status: 404 }));
+  };
+
+  log(placeholder() === '在 Bing 中搜索' && stored() === null, `old choice by name still works: ${placeholder()}`);
+  d.querySelector('.engine-button').click(); await sleep(50);
+  const menu = [...d.querySelectorAll('.engine-menu [role=menuitemradio]')].map((b) => b.textContent);
+  log(menu.join() === 'Google,Bing,百度,DuckDuckGo', `default engines: ${menu}`);
+  [...d.querySelectorAll('.engine-menu button')].find((b) => b.textContent.startsWith('管理搜索引擎')).click(); await sleep(100);
+  const dlg = [...d.querySelectorAll('dialog')].find((x) => x.open);
+  log(dlg?.querySelector('h2').textContent === '搜索引擎', 'manage dialog opens from engine menu');
+  const rows = () => [...dlg.querySelectorAll('.engine-pick')].map((b) => b.textContent);
+  const chip = (name) => [...dlg.querySelectorAll('.engine-chip')].find((b) => b.textContent === name);
+  const button = (text) => [...dlg.querySelectorAll('button')].find((b) => b.textContent === text);
+  const input = () => dlg.querySelector('.field input');
+  const error = () => dlg.querySelector('.field-error')?.textContent ?? '';
+
+  // 常用里点一下加上，再点它使用
+  chip('Yandex').click(); await sleep(50);
+  log(rows().join() === 'Google,Bing,百度,DuckDuckGo,Yandex' && stored()?.[4]?.url === 'https://yandex.com/search/?text=%s' && !chip('Yandex'), `preset added: ${rows()}`);
+  // 常用里的都有图标或文字标记，不靠浏览器缓存的网站图标
+  log(!dlg.querySelector('.engine-chip .engine-mark.is-site') && getComputedStyle(dlg.querySelector('.sources li:last-child .engine-mark'), '::before').content === '"Y"', 'presets have bundled icons or text marks');
+  [...dlg.querySelectorAll('.engine-pick')].find((b) => b.textContent === 'Yandex').click(); await sleep(50);
+  log(ls.getItem('niwa:engine') === 'Yandex' && placeholder() === '在 Yandex 中搜索' && dlg.querySelector('[aria-pressed=true]').textContent === 'Yandex', 'click a row to use it');
+
+  // 移除
+  [...dlg.querySelectorAll('.sources li')].find((li) => li.textContent.includes('Bing')).querySelector('.btn-danger').click(); await sleep(50);
+  log(!rows().includes('Bing') && !!chip('Bing'), 'removed Bing, back in presets');
+
+  // 粘贴搜索结果的网址
+  setVal(input(), 'https://www.ecosia.org/search?method=index&q=niwa'); await sleep(30);
+  button('识别').click(); await sleep(100);
+  const name = dlg.querySelector('.engine-found input');
+  log(name?.value === 'ecosia.org', `found from result url: ${name?.value}`);
+  setVal(name, ' Ecosia '); await sleep(30);
+  button('添加').click(); await sleep(50);
+  const eco = stored().find((e) => e.name === 'Ecosia');
+  log(eco?.url === 'https://www.ecosia.org/search?method=index&q=%s' && rows().includes('Ecosia') && !dlg.querySelector('.engine-found'), `added from result url: ${eco?.url}`);
+
+  // 重复的
+  setVal(input(), 'https://www.ecosia.org/search?method=index&q=niwa'); await sleep(30);
+  button('识别').click(); await sleep(100);
+  log(error() === '这个搜索引擎已经添加过了', `duplicate rejected: ${error()}`);
+
+  // 填网站地址：读 OpenSearch
+  setVal(input(), 'os.example'); await sleep(30);
+  button('识别').click(); await sleep(200);
+  log(dlg.querySelector('.engine-found input')?.value === 'OS 搜索', `found from OpenSearch: ${dlg.querySelector('.engine-found input')?.value} ${error()}`);
+  button('添加').click(); await sleep(50);
+  log(stored().find((e) => e.name === 'OS 搜索')?.url === 'https://os.example/s?q=%s', 'OpenSearch template converted');
+
+  // 识别不了
+  setVal(input(), 'none.example'); await sleep(30);
+  button('识别').click(); await sleep(200);
+  log(error().includes('搜一下 niwa'), `not found tells how: ${error()}`);
+  setVal(input(), 'not a url'); await sleep(30);
+  button('识别').click(); await sleep(50);
+  log(error().startsWith('这不像一个网址'), 'invalid input');
+
+  // 至少留一个
+  for (let i = 0; i < 10 && dlg.querySelectorAll('.sources li').length > 1; i++) { dlg.querySelector('.sources li .btn-danger').click(); await sleep(20); }
+  log(dlg.querySelectorAll('.sources li').length === 1 && dlg.querySelector('.sources li .btn-danger').disabled, 'last engine cannot be removed');
+  const last = rows()[0];
+  log(placeholder() === `在 ${last} 中搜索`, `removed the chosen one: falls back to ${placeholder()}`);
+  button('完成').click(); await sleep(50);
+
+  // 设置面板里显示在用哪个、共几个
+  d.querySelector('[aria-label="设置"]').click(); await sleep(100);
+  const sdlg = d.querySelector('dialog[aria-labelledby="settings-title"]');
+  const row = [...sdlg.querySelectorAll('.setting')].find((x) => x.querySelector('.setting-label').firstChild.textContent === '搜索引擎');
+  log(row?.textContent.includes(`在用 ${last}，共 1 个`), `settings shows engine count: ${row?.textContent}`);
+};
+</script>

@@ -17,7 +17,7 @@ f.onload = async () => {
   const w = f.contentWindow, d = f.contentDocument;
   const setVal = (i, v) => { Object.getOwnPropertyDescriptor(w.HTMLTextAreaElement.prototype, 'value').set.call(i, v); i.dispatchEvent(new w.Event('input', { bubbles: true })); };
   d.querySelector('.cal-empty button').click(); await sleep(100);
-  const dlg = d.querySelector('.dialog-wide');
+  const dlg = d.querySelector('.dialog-wide[open]');
   const area = dlg.querySelector('textarea');
   // 一次粘贴两个有效地址 + 一个无效的 + 一个重复的
   setVal(area, `${location.origin}/sample.ics\n${location.origin}/sample2.ics\nhello\n${location.origin}/sample.ics`); await sleep(30);

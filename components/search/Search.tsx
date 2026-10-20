@@ -1,35 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import { SEARCH_ENGINES as engines, type SearchEngine } from '@/config';
+import { useEngines } from '@/hooks/useEngines';
 import { useStoredList, useStoredText } from '@/hooks/useStored';
 import { useSuggestions } from '@/hooks/useSuggestions';
 import { hostOf } from '@/utils/browsing';
 import { requestPermissions } from '@/utils/permissions';
+import { searchUrl } from '@/utils/search/template';
 import { KEYS } from '@/utils/storage';
+import EngineMark from './EngineMark';
+import EnginesDialog from './EnginesDialog';
 import ExcludeDialog from './ExcludeDialog';
 import Suggestions from './Suggestions';
 
-// 固定宽度的圆形标记，引擎名长短不影响布局。
-function Mark({ engine }: { engine: SearchEngine }) {
-  return (
-    <span
-      className="engine-mark"
-      style={{ '--mark': engine.color, '--icon': `url(/engines/${engine.icon}.svg)` } as React.CSSProperties}
-      aria-hidden="true"
-    />
-  );
-}
-
 export default function Search() {
   // 上次选的引擎；没选过或找不到就用第一个。设置面板里也能换，两边同步。
-  const [engineName, setEngineName] = useStoredText(KEYS.engine);
-  const index = Math.max(
-    0,
-    engines.findIndex((e) => e.name === engineName),
-  );
+  const { engines, engine, choose } = useEngines();
+  const [enginesOpen, setEnginesOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const picker = useRef<HTMLDivElement>(null);
-  const engine = engines[index]!;
 
   // 联想：输入时在收藏夹和浏览记录里找；↓↑ 选、回车打开（⌘ / Ctrl 在新标签页），没选时回车照常搜索。
   // 引擎菜单里可以关掉联想、管理排除的网站。
@@ -65,8 +53,8 @@ export default function Search() {
     }
   };
 
-  const choose = (next: number) => {
-    setEngineName(engines[next]!.name);
+  const pick = (id: string) => {
+    choose(id);
     setMenuOpen(false);
     input.current?.focus();
   };
@@ -111,10 +99,17 @@ export default function Search() {
     items[(at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
   };
 
-  // 原生表单提交，搜索不依赖 React 状态。
+  // 搜索词放进引擎网址里 %s 的位置（有的在路径里，原生表单做不到）；空的时候 required 拦住，不会提交。
   return (
     <>
-      <form className="search" action={engine.action} method="get" role="search">
+      <form
+        className="search"
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          location.href = searchUrl(engine.url, input.current!.value);
+        }}
+      >
         <div className="engine" ref={picker}>
           <button
             type="button"
@@ -124,16 +119,16 @@ export default function Search() {
             aria-label={`搜索引擎：${engine.name}`}
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <Mark engine={engine} />
+            <EngineMark engine={engine} />
             <svg className="engine-chevron" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
               <path d="M1.5 3 4 5.5 6.5 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
           </button>
           {menuOpen && (
             <div className="engine-menu" role="menu" aria-label="选择搜索引擎" onKeyDown={onMenuKey}>
-              {engines.map((e, i) => (
-                <button key={e.name} type="button" role="menuitemradio" aria-checked={i === index} onClick={() => choose(i)}>
-                  <Mark engine={e} />
+              {engines.map((e) => (
+                <button key={e.id} type="button" role="menuitemradio" aria-checked={e.id === engine.id} onClick={() => pick(e.id)}>
+                  <EngineMark engine={e} />
                   <span>{e.name}</span>
                   <svg className="engine-check" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
                     <path
@@ -148,6 +143,16 @@ export default function Search() {
                 </button>
               ))}
               <div className="engine-sep" role="separator" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setEnginesOpen(true);
+                }}
+              >
+                <span>管理搜索引擎…</span>
+              </button>
               <button
                 type="button"
                 role="menuitemcheckbox"
@@ -189,7 +194,6 @@ export default function Search() {
           ref={input}
           id="search-query"
           type="search"
-          name={engine.param}
           placeholder={`在 ${engine.name} 中搜索`}
           autoComplete="off"
           autoFocus
@@ -222,6 +226,7 @@ export default function Search() {
           />
         )}
       </form>
+      <EnginesDialog open={enginesOpen} onClose={() => setEnginesOpen(false)} />
       <ExcludeDialog open={excludeOpen} sites={excluded} onChange={setExcluded} onClose={() => setExcludeOpen(false)} />
     </>
   );

@@ -13,7 +13,9 @@ export const KEYS = {
   calendarCache: 'niwa:calendar-cache',
   /** 打开过几天（庭随它生长） */
   visits: 'niwa:garden',
-  /** 选中的搜索引擎名 */
+  /** 搜索引擎列表：用哪些、顺序、自己加的（utils/search/engines.ts）；没存过时是默认的几个 */
+  engines: 'niwa:engines',
+  /** 选中的搜索引擎的 id（内置的 id 就是名字） */
   engine: 'niwa:engine',
   /** 浅色 / 深色：light、dark，没有或 system 表示跟随系统 */
   theme: 'niwa:theme',

@@ -3,8 +3,8 @@ import Dialog from '@/components/common/Dialog';
 import { FEEDS } from '@/config';
 import type { FeedEntry } from '@/hooks/useFeeds';
 import { toUserMessage } from '@/utils/errors';
-import { discoverFeed, feedName, fetchFeed, normalizeFeedUrl, originOf, type Feed, type FeedContent } from '@/utils/feeds';
-import { requestOrigins } from '@/utils/permissions';
+import { discoverFeed, feedName, fetchFeed, normalizeFeedUrl, type Feed, type FeedContent } from '@/utils/feeds';
+import { originOf, requestOrigins } from '@/utils/permissions';
 
 type Props = {
   open: boolean;

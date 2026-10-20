@@ -12,9 +12,6 @@ export const isFeed = hasStrings('id', 'url');
 export type FeedItem = { title: string; url: string; time?: number; summary?: string };
 export type FeedContent = { title: string; items: FeedItem[] };
 
-/** 网站的地址，申请访问权限用 */
-export const originOf = (url: string) => `${new URL(url).origin}/*`;
-
 /** 订阅地址一律用 https 读：访问网站的权限只申请了 https；还写着 http 的订阅（feedburner 之类）几乎都支持 https */
 const toHttps = (url: string) => url.replace(/^http:/i, 'https:');
 

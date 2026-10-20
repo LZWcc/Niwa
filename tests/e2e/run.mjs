@@ -35,6 +35,7 @@ const suites = [
   { file: 'folders.test.html', flags: ['--force-prefers-reduced-motion'], done: 'folders done' },
   { file: 'feeds.test.html', flags: ['--force-prefers-reduced-motion'], done: 'card after removal' },
   { file: 'hotlist.test.html', flags: ['--force-prefers-reduced-motion'], done: 'clicking the title row opens panel' },
+  { file: 'engines.test.html', flags: ['--force-prefers-reduced-motion'], done: 'settings shows engine count' },
   { file: 'settings.test.html', flags: ['--force-prefers-reduced-motion'], done: 'backup opens from settings' },
   { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no moon phase on the sun in light theme' },
   { file: 'weather-cache.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no request while cache is fresh' },

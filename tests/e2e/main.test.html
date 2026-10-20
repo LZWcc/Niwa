@@ -98,8 +98,8 @@ f.onload = async () => {
   log(!!d.querySelector('.engine-menu') && eb.getAttribute('aria-expanded') === 'true', 'engine menu opens');
   log(d.activeElement.getAttribute('aria-checked') === 'true', 'focus on checked item');
   [...d.querySelectorAll('[role=menuitemradio]')].find((b) => b.textContent.includes('Bing')).click(); await sleep(50);
-  const form = d.querySelector('form.search'), q = d.querySelector('#search-query');
-  log(!d.querySelector('.engine-menu') && form.action === 'https://www.bing.com/search' && q.placeholder === '在 Bing 中搜索', `chose Bing: ${form.action} / ${q.placeholder}`);
+  const q = d.querySelector('#search-query');
+  log(!d.querySelector('.engine-menu') && q.placeholder === '在 Bing 中搜索', `chose Bing: ${q.placeholder}`);
   log(w.localStorage.getItem('niwa:engine') === 'Bing', 'engine persisted');
   log(eb.offsetWidth > 0, `engine button width ${eb.offsetWidth}`);
   const widths = new Set();

@@ -41,7 +41,7 @@ entrypoints/newtab/        新标签页入口
 components/
   common/                  Popover（挂在 body 上、按视口定位的弹出层）、Dialog（原生 <dialog> 的模态对话框）、ErrorBoundary
   page/                    Scene（背景的景）、Clock（时间、日期、节气）、AddButton（右上角的「添加」菜单）、ThemeToggle（浅色 / 深色）、SettingsButton（设置面板，见「设置」）、BackupDialog（备份与恢复）
-  search/                  Search（搜索框与搜索引擎菜单）、Suggestions（收藏和浏览记录的联想）
+  search/                  Search（搜索框与搜索引擎菜单）、EnginesDialog（管理搜索引擎）、EngineMark（引擎的圆形图标）、Suggestions（收藏和浏览记录的联想）
   grid/                    网格：Grid（组装）、Shortcut、ShortcutIcon、ShortcutDialog、IconPicker（选图标）、Folder 和 FolderPanel（收纳文件夹）
   widgets/                 小组件
     index.ts               每种小组件对应哪个组件（注册表）
@@ -96,6 +96,7 @@ utils/                     不依赖 React 的纯函数和数据
   timer.ts                 计时器：状态与显示、到点提醒的闹钟
   hotlist.ts               热榜：取各网站的热榜接口、各来源的解析
   feeds.ts                 订阅：取 RSS / Atom、解析、从网页里找订阅地址
+  search/                  搜索引擎：engines.ts（列表、识别网站的 OpenSearch）、template.ts（%s 网址模板，纯函数）
   toast.ts                 计时器到点时放进当前网页的通知卡片（自给自足，整个函数送进网页运行）
   errors.ts                错误处理：AppError、toUserMessage、reportError（见「错误处理」）
   widgets.ts               小组件目录：种类、名称、默认尺寸、尺寸占几格
@@ -121,7 +122,14 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 
 ## 搜索
 
-搜索框是原生表单提交（GET 到 `config.ts` 里搜索引擎的地址），页面任意处按 `/` 聚焦。
+搜索框提交时把搜索词放进引擎网址里 `%s` 的位置再跳过去（`utils/search/template.ts` 的 `searchUrl`；有的引擎搜索词在路径里，原生表单做不到），页面任意处按 `/` 聚焦。
+
+**搜索引擎**：列表（用哪些、顺序、自己加的）存在 `niwa:engines`，没存过时是 `config.ts` 里 `SEARCH_ENGINES` 的前 `SEARCH.initial` 个；选中的按 id 记在 `niwa:engine`（内置的 id 就是名字，以前按名字记的照样认）。引擎菜单里的「管理搜索引擎…」和设置面板都打开 `EnginesDialog`（`useEngines` 让几处同步）：点一行用它，移除（至少留一个），「常用」里是 `SEARCH_ENGINES` 里还没加的、点一下加上。用户不用写 `%s`：
+
+- 填网站地址：申请访问那个网站的权限，读首页 `<link rel="search" type="application/opensearchdescription+xml">` 指向的 OpenSearch 描述（浏览器自动发现搜索引擎用的就是它），取 `ShortName` 和 `text/html` 的 GET 模板：`{searchTerms}` 换成 `%s`，`{xxx?}` 可选参数去掉，编码写 UTF-8，还有别的必填参数就算识别不了。
+- 识别不了时，让用户在那个网站搜一下 `niwa`（`PROBE`），把结果网址粘贴过来：参数值是 `niwa` 的换成 `%s`，别的参数里也带着它的（Google 的 `oq`）去掉，参数里没有就看路径。不联网、不要权限。
+- 识别出来先给用户看，名称可以改，再添加；同一个网址不重复加。内置的用 `public/engines/` 里的单色图标（取自 [Simple Icons](https://simpleicons.org/)，CC0；那里没有的写几个字，`mark`），按品牌色着色，黑色的品牌不写颜色、用文字颜色；自己加的用浏览器缓存的网站图标（`_favicon`），没访问过那个网站时是浏览器的默认图标。「常用」里也有 AI（Perplexity、ChatGPT、Claude）：带着问题打开，发不发由网站决定——ChatGPT 从别的网站跳过去时只填进输入框（它防恶意链接的限制），Claude 是否自动发送没有官方说法。讨论过由扩展在页面里替用户按发送，容易随网站改版失效、还要绕开对方的防护，没有做。
+- 列表随备份导出（第 8 版起），不算私密信息。
 
 输入时在收藏夹和浏览记录里找，列在搜索框下面（`useSuggestions`，只读本地数据，不联网）：收藏排在前面（最多一半），浏览记录按访问次数排，同一个网址只留一条，最多 6 条。↓↑ 选择（走过两头回到输入框），回车打开选中的，⌘ / Ctrl + 回车在新标签页打开；没选中时回车照常搜索。Esc 只收起联想、不清空输入框。读取用的是收藏夹、历史小组件申请过的权限；都没有时联想里问一次「允许 / 不用了」。
 
@@ -241,9 +249,9 @@ public/fonts/              时钟字体子集（Zen Kaku Gothic New，OFL）
 ```json
 {
   "app": "niwa",
-  "version": 5,
+  "version": 8,
   "exportedAt": "…",
-  "data": { "grid": [], "addTile": {}, "icons": {}, "visits": {}, "engine": "Bing", "theme": "system" }
+  "data": { "grid": [], "icons": {}, "visits": {}, "engines": null, "engine": "Bing", "theme": "system" }
 }
 ```
 

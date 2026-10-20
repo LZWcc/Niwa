@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import Dialog from '@/components/common/Dialog';
+import EnginesDialog from '@/components/search/EnginesDialog';
 import ExcludeDialog from '@/components/search/ExcludeDialog';
-import { SEARCH_ENGINES as engines } from '@/config';
+import { useEngines } from '@/hooks/useEngines';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useStored, useStoredList, useStoredText } from '@/hooks/useStored';
 import { useTheme } from '@/hooks/useTheme';
@@ -68,7 +69,8 @@ export default function SettingsButton() {
   const [clearing, setClearing] = useState(false);
 
   const { choice, choose } = useTheme();
-  const [engineName, setEngineName] = useStoredText(KEYS.engine);
+  const [enginesOpen, setEnginesOpen] = useState(false);
+  const { engines, engine } = useEngines();
   const [suggest, setSuggest] = useStoredText(KEYS.searchSuggest);
   const [excluded, setExcluded] = useStoredList<string>(KEYS.searchExclude, (v): v is string => typeof v === 'string', []);
   const [scene, setScene] = useStoredText(KEYS.sceneWeather);
@@ -76,7 +78,6 @@ export default function SettingsButton() {
     readJson(KEYS.weatherAccount, isWeatherAccount),
   );
   const [notify, requestNotify, revokeNotify] = usePermissions(NOTIFY);
-  const engine = engines.find((e) => e.name === engineName) ?? engines[0]!;
 
   return (
     <>
@@ -108,13 +109,10 @@ export default function SettingsButton() {
 
           <section className="settings-section">
             <h3>搜索</h3>
-            <Row label="搜索引擎">
-              <Choice
-                label="搜索引擎"
-                options={engines.map((e) => [e.name, e.name] as [string, string])}
-                value={engine.name}
-                onChange={setEngineName}
-              />
+            <Row label="搜索引擎" note={`在用 ${engine.name}，共 ${engines.length} 个`}>
+              <button type="button" className="btn" onClick={() => setEnginesOpen(true)}>
+                管理…
+              </button>
             </Row>
             <Row label="联想收藏和历史" note="打字时从收藏夹和浏览记录里找">
               <Switch label="联想收藏和历史" on={suggest !== 'off'} onChange={(on) => setSuggest(on ? null : 'off')} />
@@ -167,6 +165,7 @@ export default function SettingsButton() {
           </footer>
         </div>
       </Dialog>
+      <EnginesDialog open={enginesOpen} onClose={() => setEnginesOpen(false)} />
       <ExcludeDialog open={excludeOpen} sites={excluded} onChange={setExcluded} onClose={() => setExcludeOpen(false)} />
       <BackupDialog open={backupOpen} onClose={() => setBackupOpen(false)} />
     </>

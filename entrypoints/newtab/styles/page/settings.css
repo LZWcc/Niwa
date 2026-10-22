@@ -103,3 +103,9 @@
 .setting .btn-danger {
   margin-right: 0;
 }
+/* 一行里有两个按钮（宠物的移除、换一只） */
+.setting-buttons {
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+}

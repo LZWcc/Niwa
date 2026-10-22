@@ -1,28 +1,9 @@
-// 导入的日历文件（.ics）存在 IndexedDB 里：整份导出的日历可能有几 MB，localStorage（约 5MB，还要和别的数据共用）放不下。
-// 日历列表（niwa:calendars）里这种日历的 url 是 file:<随机串>（每次导入换一个），内容按日历的 id 存在这里。只有这一种数据用 IndexedDB。
+// 导入的日历文件（.ics）存在 IndexedDB 里（../db.ts）：整份导出的日历可能有几 MB，localStorage 放不下。
+// 日历列表（niwa:calendars）里这种日历的 url 是 file:<随机串>（每次导入换一个），内容按日历的 id 存在这里。
+import { STORES, transact as transactIn } from '../db';
 
-const DB = 'niwa';
-const STORE = 'calendar-files';
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-/** 在一个事务里做完 work，事务提交后返回最后那个请求的结果 */
-async function transact<T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const db = await openDb();
-  return new Promise<T>((resolve, reject) => {
-    const tx = db.transaction(STORE, mode);
-    const request = work(tx.objectStore(STORE));
-    tx.oncomplete = () => resolve(request.result);
-    tx.onerror = tx.onabort = () => reject(tx.error);
-  }).finally(() => db.close());
-}
+const transact = <T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>) =>
+  transactIn(STORES.calendarFiles, mode, work);
 
 /** 一个日历文件的内容；没有（比如在别的浏览器里导入的）时是 undefined */
 export const readCalendarFile = (id: string) => transact<string | undefined>('readonly', (store) => store.get(id));

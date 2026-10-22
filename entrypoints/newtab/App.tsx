@@ -3,6 +3,7 @@ import Grid from '@/components/grid/Grid';
 import AddButton, { type Adding } from '@/components/page/AddButton';
 import SettingsButton from '@/components/page/SettingsButton';
 import Clock from '@/components/page/Clock';
+import Pet from '@/components/page/Pet';
 import Scene from '@/components/page/Scene';
 import ThemeToggle from '@/components/page/ThemeToggle';
 import Search from '@/components/search/Search';
@@ -11,7 +12,7 @@ import { useVisits } from '@/hooks/useVisits';
 import { applyAtmosphere } from '@/utils/almanac';
 import { preview } from '@/utils/preview';
 
-// 新标签页：背景的景、左上角的时间、居中的搜索框，下面是快捷方式和小组件的网格。
+// 新标签页：背景的景、左上角的时间、居中的搜索框，下面是快捷方式和小组件的网格；导入了宠物时浮在最上面。
 export default function App() {
   const now = useMinute();
   const [adding, setAdding] = useState<Adding | null>(null);
@@ -34,6 +35,7 @@ export default function App() {
         <Search />
         <Grid now={now} adding={adding} onAddClose={() => setAdding(null)} />
       </main>
+      <Pet />
     </>
   );
 }

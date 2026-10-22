@@ -14,7 +14,7 @@ const tomorrow = (() => { const t = new Date(); t.setDate(t.getDate() + 1); retu
 const ics = (name, title) => ['BEGIN:VCALENDAR', 'VERSION:2.0', ...(name ? [`X-WR-CALNAME:${name}`] : []), 'BEGIN:VEVENT', `UID:${title}@test`, `DTSTART:${tomorrow}T090000`, `DTEND:${tomorrow}T100000`, `SUMMARY:${title}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
 // 测试页和新标签页同源，直接读 IndexedDB 里的文件
 const fileIn = (id) => new Promise((resolve) => {
-  const open = indexedDB.open('niwa', 1);
+  const open = indexedDB.open('niwa');
   open.onupgradeneeded = () => open.result.createObjectStore('calendar-files');
   open.onsuccess = () => { const req = open.result.transaction('calendar-files').objectStore('calendar-files').get(id); req.onsuccess = () => { open.result.close(); resolve(req.result); }; };
 });

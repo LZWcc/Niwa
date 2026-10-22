@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import Dialog from '@/components/common/Dialog';
 import EnginesDialog from '@/components/search/EnginesDialog';
 import ExcludeDialog from '@/components/search/ExcludeDialog';
@@ -6,12 +6,14 @@ import { useEngines } from '@/hooks/useEngines';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useStored, useStoredList, useStoredText } from '@/hooks/useStored';
 import { useTheme } from '@/hooks/useTheme';
+import { toUserMessage } from '@/utils/errors';
+import { DEFAULT_SPOT, deletePetSprite, importPet, isPet, type Pet } from '@/utils/pet';
 import { KEYS, readJson } from '@/utils/storage';
 import type { ThemeChoice } from '@/utils/theme';
 import { isWeatherAccount, type WeatherAccount } from '@/utils/weather';
 import BackupDialog from './BackupDialog';
 
-// 右上角的设置：散在各处的设置集中在这里（外观、搜索、小组件、数据）。
+// 右上角的设置：散在各处的设置集中在这里（外观、搜索、小组件、宠物、数据）。
 // 原来的地方（引擎菜单、各小组件的菜单、右上角的浅色 / 深色）照样能改，两边同步（useStoredText 等在页面里互相通知）。
 
 const NOTIFY = ['notifications'];
@@ -78,6 +80,20 @@ export default function SettingsButton() {
     readJson(KEYS.weatherAccount, isWeatherAccount),
   );
   const [notify, requestNotify, revokeNotify] = usePermissions(NOTIFY);
+  const [pet, setPet] = useStored<Pet | null>(KEYS.pet, () => readJson(KEYS.pet, isPet));
+  const [petError, setPetError] = useState('');
+  const petInput = useRef<HTMLInputElement | null>(null);
+
+  // 换一只时留在原来的位置
+  const pickPet = async (files: File[]) => {
+    setPetError('');
+    try {
+      const found = await importPet(files);
+      setPet((p) => ({ ...found, ...(p ? { x: p.x, y: p.y } : DEFAULT_SPOT) }));
+    } catch (error) {
+      setPetError(toUserMessage(error, '导入宠物'));
+    }
+  };
 
   return (
     <>
@@ -93,7 +109,10 @@ export default function SettingsButton() {
         onClose={() => setOpen(false)}
         className="dialog settings"
         labelledBy="settings-title"
-        onOpen={() => setClearing(false)}
+        onOpen={() => {
+          setClearing(false);
+          setPetError('');
+        }}
       >
         <div className="dialog-body">
           <h2 id="settings-title" className="dialog-title">
@@ -146,6 +165,54 @@ export default function SettingsButton() {
             </Row>
             <Row label="计时器到点发系统通知" note="浏览器不在前台时也看得到（系统要允许 Edge 发通知）">
               <Switch label="计时器到点发系统通知" on={notify === true} onChange={(on) => (on ? requestNotify() : revokeNotify())} />
+            </Row>
+          </section>
+
+          <section className="settings-section">
+            <h3>宠物</h3>
+            <Row
+              label="宠物"
+              note={
+                petError ? (
+                  <span className="field-error">{petError}</span>
+                ) : pet ? (
+                  `${pet.name}：拖动换位置，点一下打招呼`
+                ) : (
+                  '导入 Codex 的宠物：选 ~/.codex/pets/ 里的一个文件夹'
+                )
+              }
+            >
+              <span className="setting-buttons">
+                {pet && (
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() => {
+                      setPet(null);
+                      void deletePetSprite();
+                    }}
+                  >
+                    移除
+                  </button>
+                )}
+                <button type="button" className="btn" onClick={() => petInput.current!.click()}>
+                  {pet ? '换一只…' : '导入…'}
+                </button>
+              </span>
+              <input
+                ref={(el) => {
+                  petInput.current = el;
+                  // React 的类型里没有 webkitdirectory，选文件夹要在元素上设
+                  if (el) el.webkitdirectory = true;
+                }}
+                type="file"
+                hidden
+                onChange={(e) => {
+                  const files = [...e.target.files!];
+                  e.target.value = '';
+                  void pickPet(files);
+                }}
+              />
             </Row>
           </section>
 

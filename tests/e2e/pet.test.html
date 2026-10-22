@@ -1,0 +1,155 @@
+<!doctype html>
+<!-- 页面测试：宠物。升级前的 IndexedDB（版本 1，只有日历文件）里的数据不丢；导入（缺 pet.json、图片大小不对时拒绝）、只留用到的行并缩小、显示在右下角；视线跟着指针转、点一下打招呼、拖动换位置（往哪边拖就往哪边走）；计时器在走时忙、到点时等；刷新后还在；移除时图片一起删掉。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 读文件、解码图片、IndexedDB 是真实的异步操作，无头模式的虚拟时间不等它们：等待期间一直向测试服务器发一个 20ms 后才返回的请求，最多等 5 秒
+const waitFor = async (ok) => { for (let i = 0; i < 250 && !(await ok()); i++) await fetch('/__tick'); };
+/** 等一个真实的异步操作做完（同样一直发请求），返回它的结果 */
+const real = async (promise) => { let result, settled = false; promise.then((v) => { result = v; settled = true; }); await waitFor(() => settled); return result; };
+// 测试页和新标签页同源，直接读写 IndexedDB；没有库时建的是升级前的版本 1（只有日历文件）
+const idb = (store, mode, work) => new Promise((resolve, reject) => {
+  const open = indexedDB.open('niwa');
+  open.onupgradeneeded = () => open.result.createObjectStore('calendar-files');
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const tx = open.result.transaction(store, mode);
+    const req = work(tx.objectStore(store));
+    tx.oncomplete = () => { open.result.close(); resolve(req.result); };
+    tx.onerror = () => reject(tx.error);
+  };
+});
+// 假的精灵图：每格一种颜色，红 = 行 × 20，绿 = 列 × 30
+const sheet = (w, h) => {
+  const c = new OffscreenCanvas(w, h), ctx = c.getContext('2d');
+  for (let r = 0; r * 208 < h; r++) for (let col = 0; col < 8; col++) { ctx.fillStyle = `rgb(${r * 20}, ${col * 30}, 200)`; ctx.fillRect(col * 192, r * 208, 192, 208); }
+  return real(c.convertToBlob({ type: 'image/png' }));
+};
+const timerGrid = (timer) => JSON.stringify([{ id: 't', kind: 'widget', type: 'timer', size: 'm', x: 0, y: 0, ...(timer ? { settings: { timer } } : {}) }]);
+
+let reloaded = false;
+const f = document.getElementById('f');
+(async () => {
+  localStorage.clear();
+  await real(idb('calendar-files', 'readwrite', (s) => s.put('BEGIN:VCALENDAR', 'old')));
+  localStorage.setItem('niwa:grid', timerGrid(null));
+  f.src = '/newtab.html';
+})();
+
+f.onload = async () => {
+  await sleep(500);
+  const w = f.contentWindow, d = f.contentDocument, ls = w.localStorage;
+  const stored = () => JSON.parse(ls.getItem('niwa:pet') ?? 'null');
+  const pet = () => d.querySelector('.pet');
+  const img = () => d.querySelector('.pet-sprite');
+  const action = () => pet()?.dataset.action;
+  const center = () => { const r = pet().getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+  const dlg = () => d.querySelector('dialog[aria-labelledby="settings-title"]');
+  const openSettings = async () => { d.querySelector('.page-action[aria-label="设置"]').click(); await sleep(100); };
+  const row = () => [...dlg().querySelectorAll('.setting')].find((r) => r.querySelector('.setting-label').firstChild.textContent === '宠物');
+  const button = (text) => [...row().querySelectorAll('button')].find((b) => b.textContent === text);
+  const error = () => row().querySelector('.field-error')?.textContent ?? '';
+  const pick = (files) => { const dt = new w.DataTransfer(); for (const file of files) dt.items.add(file); const input = row().querySelector('input[type=file]'); input.files = dt.files; input.dispatchEvent(new w.Event('change', { bubbles: true })); };
+  const file = (parts, name) => new w.File(parts, name);
+  const manifest = file([JSON.stringify({ id: 'xuetong', displayName: '雪瞳', description: '测试', spriteVersionNumber: 2, spritesheetPath: 'spritesheet.png' })], 'pet.json');
+  const point = (type, x, y, extra = {}) => new w.PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, ...extra });
+  const look = (dx, dy) => { const c = center(); w.dispatchEvent(point('pointermove', c.x + dx, c.y + dy)); };
+
+  if (reloaded) {
+    await waitFor(() => img()?.complete);
+    const c = center();
+    log(Math.abs(c.x - 0.92 * 1440 + 200) < 20 && stored().name === '雪瞳', `pet kept after reload at moved spot: ${JSON.stringify(c)}`);
+    await openSettings();
+    button('移除').click(); await sleep(50);
+    log(!pet() && stored() === null && row().textContent.includes('导入 Codex'), 'removed from page');
+    // 读 IndexedDB 时也要一直发请求（real），否则虚拟时间可能在读的时候快进到头
+    await waitFor(async () => (await real(idb('pet', 'readonly', (s) => s.get('sprite')))) === undefined);
+    log((await real(idb('pet', 'readonly', (s) => s.get('sprite')))) === undefined, 'removing deletes the sprite');
+    return;
+  }
+
+  log(!pet() && !ls.getItem('niwa:pet'), 'no pet before importing');
+  await openSettings();
+  log(row().textContent.includes('导入 Codex') && !!button('导入…'), 'settings offers importing');
+
+  // 不对的：没有 pet.json、精灵图大小不对
+  pick([file([await sheet(1536, 2288)], 'spritesheet.png')]);
+  await waitFor(() => error());
+  log(error().includes('pet.json'), `missing pet.json rejected: ${error()}`);
+  pick([manifest, file([await sheet(400, 416)], 'spritesheet.png')]);
+  await waitFor(() => error().includes('大小'));
+  log(error().includes('大小不对（400×416）') && !stored(), `wrong size rejected: ${error()}`);
+
+  // 第 2 版的宠物（11 行）
+  pick([manifest, file([await sheet(1536, 2288)], 'spritesheet.png')]);
+  await waitFor(() => stored());
+  const p = stored();
+  log(p?.name === '雪瞳' && p.look === true && p.x === 0.92 && p.y === 0.85 && !error(), `imported: ${JSON.stringify(p)}`);
+  await waitFor(() => button('移除'));
+  log(row().textContent.includes('雪瞳') && !!button('移除') && !!button('换一只…'), 'settings shows the pet');
+
+  // 存下来的图：8 行（6 个动作 + 2 行看向），每格 144×156；行按原图的 0、1、2、3、6、7、9、10 取
+  const blob = await real(idb('pet', 'readonly', (s) => s.get('sprite')));
+  const bitmap = await real(createImageBitmap(blob));
+  const c = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+  c.drawImage(bitmap, 0, 0);
+  const sourceRows = [0, 1, 2, 3, 6, 7, 9, 10];
+  const colors = sourceRows.map((_, i) => [...c.getImageData(3 * 144 + 72, i * 156 + 78, 1, 1).data.slice(0, 2)]);
+  log(blob.type === 'image/webp' && bitmap.width === 1152 && bitmap.height === 1248, `sprite shrunk to used rows: ${blob.type} ${bitmap.width}×${bitmap.height}, ${blob.size} bytes`);
+  log(colors.every(([r, g], i) => Math.abs(r - sourceRows[i] * 20) <= 4 && Math.abs(g - 90) <= 4), `rows picked from the right places: ${JSON.stringify(colors)}`);
+  log((await real(idb('calendar-files', 'readonly', (s) => s.get('old')))) === 'BEGIN:VCALENDAR', 'calendar file from before the upgrade kept');
+
+  [...dlg().querySelectorAll('button')].find((b) => b.textContent === '完成').click();
+  await waitFor(() => img()?.complete);
+  const at = center();
+  log(Math.abs(at.x - 0.92 * 1440) < 20 && Math.abs(at.y - 0.85 * 900) < 20 && action() === 'idle', `shown at bottom right: ${JSON.stringify(at)} ${action()}`);
+  // 平常的样子播一轮就歇（不连着眨眼）
+  log(img().getAnimations()[0]?.effect.getTiming().iterations === 1, 'idle plays one round at a time');
+
+  // 视线：右边是 90°（第一行看向的第 5 格），上面是 0°，左边是 270°（第二行第 5 格），太远不看
+  look(150, 0); await sleep(30);
+  log(action() === 'look' && img().style.top === '-468px' && img().style.transform === 'translateX(-288px)', `looks right: ${img().style.top} ${img().style.transform}`);
+  look(0, -150); await sleep(30);
+  log(img().style.top === '-468px' && img().style.transform === 'translateX(0px)', `looks up: ${img().style.top} ${img().style.transform}`);
+  look(-150, 0); await sleep(30);
+  log(img().style.top === '-546px' && img().style.transform === 'translateX(-288px)', `looks left: ${img().style.top} ${img().style.transform}`);
+  look(-1000, 0); await sleep(30);
+  log(action() === 'idle' && img().style.top === '0px', `stops looking when far away: ${action()}`);
+
+  // 点一下：打招呼，一轮（700ms）后回到平常
+  const here = center();
+  pet().dispatchEvent(point('pointerdown', here.x, here.y));
+  w.dispatchEvent(point('pointerup', here.x, here.y)); await sleep(30);
+  log(action() === 'wave' && img().style.top === `${-3 * 78}px` && img().getAnimations().length === 1, `click waves: ${action()} ${img().style.top}`);
+  await sleep(800);
+  log(action() === 'idle', `back to idle after waving: ${action()}`);
+
+  // 拖动：往左拖时往左走，往回一点就往右走；松手后记住位置
+  pet().dispatchEvent(point('pointerdown', here.x, here.y));
+  w.dispatchEvent(point('pointermove', here.x - 200, here.y, { movementX: -200 })); await sleep(30);
+  log(action() === 'left' && pet().classList.contains('is-dragging') && Math.abs(center().x - (here.x - 200)) < 2, `dragging left: ${action()} ${center().x}`);
+  w.dispatchEvent(point('pointermove', here.x - 150, here.y, { movementX: 50 })); await sleep(30);
+  log(action() === 'right', `dragging back turns right: ${action()}`);
+  w.dispatchEvent(point('pointermove', here.x - 200, here.y, { movementX: -50 }));
+  w.dispatchEvent(point('pointerup', here.x - 200, here.y)); await sleep(30);
+  log(Math.abs(stored().x - (0.92 - 200 / w.innerWidth)) < 0.002 && stored().y === 0.85 && action() !== 'wave' && !pet().classList.contains('is-dragging'), `drop stores the spot: ${JSON.stringify(stored())}`);
+
+  // 计时器：在走时忙，到点了等你，重置后回到平常（别的标签页改了网格也一样，这里从测试页写）
+  look(-1000, 0);
+  localStorage.setItem('niwa:grid', timerGrid({ mode: 'countdown', duration: 1000, elapsed: 0, startedAt: Date.now() }));
+  await sleep(100);
+  log(action() === 'busy' && img().style.top === `${-5 * 78}px` && img().getAnimations()[0]?.effect.getTiming().iterations === Infinity, `busy while timer runs: ${action()}`);
+  await sleep(1200);
+  log(action() === 'waiting' && img().style.top === `${-4 * 78}px`, `waiting when time is up: ${action()}`);
+  localStorage.setItem('niwa:grid', timerGrid({ mode: 'countdown', duration: 1000, elapsed: 0, startedAt: null }));
+  await sleep(100);
+  log(action() === 'idle', `idle after reset: ${action()}`);
+
+  reloaded = true;
+  w.location.reload();
+};
+</script>

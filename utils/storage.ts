@@ -1,5 +1,5 @@
 // 本地保存。所有数据都只在这台电脑的 localStorage 里，键统一在 KEYS 登记，都以 niwa: 开头。
-// 只有导入的日历文件例外：可能有几 MB，存在 IndexedDB 里（calendar/files.ts）。
+// 放不下的大块数据（导入的日历文件、宠物的图片）例外，存在 IndexedDB 里（db.ts）。
 // 字符串直接用 localStorage.getItem / setItem；JSON 用 readJson / writeJson，读出来的要校验。
 
 export const KEYS = {
@@ -35,6 +35,8 @@ export const KEYS = {
   timerNotifyAsked: 'niwa:timer-notify-asked',
   /** 背景是否跟随天气：on 表示跟随（天气小组件菜单里的开关，默认不跟随） */
   sceneWeather: 'niwa:scene-weather',
+  /** 宠物：名字、有没有看向、位置（utils/pet.ts）；图片在 IndexedDB 里 */
+  pet: 'niwa:pet',
 } as const;
 
 export type StorageKey = (typeof KEYS)[keyof typeof KEYS];

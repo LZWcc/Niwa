@@ -29,7 +29,7 @@ localStorage.setItem('niwa:theme', 'dark');
 const ICS = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nX-WR-CALNAME:课程表\r\nEND:VCALENDAR';
 // IndexedDB 和页面同源，测试页直接读写；也是真实的异步操作，用 waitFor 等
 const idb = (mode, work) => new Promise((resolve, reject) => {
-  const open = indexedDB.open('niwa', 1);
+  const open = indexedDB.open('niwa');
   open.onupgradeneeded = () => open.result.createObjectStore('calendar-files');
   open.onerror = () => reject(open.error);
   open.onsuccess = () => {

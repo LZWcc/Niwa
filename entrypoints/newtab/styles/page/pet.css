@@ -1,0 +1,27 @@
+/* 宠物：浮在页面上，拖到哪就在哪。位置是宠物中心在窗口里的比例（--x、--y），贴边时不出界。
+   在网格（拿起的格子是 10）之上、弹出菜单（50）和对话框之下。 */
+
+/* ---------- 宠物 ---------- */
+.pet {
+  position: fixed;
+  z-index: 20;
+  left: clamp(0px, calc(var(--x) * 100% - 36px), calc(100% - 72px));
+  top: clamp(0px, calc(var(--y) * 100% - 39px), calc(100% - 78px));
+  width: 72px;
+  height: 78px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.pet.is-dragging {
+  cursor: grabbing;
+}
+/* 整张图（8 列）只露出一格：行用 top 选，帧用 transform 移 */
+.pet-sprite {
+  position: absolute;
+  left: 0;
+  width: 576px;
+  max-width: none;
+  pointer-events: none;
+}

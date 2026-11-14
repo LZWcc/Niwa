@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useStored, useStoredList, useStoredText } from '@/hooks/useStored';
 import { useTheme } from '@/hooks/useTheme';
 import { toUserMessage } from '@/utils/errors';
-import { DEFAULT_SPOT, deletePetSprite, importPet, isPet, type Pet } from '@/utils/pet';
+import { DEFAULT_SPOT, isPet, type Pet } from '@/utils/pet/model';
 import { KEYS, readJson } from '@/utils/storage';
 import type { ThemeChoice } from '@/utils/theme';
 import { isWeatherAccount, type WeatherAccount } from '@/utils/weather';
@@ -84,10 +84,11 @@ export default function SettingsButton() {
   const [petError, setPetError] = useState('');
   const petInput = useRef<HTMLInputElement | null>(null);
 
-  // 换一只时留在原来的位置
+  // 换一只时留在原来的位置。处理图片的代码点了才加载（没用宠物的人不加载）。
   const pickPet = async (files: File[]) => {
     setPetError('');
     try {
+      const { importPet } = await import('@/utils/pet/sprite');
       const found = await importPet(files);
       setPet((p) => ({ ...found, ...(p ? { x: p.x, y: p.y } : DEFAULT_SPOT) }));
     } catch (error) {
@@ -189,7 +190,7 @@ export default function SettingsButton() {
                     className="btn btn-danger"
                     onClick={() => {
                       setPet(null);
-                      void deletePetSprite();
+                      void import('@/utils/pet/sprite').then((m) => m.deletePetSprite());
                     }}
                   >
                     移除

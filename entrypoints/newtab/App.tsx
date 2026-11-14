@@ -3,7 +3,7 @@ import Grid from '@/components/grid/Grid';
 import AddButton, { type Adding } from '@/components/page/AddButton';
 import SettingsButton from '@/components/page/SettingsButton';
 import Clock from '@/components/page/Clock';
-import Pet from '@/components/page/Pet';
+import Pet from '@/components/pet/Pet';
 import Scene from '@/components/page/Scene';
 import ThemeToggle from '@/components/page/ThemeToggle';
 import Search from '@/components/search/Search';

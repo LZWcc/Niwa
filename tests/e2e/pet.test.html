@@ -73,6 +73,9 @@ f.onload = async () => {
   }
 
   log(!pet() && !ls.getItem('niwa:pet'), 'no pet before importing');
+  // 没导入时宠物的代码不加载，导入后才加载
+  const loaded = () => w.performance.getEntriesByType('resource').some((r) => /\/(PetSprite|sprite)-/.test(r.name));
+  log(!loaded(), 'pet code not loaded without a pet');
   await openSettings();
   log(row().textContent.includes('导入 Codex') && !!button('导入…'), 'settings offers importing');
 
@@ -104,7 +107,9 @@ f.onload = async () => {
   log((await real(idb('calendar-files', 'readonly', (s) => s.get('old')))) === 'BEGIN:VCALENDAR', 'calendar file from before the upgrade kept');
 
   [...dlg().querySelectorAll('button')].find((b) => b.textContent === '完成').click();
-  await waitFor(() => img()?.complete);
+  // 宠物的代码导入后才加载：等图片显示出来、平常的动画开始播
+  await waitFor(() => img()?.complete && img().getAnimations().length);
+  log(loaded(), 'pet code loaded after importing');
   const at = center();
   log(Math.abs(at.x - 0.92 * 1440) < 20 && Math.abs(at.y - 0.85 * 900) < 20 && action() === 'idle', `shown at bottom right: ${JSON.stringify(at)} ${action()}`);
   // 平常的样子播一轮就歇（不连着眨眼）

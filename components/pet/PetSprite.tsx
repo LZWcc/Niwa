@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { DEFAULT_ITEMS } from '@/config';
-import { useStored, useStoredList } from '@/hooks/useStored';
+import { useStoredList } from '@/hooks/useStored';
 import { isGridItem } from '@/utils/grid/items';
-import { actionKeyframes, CELL, isPet, LOOK_ROW, lookAt, readPetSprite, ROW, type Pet as PetData, type PetAction } from '@/utils/pet';
+import type { Pet } from '@/utils/pet/model';
+import { actionKeyframes, CELL, LOOK_ROW, lookAt, readPetSprite, ROW, type PetAction } from '@/utils/pet/sprite';
 import { prefersReducedMotion } from '@/utils/spring';
-import { KEYS, readJson } from '@/utils/storage';
+import { KEYS } from '@/utils/storage';
 import { spentOf } from '@/utils/timer';
 
-// 宠物：浮在页面上（不占网格），拖到哪就停在哪，点一下打招呼。
+// 宠物（导入了才加载，见 Pet.tsx）：浮在页面上，拖到哪就停在哪，点一下打招呼。
 // 平时呼吸、眨眼；计时器在走时在旁边忙，时间到了等你来看；第 2 版的宠物视线跟着指针转。
-// 动画只改图片的 transform（Web Animations），由合成器播放，不占主线程；看不见的标签页浏览器自己会停。没导入时什么都不做。
+// 动画只改图片的 transform（Web Animations），由合成器播放，不占主线程；看不见的标签页浏览器自己会停。
 
 const DRAG_START = 4; // 按下后移动超过这么多像素才算拖动，否则就是点击
 const IDLE_REST = 3000; // 平常的样子播完一轮后歇 1–2 倍这么久（毫秒）再播
@@ -17,13 +18,7 @@ const IDLE_REST = 3000; // 平常的样子播完一轮后歇 1–2 倍这么久�
 type Spot = { x: number; y: number };
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-export default function Pet() {
-  const [pet, setPet] = useStored<PetData | null>(KEYS.pet, () => readJson(KEYS.pet, isPet));
-  // 换了一只（id 变了）就整个重来：重新读图片，状态清零
-  return pet && <PetSprite key={pet.id} pet={pet} onMove={(spot) => setPet((p) => p && { ...p, ...spot })} />;
-}
-
-function PetSprite({ pet, onMove }: { pet: PetData; onMove: (spot: Spot) => void }) {
+export default function PetSprite({ pet, onMove }: { pet: Pet; onMove: (spot: Spot) => void }) {
   const [src, setSrc] = useState<string | null>(null);
   // 拖动中的位置和往哪边走；没拖时是 null
   const [drag, setDrag] = useState<(Spot & { dir: 'left' | 'right' | null }) | null>(null);

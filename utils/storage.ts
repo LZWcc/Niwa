@@ -35,7 +35,7 @@ export const KEYS = {
   timerNotifyAsked: 'niwa:timer-notify-asked',
   /** 背景是否跟随天气：on 表示跟随（天气小组件菜单里的开关，默认不跟随） */
   sceneWeather: 'niwa:scene-weather',
-  /** 宠物：名字、有没有看向、位置（utils/pet.ts）；图片在 IndexedDB 里 */
+  /** 宠物：名字、有没有看向、位置（utils/pet/model.ts）；图片在 IndexedDB 里 */
   pet: 'niwa:pet',
 } as const;
 

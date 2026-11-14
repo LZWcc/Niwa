@@ -3,9 +3,10 @@
 // 第 2 版多两行，是 16 个方向的「看向」，视线跟着指针转。
 // 原图 1536×2288，解码后约 14MB，每个新标签页各一份。导入时只留用到的行，缩成显示大小的两倍（Retina 屏上刚好清晰），
 // 存成 webp 放进 IndexedDB，解码后不到 6MB。
-import { STORES, transact } from './db';
-import { AppError } from './errors';
-import { hasStrings } from './storage';
+import { STORES, transact } from '../db';
+import { AppError } from '../errors';
+import { hasStrings } from '../storage';
+import type { Pet } from './model';
 
 /** 原图一格的大小 */
 const SOURCE = { w: 192, h: 208 };
@@ -36,20 +37,6 @@ export type PetAction = keyof typeof ACTIONS;
 export const ROW = Object.fromEntries(Object.keys(ACTIONS).map((name, i) => [name, i])) as Record<PetAction, number>;
 /** 看向的两行接在动作后面：第一行是 0°–157.5°，第二行是 180°–337.5° */
 export const LOOK_ROW = Object.keys(ACTIONS).length;
-
-/**
- * 存在 niwa:pet 里：名字、有没有看向的两行、位置（宠物中心在窗口里的比例，窗口大小变了还在相对的地方）。
- * 图片在 IndexedDB 里；id 每次导入换一个，别的标签页看到 id 变了就重新读图片。
- */
-export type Pet = { id: string; name: string; look: boolean; x: number; y: number };
-
-export const isPet = (v: unknown): v is Pet => {
-  const p = v as Pet;
-  return hasStrings('id', 'name')(v) && typeof p.look === 'boolean' && typeof p.x === 'number' && typeof p.y === 'number';
-};
-
-/** 第一次导入时放在右下角 */
-export const DEFAULT_SPOT = { x: 0.92, y: 0.85 };
 
 // 指针离宠物中心这么近（指在宠物身上）或这么远时不看，回到平常的样子。
 const LOOK_NEAR = 40;

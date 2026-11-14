@@ -99,7 +99,8 @@ export default function Search() {
     items[(at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
   };
 
-  // 搜索词放进引擎网址里 %s 的位置（有的在路径里，原生表单做不到）；空的时候 required 拦住，不会提交。
+  // 搜索词放进引擎网址里 %s 的位置（有的在路径里，原生表单做不到）。
+  // 空着按回车什么都不做：不用 required，那样浏览器会弹出「请填写此字段」的提示。
   return (
     <>
       <form
@@ -107,7 +108,8 @@ export default function Search() {
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
-          location.href = searchUrl(engine.url, input.current!.value);
+          const query = input.current!.value;
+          if (query.trim()) location.href = searchUrl(engine.url, query);
         }}
       >
         <div className="engine" ref={picker}>
@@ -197,7 +199,6 @@ export default function Search() {
           placeholder={`在 ${engine.name} 中搜索`}
           autoComplete="off"
           autoFocus
-          required
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={shown}

@@ -116,6 +116,12 @@ f.onload = async () => {
   d.body.dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true })); await sleep(30);
   log(!d.querySelector('.engine-menu'), 'outside click closes menu');
   log(!d.querySelector('.search-hint'), 'no / hint');
+  // 空着（或只有空格）按回车：不跳转，也不弹浏览器自带的「请填写此字段」（不用 required）
+  w.__stay = true;
+  q.value = '   ';
+  q.closest('form').requestSubmit(); await sleep(300);
+  log(f.contentWindow.__stay === true && !q.required, 'empty search does nothing');
+  q.value = '';
 
   // 便签
   const notes = () => JSON.parse(w.localStorage.getItem('niwa:grid')).find((i) => i.type === 'notes')?.settings?.notes ?? [];

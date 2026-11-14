@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import type { Phase, Season } from '@/utils/almanac';
+import type { Pentad } from '@/utils/pentads';
+import { Basin, PENTAD_SCENES, sceneLayers } from './scenes';
 
-// 箱庭：一只等距视角的砂盘，随累计天数慢慢长出东西，随季节换装。
+// 箱庭：一只等距视角的砂盘，随累计天数慢慢长出东西，随季节换装，每一候添一点这五天的物候（scenes.ts）。
 // 地面坐标即 SVG 坐标，原点在砂盘中心；2:1 等距，地面上的圆画成 rx:ry = 2:1 的椭圆。
 
 const TRAY_W = 96;
@@ -21,6 +23,7 @@ export const MILESTONES = [
   { day: 14, label: '一棵树' },
   { day: 21, label: '小石' },
   { day: 30, label: '石灯笼' },
+  { day: 45, label: '水钵' },
 ];
 
 type Stone = { x: number; y: number; s: number; from: number; rings: number };
@@ -31,6 +34,8 @@ const stones: Stone[] = [
 ];
 const TREE = { x: -16, y: -18, from: 14 };
 const LANTERN = { x: -54, y: 2, from: 30 };
+/** 水钵：和水有关的几候画在这里 */
+const BASIN = { x: 0, y: 32, from: 45, r: 15 };
 const MOSS_FROM = 7;
 const SCATTER_FROM = 5;
 
@@ -66,15 +71,15 @@ function rock(x: number, y: number, s: number) {
   return `M${x - s} ${y}C${x - s} ${y - s * 1.25} ${x + s * 0.6} ${y - s * 1.35} ${x + s} ${y - s * 0.15}A${s} ${s / 2} 0 0 1 ${x - s} ${y}Z`;
 }
 
-function StoneShape({ x, y, s, snow }: { x: number; y: number; s: number; snow: boolean }) {
+function StoneShape({ x, y, s, snow, frost }: { x: number; y: number; s: number; snow: boolean; frost: boolean }) {
   return (
     <g>
       <ellipse className="niwa-shadow" cx={x + s * 0.4} cy={y + s * 0.08} rx={s * 1.15} ry={s * 0.45} />
       <path className="niwa-stone" d={rock(x, y, s)} />
       <path className="niwa-stone-light" d={rock(x - s * 0.28, y - s * 0.4, s * 0.55)} />
-      {snow && (
+      {(snow || frost) && (
         <path
-          className="niwa-snow"
+          className={snow ? 'niwa-snow' : 'niwa-frost'}
           d={`M${x - s * 0.8} ${y - s * 0.7}Q${x - s * 0.1} ${y - s * 1.45} ${x + s * 0.7} ${y - s * 0.75}Q${x} ${y - s * 0.95} ${x - s * 0.8} ${y - s * 0.7}Z`}
         />
       )}
@@ -103,13 +108,52 @@ function Tree({ x, y, season }: { x: number; y: number; season: Season }) {
       />
       {colors.length > 0
         ? blobs.map(([dx, dy, r], i) => <circle key={i} cx={x + dx} cy={y + dy} r={r} fill={colors[i % colors.length]} />)
-        : // 冬：只剩枝，枝头积雪。
-          [
-            [12, -33],
-            [-8, -36],
-            [6, -40],
-            [1, -32],
-          ].map(([dx, dy], i) => <ellipse key={i} className="niwa-snow" cx={x + dx!} cy={y + dy!} rx={2.6} ry={1.3} />)}
+        : // 冬：叶子落了，枝头积着雪，开着几朵红梅。
+          winterTree(x, y)}
+    </g>
+  );
+}
+
+const WINTER_SNOW: [number, number, number][] = [
+  [12, -33.8, 3.4],
+  [-8, -36.8, 3],
+  [6, -40.8, 2.8],
+  [1, -33, 2.4],
+  [-1.6, -44.8, 2],
+  [14, -41.6, 2.1],
+  [-12.8, -43.4, 1.8],
+];
+const PLUM: [number, number][] = [
+  [13.6, -37],
+  [15.2, -40.2],
+  [-10, -38.6],
+  [-12.6, -41.6],
+  [7.6, -44.2],
+  [8.2, -47.6],
+  [-1.8, -40],
+  [4.4, -28.6],
+  [-4.6, -30.6],
+  [10.4, -31],
+  [0.6, -36.4],
+];
+
+function winterTree(x: number, y: number) {
+  return (
+    <g>
+      <path
+        className="niwa-trunk"
+        d={`M${x + 12} ${y - 33}q3 -3 2 -8M${x - 8} ${y - 36}q-3 -2 -5 -7M${x + 6} ${y - 40}q-1 -4 2 -8M${x + 1} ${y - 32}q-3 -6 -2 -12`}
+        strokeWidth="1"
+      />
+      {WINTER_SNOW.map(([dx, dy, r], i) => (
+        <ellipse key={`s${i}`} className="niwa-snow" cx={x + dx} cy={y + dy} rx={r} ry={r * 0.48} />
+      ))}
+      {PLUM.map(([dx, dy], i) => (
+        <g key={`p${i}`}>
+          <circle className="niwa-plum" cx={x + dx} cy={y + dy} r={1.5} />
+          <circle cx={x + dx} cy={y + dy} r={0.5} fill="#f6d9a2" />
+        </g>
+      ))}
     </g>
   );
 }
@@ -130,13 +174,21 @@ function Lantern({ x, y, lit }: { x: number; y: number; lit: boolean }) {
   );
 }
 
-type Props = { days: number; seed: string; season: Season; phase: Phase };
+/** pentad：这一候的小景；不传就不画（宣传片 promo/ 里只要庭本身） */
+type Props = { days: number; seed: string; season: Season; phase: Phase; pentad?: Pentad };
 
-export default function Garden({ days, seed, season, phase }: Props) {
+export default function Garden({ days, seed, season, phase, pentad }: Props) {
   const rand = random(seed);
   const night = phase === 'dusk' || phase === 'night';
   const visible = stones.filter((st) => days >= st.from);
   const snow = season === 'winter' && days >= SCATTER_FROM;
+  const basin = days >= BASIN.from;
+  // 砂面上要避开的东西：石头和水钵（rx、ry 是避开的范围）
+  const obstacles = [
+    ...visible.map((st) => ({ x: st.x, y: st.y, rx: st.s * 1.4, ry: st.s * 0.8 })),
+    ...(basin ? [{ x: BASIN.x, y: BASIN.y - 2, rx: BASIN.r, ry: BASIN.r / 2 }] : []),
+  ];
+  const blocked = (x: number, y: number) => obstacles.some((o) => ((x - o.x) / o.rx) ** 2 + ((y - o.y) / o.ry) ** 2 < 1);
   // 每天重新耙一次：单日、双日方向相反。
   const slope = days % 2 ? 0.5 : -0.5;
 
@@ -149,7 +201,7 @@ export default function Garden({ days, seed, season, phase }: Props) {
       if (Math.abs(u) + Math.abs(v) > 0.85) continue;
       const x = u * SAND_W;
       const y = v * SAND_H;
-      if (visible.some((st) => ((x - st.x) / (st.s * 1.4)) ** 2 + ((y - st.y) / (st.s * 0.8)) ** 2 < 1)) continue;
+      if (blocked(x, y)) continue;
       return { x, y, turn: rand() * 180, tone: rand() };
     }
     return null;
@@ -165,17 +217,50 @@ export default function Garden({ days, seed, season, phase }: Props) {
         )
       : [];
 
+  // 这一候的小景。和水有关的画在水钵里，还没有水钵时不画。小景用自己的随机数，不打乱上面落物、青苔的位置。
+  const scene = pentad && PENTAD_SCENES[pentad];
+  const active = scene && (scene.kind !== 'pool' || basin) ? scene : null;
+  const sceneRand = random(`${seed}/${pentad}`);
+  const layers = active
+    ? sceneLayers(active, {
+        rand: sceneRand,
+        night,
+        season,
+        stone: stones[0]!,
+        tree: days >= TREE.from ? TREE : null,
+        lantern: days >= LANTERN.from ? LANTERN : null,
+        // 砂面上靠里、避开石头和水钵的位置
+        free: (n) =>
+          Array.from({ length: n }, () => {
+            for (let tries = 0; tries < 20; tries++) {
+              const u = sceneRand() * 2 - 1;
+              const v = sceneRand() * 2 - 1;
+              const x = u * SAND_W;
+              const y = v * SAND_H;
+              if (Math.abs(u) + Math.abs(v) <= 0.78 && !blocked(x, y) && Math.hypot(x - TREE.x, (y - TREE.y) * 2) > 12) return { x, y };
+            }
+            return { x: -20, y: 30 };
+          }),
+      })
+    : {};
+
   // 按地面 y 排序绘制，前面的东西挡住后面的。
   const objects: { y: number; node: ReactNode }[] = visible.map((st) => ({
     y: st.y,
-    node: <StoneShape key={`s${st.x}`} {...st} snow={snow} />,
+    node: <StoneShape key={`s${st.x}`} {...st} snow={snow} frost={!!layers.frost} />,
   }));
   if (days >= TREE.from) objects.push({ y: TREE.y, node: <Tree key="tree" {...TREE} season={season} /> });
   if (days >= LANTERN.from) objects.push({ y: LANTERN.y, node: <Lantern key="lantern" {...LANTERN} lit={night} /> });
+  if (basin)
+    objects.push({
+      y: BASIN.y,
+      node: <Basin key="basin" x={BASIN.x} y={BASIN.y} pool={active?.kind === 'pool' ? active.pool : null} />,
+    });
+  objects.push(...(layers.objects ?? []));
   objects.sort((a, b) => a.y - b.y);
 
   return (
-    <svg className="niwa" viewBox="-110 -96 220 176" aria-hidden="true">
+    <svg className="niwa" viewBox="-110 -96 220 176" aria-hidden="true" data-pentad={pentad} data-scene={active?.kind ?? 'none'}>
       <defs>
         <clipPath id="niwa-sand">
           <polygon points={rhombus(SAND_W, SAND_H)} />
@@ -186,6 +271,7 @@ export default function Garden({ days, seed, season, phase }: Props) {
             const r = ringR(st, st.rings) + 3;
             return <ellipse key={st.x} cx={st.x} cy={st.y} rx={r} ry={r / 2} fill="#000" />;
           })}
+          {basin && <ellipse cx={BASIN.x} cy={BASIN.y - 2} rx={BASIN.r + 4} ry={(BASIN.r + 4) / 2} fill="#000" />}
         </mask>
         <radialGradient id="niwa-glow">
           <stop offset="0" stopColor="#ffd98a" stopOpacity=".7" />
@@ -196,6 +282,8 @@ export default function Garden({ days, seed, season, phase }: Props) {
           <stop offset="1" stopColor="#000" stopOpacity="0" />
         </radialGradient>
       </defs>
+
+      {layers.sky}
 
       {/* 砂盘 */}
       <ellipse cx="0" cy={TRAY_H + DEPTH + 2} rx="112" ry="14" fill="url(#niwa-ground)" />
@@ -220,6 +308,7 @@ export default function Garden({ days, seed, season, phase }: Props) {
               return <ellipse key={`${st.x}-${i}`} cx={st.x} cy={st.y} rx={r} ry={r / 2} />;
             }),
           )}
+          {basin && <ellipse cx={BASIN.x} cy={BASIN.y - 2} rx={BASIN.r + 1} ry={(BASIN.r + 1) / 2} />}
         </g>
 
         {scatter.map((p, i) => {
@@ -243,6 +332,8 @@ export default function Garden({ days, seed, season, phase }: Props) {
             />
           );
         })}
+
+        {layers.ground}
       </g>
 
       {moss.map((m, i) => (
@@ -250,6 +341,8 @@ export default function Garden({ days, seed, season, phase }: Props) {
       ))}
 
       {objects.map((o) => o.node)}
+
+      {layers.front}
 
       {/* 夏夜萤火 */}
       {season === 'summer' &&

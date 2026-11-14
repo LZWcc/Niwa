@@ -90,6 +90,17 @@
   --window: #55595e;
   --moss: #7f9a62;
   --snow: #fff;
+  /* 七十二候的小景：水钵、冰、鸟兽的剪影、云、雨、雾、梅 */
+  --water: #9dbccb;
+  --ice: #e3edf2;
+  --bird: #4b5661;
+  --cloud: #d5dde3;
+  --rain: #8ea5b4;
+  --haze: rgb(255 255 255 / 0.55);
+  --flake-edge: rgb(70 82 92 / 0.45);
+  --frost-line: #9fb7c5;
+  --frost-sheet: rgb(255 255 255 / 0.55);
+  --plum: #c8475e;
 }
 
 /* 山色随季节 */
@@ -194,6 +205,16 @@
   --window: #2a2c2f;
   --moss: #5d7548;
   --snow: #e6e9ee;
+  --water: #4a6a76;
+  --ice: #9fb3bd;
+  --bird: #aeb8be;
+  --cloud: #4d5a61;
+  --rain: #7d93a0;
+  --haze: rgb(210 220 225 / 0.14);
+  --flake-edge: transparent;
+  --frost-line: #9db3be;
+  --frost-sheet: rgb(220 228 235 / 0.16);
+  --plum: #c45266;
 }
 :root[data-phase='dawn']:where([data-theme='dark']) {
   --sky-top: #3a3a45;

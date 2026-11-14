@@ -65,6 +65,88 @@
 .niwa-snow {
   fill: var(--snow);
 }
+.niwa-plum {
+  fill: var(--plum);
+}
+
+/* 七十二候的小景（scenes.tsx） */
+.niwa-bird {
+  fill: none;
+  stroke: var(--bird);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.niwa-bird.is-solid {
+  stroke-width: 1.1;
+}
+.niwa-cloud {
+  fill: var(--cloud);
+}
+.niwa-bolt {
+  fill: #f0c24f;
+}
+.niwa-rain {
+  stroke: var(--rain);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+}
+.niwa-ripple {
+  fill: none;
+  stroke: var(--rain);
+  stroke-width: 0.5;
+}
+.niwa-haze {
+  fill: var(--haze);
+  filter: blur(3px);
+}
+.niwa-flake {
+  fill: var(--snow);
+  stroke: var(--flake-edge);
+  stroke-width: 0.5;
+}
+.niwa-frost {
+  fill: var(--snow);
+  opacity: 0.75;
+}
+.niwa-frost-sheet {
+  fill: var(--frost-sheet);
+}
+.niwa-frost-line {
+  fill: none;
+  stroke: var(--frost-line);
+  stroke-width: 0.6;
+  stroke-linecap: round;
+}
+.niwa-dew {
+  fill: var(--water);
+  opacity: 0.85;
+}
+.niwa-wind,
+.niwa-sound {
+  fill: none;
+  stroke: var(--bird);
+  stroke-width: 0.6;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+.niwa-basin {
+  fill: var(--tray-left);
+}
+.niwa-basin-top {
+  fill: var(--lantern);
+}
+.niwa-water {
+  fill: var(--water);
+}
+.niwa-ice {
+  fill: var(--ice);
+}
+.niwa-crack {
+  stroke: var(--water);
+  stroke-width: 0.5;
+  stroke-linejoin: round;
+}
 
 .garden-widget {
   height: 100%;

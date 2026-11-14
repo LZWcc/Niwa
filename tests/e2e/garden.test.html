@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- 页面测试：庭的七十二候小景。画的是今天这一候（和日期旁边的候名一致）；第 45 日之前没有水钵、提示下一次多出水钵，之后有水钵、提示这一候的白话。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body><iframe id="f" style="border:0;width:1440px;height:900px"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pad = (n) => String(n).padStart(2, '0');
+const now = new Date();
+const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+// 最后一次打开是今天，打开页面不会再加一天
+const visit = (days) => localStorage.setItem('niwa:garden', JSON.stringify({ first: '2026-01-01', last: today, days }));
+localStorage.clear();
+localStorage.setItem('niwa:grid', JSON.stringify([{ id: 'g', kind: 'widget', type: 'garden', size: 'l', x: 0, y: 0 }]));
+visit(44);
+const f = document.getElementById('f');
+f.src = '/newtab.html';
+let step = 0;
+f.onload = async () => {
+  await sleep(500);
+  const d = f.contentDocument;
+  const svg = d.querySelector('.niwa');
+  const hint = d.querySelector('.garden-hint').textContent;
+  const pentad = d.querySelectorAll('.date span')[2]?.textContent;
+  const basin = !!d.querySelector('.niwa-basin');
+
+  if (step === 0) {
+    log(!!pentad && svg.dataset.pentad === pentad, `scene is today's pentad: ${svg.dataset.pentad} / ${pentad}`);
+    // 和水有关的候（pool）画在水钵里，没有水钵时不画
+    log(svg.dataset.scene !== undefined && svg.dataset.scene !== 'pool', `no pool scene without basin: ${svg.dataset.scene}`);
+    log(!basin && hint === '第 45 日，会多出水钵', `day 44: no basin, ${hint}`);
+    step = 1;
+    visit(50);
+    f.contentWindow.location.reload();
+    return;
+  }
+  log(basin && svg.dataset.scene !== 'none', `day 50: basin, scene ${svg.dataset.scene}`);
+  log(hint.startsWith(`${pentad}：`) && hint.length > pentad.length + 2, `basin and pentad hint at day 50: ${hint}`);
+};
+</script>

@@ -38,6 +38,7 @@ const suites = [
   { file: 'engines.test.html', flags: ['--force-prefers-reduced-motion'], done: 'settings shows engine count' },
   { file: 'settings.test.html', flags: ['--force-prefers-reduced-motion'], done: 'backup opens from settings' },
   { file: 'almanac.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no moon phase on the sun in light theme' },
+  { file: 'garden.test.html', flags: ['--force-prefers-reduced-motion'], done: 'basin and pentad hint at day 50' },
   { file: 'weather-cache.test.html', flags: ['--force-prefers-reduced-motion'], done: 'no request while cache is fresh' },
   { file: 'weather.test.html', flags: ['--force-prefers-reduced-motion'], done: 'scene restored when widget removed' },
   // 视线跟着指针转在减少动态效果时关掉，这一页照常运行（动画在虚拟时间里不推进，只看换到了哪一行、哪一格）。

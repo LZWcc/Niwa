@@ -25,6 +25,17 @@
   grid-column: span 4;
   grid-row: span 4;
 }
+/* 小组件和大面板里的列表能滚动，但滚动条平时透明，鼠标移上去才显示（鼠标模式下系统滚动条会一直显示）。
+   scrollbar-width 不继承，所以写在每个后代上 */
+.widget *,
+.panel * {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.widget :hover,
+.panel :hover {
+  scrollbar-color: var(--faint) transparent;
+}
 .widget {
   cursor: grab;
   transition:

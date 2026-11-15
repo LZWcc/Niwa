@@ -191,6 +191,8 @@ f.onload = async () => {
   const noScroll = (el) => el.scrollHeight <= el.clientHeight + 1;
   const mList = d.querySelector('[data-type="calendar"] .cal-list');
   log(noScroll(mList), `medium has no scrollbar (${mList.scrollHeight}/${mList.clientHeight})`);
+  const barColor = w.getComputedStyle(mList).scrollbarColor;
+  log(barColor === 'rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)', `widget scrollbar transparent until hover (${barColor})`);
   log(d.querySelector('[data-type="calendar"] .cal-more').textContent === '月历 ›', 'medium footer is just a month link');
   const mLast = [...mList.querySelectorAll('.event')].at(-1).getBoundingClientRect();
   log(mLast.bottom <= mList.getBoundingClientRect().bottom + 0.5, 'medium rows all fully visible');

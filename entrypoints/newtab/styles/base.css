@@ -6,6 +6,8 @@
 }
 html {
   min-height: 100%;
+  /* 整页的滚动条不显示（滚轮、触控板照常滚动）：系统设成一直显示时，它是窗口右边一条带底色的竖条，把背景的景切掉一截 */
+  scrollbar-width: none;
   background:
     linear-gradient(to bottom, var(--sky-top), var(--bg) 70%) no-repeat,
     var(--bg);
@@ -204,11 +206,19 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: max(140px, 22vh) 0 120px;
+  /* 搜索框的位置不随内容变。底部放得下时至少留 120px（多出来的是下面的 ::after，只在有空余时撑开），
+     网格行数多了先收底部，最少留 28px，还放不下才滚动。 */
+  padding: max(140px, 22vh) 0 28px;
   /* backwards：开始前停在起点，结束后动画就不再生效。
      用 both 的话结束后也一直“在动画中”，浏览器会把整块内容一直单独合成，
      连带背景里的日月、远山也被拆成好几层，切换深浅色时在 macOS 上隐约看得见这些层的方框。 */
   animation: settle 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.newtab::after {
+  content: '';
+  flex: 1 1 0;
+  max-height: 92px;
 }
 
 @keyframes settle {

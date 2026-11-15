@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- 页面测试：整页不显示滚动条；搜索框的位置不随网格的行数变，底部的留白先收紧、收到最少才滚动。由 tests/e2e/run.mjs 运行。 -->
+<meta charset="utf-8">
+<body style="margin:0"><iframe id="f" style="border:0"></iframe><pre id="out"></pre>
+<script>
+const out = [];
+const log = (ok, msg) => { out.push(`${ok ? 'PASS' : 'FAIL'} ${msg}`); document.getElementById('out').textContent = out.join('\n'); };
+window.addEventListener('unhandledrejection', (e) => log(false, 'ERROR ' + e.reason));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const near = (a, b) => Math.abs(a - b) < 1;
+const f = document.getElementById('f');
+
+// 用 width × height 的窗口打开：第一列从上到下 rows 个快捷方式，每行一个
+const open = async (width, height, rows) => {
+  localStorage.clear();
+  localStorage.setItem('niwa:grid', JSON.stringify(Array.from({ length: rows }, (_, y) => ({ id: `l${y}`, kind: 'link', name: `L${y}`, url: `https://example.com/${y}`, x: 0, y }))));
+  f.style.width = `${width}px`;
+  f.style.height = `${height}px`;
+  await new Promise((r) => { f.onload = r; if (f.getAttribute('src')) f.contentWindow.location.reload(); else f.src = '/newtab.html'; });
+  await sleep(400);
+  const w = f.contentWindow, d = f.contentDocument;
+  const rect = (sel) => d.querySelector(sel).getBoundingClientRect();
+  return {
+    w, d,
+    // 搜索框离页面顶部多远、网格下面留了多少、要滚动多少才到底
+    measure: () => ({
+      top: rect('.search').top + w.scrollY,
+      below: d.documentElement.scrollHeight - (rect('.grid').bottom + w.scrollY),
+      scroll: d.documentElement.scrollHeight - w.innerHeight,
+    }),
+  };
+};
+const show = (m) => `top ${m.top.toFixed(1)}, below ${m.below.toFixed(1)}, scroll ${m.scroll}`;
+
+(async () => {
+  // 1440×900（22vh = 198）。行数少：一屏放下，底部留得多
+  let p = await open(1440, 900, 3), m = p.measure();
+  log(near(m.top, 198) && m.below >= 120 && m.scroll === 0, `few rows: ${show(m)}`);
+
+  // 8 行：放不下，搜索框还在原来的位置，底部收到最少（28），可以滚动，但没有滚动条、不占宽度
+  p = await open(1440, 900, 8); m = p.measure();
+  log(near(m.top, 198) && near(m.below, 28) && m.scroll === 202, `many rows keep the search in place and scroll: ${show(m)}`);
+  log(p.w.getComputedStyle(p.d.documentElement).scrollbarWidth === 'none' && p.w.innerWidth === p.d.documentElement.clientWidth, `page scrollbar hidden: gutter ${p.w.innerWidth - p.d.documentElement.clientWidth}`);
+  p.w.scrollTo(0, 999); await sleep(30);
+  log(p.w.scrollY === 202, `page still scrolls: ${p.w.scrollY}`);
+
+  // 1400×1200（22vh = 264）。8 行：按以前底部留 120 要滚动（264 + 96 + 780 + 120 = 1260），底部收一点就正好一屏
+  p = await open(1400, 1200, 8); m = p.measure();
+  log(near(m.top, 264) && near(m.below, 60) && m.scroll === 0, `eight rows fit after shrinking the bottom: ${show(m)}`);
+})();
+</script>
